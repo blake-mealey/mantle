@@ -1,0 +1,6 @@
+file = "prod.rbxlx"
+
+[branches.main]
+experience_id = 123
+place_id = 456
+mode = "Publish"

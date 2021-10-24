@@ -1,6 +1,6 @@
-file = "prod.rbxlx"
+file = "dev.rbxl"
 
 [branches.main]
-experience_id = 123
-place_id = 456
+experience_id = 3028808377
+place_id = 7818935418
 mode = "Publish"

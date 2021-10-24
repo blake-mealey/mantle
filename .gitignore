@@ -1,1 +1,8 @@
 /target
+
+*.env
+
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock

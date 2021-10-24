@@ -1,5 +1,8 @@
 extern crate clap;
 use clap::{Arg, App, SubCommand, AppSettings};
+use std::path::Path;
+use std::ffi::OsStr;
+use std::env;
 use std::fs;
 use std::str;
 use std::collections::HashMap;
@@ -25,12 +28,63 @@ struct BranchConfig {
     mode: Option<BranchMode>
 }
 
+enum ProjectType {
+    Xml,
+    Binary
+}
+
+fn upload_place(project_file: &str, experience_id: u64, place_id: u64, mode: BranchMode) {
+    let api_key: &str = &env::var("ROBLOX_API_KEY").expect("No API key");
+
+    //let file_extension = project_file.split(".")[-1];
+    let file_extension = Path::new(project_file).extension().and_then(OsStr::to_str).expect("No file extension");
+    let project_type = (match file_extension {
+        "rbxlx" => Some(ProjectType::Xml),
+        "rbxl" => Some(ProjectType::Binary),
+        _ => None
+    }).expect(&format!("Unknown project file format {}", file_extension));
+
+    let content_type: &str = match project_type {
+        ProjectType::Xml => "application/xml",
+        ProjectType::Binary => "application/octet-stream"
+    };
+
+    let version_type: &str = match mode {
+        BranchMode::Publish => "Published",
+        BranchMode::Save => "Saved"
+    };
+
+    let req = ureq::post(&format!("https://apis.roblox.com/universes/v1/{}/places/{}/versions", experience_id, place_id))
+        .set("x-api-key", api_key)
+        .set("Content-Type", content_type)
+        .query("versionType", version_type);
+
+    let res = match project_type {
+        ProjectType::Xml => {
+            let data = fs::read_to_string(project_file).expect("Unable to read project file.");
+            req.send_string(&data)
+        },
+        ProjectType::Binary => {
+            let data = fs::read(project_file).expect("Unable to read project file.");
+            req.send_bytes(&data)
+        }
+    };
+
+    match res {
+        Ok(response) => println!("{}", response.into_string().unwrap()),
+        Err(ureq::Error::Status(code, response)) => println!("{}", response.into_string().unwrap()),
+        Err(_) => println!("Generic error")
+    }
+}
+
 fn command_save(project_file: &str, experience_id: u64, place_id: u64) {
     println!("save {} to {} > {}", project_file, experience_id, place_id);
+    upload_place(project_file, experience_id, place_id, BranchMode::Save);
 }
 
 fn command_publish(project_file: &str, experience_id: u64, place_id: u64) {
     println!("publish {} to {} > {}", project_file, experience_id, place_id);
+    upload_place(project_file, experience_id, place_id, BranchMode::Publish);
 }
 
 fn command_deploy(config_file: &str) {
@@ -64,20 +118,19 @@ fn command_deploy(config_file: &str) {
     }
 
     println!("Deploying with the config for branch {}", current_branch);
+    
+    let mode_ref = branch_config.unwrap().mode.as_ref();
+    let mode = match mode_ref.unwrap_or(&BranchMode::Publish) {
+        &BranchMode::Publish => BranchMode::Publish,
+        &BranchMode::Save => BranchMode::Save
+    };
 
-    let mode = branch_config.unwrap().mode.as_ref();
-    match mode.unwrap_or(&BranchMode::Publish) {
-        BranchMode::Publish => command_publish(
-            &config.file.unwrap(),
-            branch_config.unwrap().experience_id.unwrap(),
-            branch_config.unwrap().place_id.unwrap()
-        ),
-        BranchMode::Save => command_save(
-            &config.file.unwrap(),
-            branch_config.unwrap().experience_id.unwrap(),
-            branch_config.unwrap().place_id.unwrap()
-        )
-    }
+    upload_place(
+        &config.file.unwrap(),
+        branch_config.unwrap().experience_id.unwrap(),
+        branch_config.unwrap().place_id.unwrap(),
+        mode
+    );
 }
 
 fn main() {

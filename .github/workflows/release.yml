@@ -13,11 +13,16 @@ jobs:
       - uses: actions/checkout@v2
       - name: Build release binary
         run: cargo build --verbose --locked --release
+      - name: Zip binary
+        uses: thedoctor0/zip-release@0.6.0
+        with:
+          filename: rocat-win64.zip
+          path: target/release/rocat.exe
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: rocat-win64
-          path: target/release/rocat.exe
+          path: rocat-win64.zip
   macos:
     runs-on: macos-latest
     steps:
@@ -30,11 +35,16 @@ jobs:
           cargo build --verbose --locked --release
         env:
           OPENSSL_STATIC: 1
+      - name: Zip binary
+        uses: thedoctor0/zip-release@0.6.0
+        with:
+          filename: rocat-macos.zip
+          path: target/release/rocat
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: rocat-macos
-          path: target/release/rocat
+          path: rocat-macos.zip
   linux:
     runs-on: ubuntu-latest
     steps:
@@ -43,11 +53,16 @@ jobs:
         run: cargo build --locked --verbose --release
         env:
           OPENSSL_STATIC: 1
+      - name: Zip binary
+        uses: thedoctor0/zip-release@0.6.0
+        with:
+          filename: rocat-linux.zip
+          path: target/release/rocat
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: rocat-linux
-          path: target/release/rocat
+          path: rocat-linux.zip
   release:
     runs-on: ubuntu-latest
     needs: [windows, macos, linux]

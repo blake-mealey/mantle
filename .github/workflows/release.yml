@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags: ['*']
+
+# TODO: switch to matrix
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build release binary
+        run: cargo build --verbose --locked --release
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: rocat-win64
+          path: target/release/rocat.exe
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install rust
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - name: Build release binary
+        run: |
+          source $HOME/.cargo/env
+          cargo build --verbose --locked --release
+        env:
+          OPENSSL_STATIC: 1
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: rocat-macos
+          path: target/release/rocat
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build release binary
+        run: cargo build --locked --verbose --release
+        env:
+          OPENSSL_STATIC: 1
+      - name: Upload artifacts
+        uses: actions/upload-artifacts@v2
+        with:
+          name: rocat-linux
+          path: target/release/rocat

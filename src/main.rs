@@ -123,7 +123,7 @@ fn upload_place(project_file: &str, experience_id: u64, place_id: u64, mode: Dep
             500 => Err(format!("Server internal error: {}", get_roblox_api_error_message(response))),
             status => Err(format!("Unknown error (status {}): {}", status, get_roblox_api_error_message(response)))
         },
-        Err(e) => Err(format!("Generic error: {}", e))
+        Err(e) => Err(format!("Unknown error: {}", e))
     }
 }
 

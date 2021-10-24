@@ -15,7 +15,7 @@ struct Config {
 }
 
 #[derive(Deserialize)]
-enum BranchMode {
+enum DeployMode {
     Publish,
     Save
 }
@@ -24,7 +24,7 @@ enum BranchMode {
 struct BranchConfig {
     experience_id: Option<u64>,
     place_id: Option<u64>,
-    mode: Option<BranchMode>
+    mode: Option<DeployMode>
 }
 
 enum ProjectType {
@@ -32,17 +32,17 @@ enum ProjectType {
     Binary
 }
 
-fn upload_place(project_file: &str, experience_id: u64, place_id: u64, mode: BranchMode) -> Result<(), String> {
+fn upload_place(project_file: &str, experience_id: u64, place_id: u64, mode: DeployMode) -> Result<String, String> {
     let api_key = &match env::var("ROBLOX_API_KEY") {
         Ok(val) => val,
         Err(_) => return Err(format!("ROBLOX_API_KEY environment variable not set"))
     };
 
     let project_type = match Path::new(project_file).extension().and_then(OsStr::to_str) {
-        Some("rbxmx") => ProjectType::Xml,
-        Some("rbxlx") => ProjectType::Binary,
-        Some(v) => return Err(format!("Invalid project file extension {}", v)),
-        None => return Err(format!("No project file extension"))
+        Some("rbxlx") => ProjectType::Xml,
+        Some("rbxl") => ProjectType::Binary,
+        Some(v) => return Err(format!("Invalid project file extension: {}", v)),
+        None => return Err(format!("No project file extension in project file: {}", project_file))
     };
 
     let content_type = match project_type {
@@ -51,8 +51,8 @@ fn upload_place(project_file: &str, experience_id: u64, place_id: u64, mode: Bra
     };
 
     let version_type = match mode {
-        BranchMode::Publish => "Published",
-        BranchMode::Save => "Saved"
+        DeployMode::Publish => "Published",
+        DeployMode::Save => "Saved"
     };
 
     let req = ureq::post(&format!("https://apis.roblox.com/universes/v1/{}/places/{}/versions", experience_id, place_id))
@@ -72,36 +72,31 @@ fn upload_place(project_file: &str, experience_id: u64, place_id: u64, mode: Bra
     };
 
     return match res {
-        Ok(response) => {
-            println!("{}", response.into_string().unwrap());
-            Ok(())
-        },
+        Ok(response) => Ok(response.into_string().unwrap()),
         Err(ureq::Error::Status(_code, response)) => Err(format!("{}", response.into_string().unwrap())),
         Err(e) => Err(format!("Generic error: {}", e))
     }
 }
 
-fn command_save(project_file: &str, experience_id: u64, place_id: u64) -> Result<(), String> {
-    println!("save {} to {} > {}", project_file, experience_id, place_id);
-    return upload_place(project_file, experience_id, place_id, BranchMode::Save);
+fn command_save(project_file: &str, experience_id: u64, place_id: u64) -> Result<String, String> {
+    return upload_place(project_file, experience_id, place_id, DeployMode::Save);
 }
 
-fn command_publish(project_file: &str, experience_id: u64, place_id: u64) -> Result<(), String> {
-    println!("publish {} to {} > {}", project_file, experience_id, place_id);
-    return upload_place(project_file, experience_id, place_id, BranchMode::Publish);
+fn command_publish(project_file: &str, experience_id: u64, place_id: u64) -> Result<String, String> {
+    return upload_place(project_file, experience_id, place_id, DeployMode::Publish);
 }
 
-fn command_deploy(project_file: &str, config_file: &str) -> Result<(), String> {
-    println!("Deploying based on config file {}", config_file);
+fn command_deploy(project_file: &str, config_file: &str) -> Result<String, String> {
+    println!("Deploying based on config file: {}", config_file);
 
     let data = match fs::read_to_string(config_file) {
         Ok(v) => v,
-        Err(_e) => return Err(format!("Unable to read config file: {}", config_file))
+        Err(e) => return Err(format!("Unable to read config file: {}\n\t{}", config_file, e))
     };
 
     let config: Config = match toml::from_str(&data) {
         Ok(v) => v,
-        Err(_e) => return Err(format!("Unable to parse config file {}", config_file))
+        Err(e) => return Err(format!("Unable to parse config file {}\n\t{}", config_file, e))
     };
 
     let output = if cfg!(target_os = "windows") {
@@ -118,11 +113,19 @@ fn command_deploy(project_file: &str, config_file: &str) -> Result<(), String> {
 
     let result = match output {
         Ok(v) => v,
-        Err(_e) => return Err(format!("Unable to determine current git branch. Are you in a git repository?"))
+        Err(e) => return Err(format!("Unable to determine git branch. Are you in a git repository?\n\t{}", e))
     };
 
+    if !result.status.success() {
+        return Err(format!("Unable to determine git branch. Are you in a git repository?"));
+    }
+
     let current_branch = str::from_utf8(&result.stdout).unwrap().trim();
-    println!("Operating on current branch: {}", current_branch);
+    if current_branch.is_empty() {
+        return Err(format!("Unable to determine git branch. Are you in a git repository?"));
+    }
+
+    println!("Operating on branch: {}", current_branch);
 
     let branches = match config.branches {
         Some(v) => v,
@@ -131,12 +134,12 @@ fn command_deploy(project_file: &str, config_file: &str) -> Result<(), String> {
 
     let branch_config = match branches.get(current_branch) {
         Some(v) => v,
-        None => return Err(format!("No branch configuration found for current branch"))
+        None => return Ok(format!("No branch configuration found for branch; no deployment necessary"))
     };
 
-    let mode = match branch_config.mode.as_ref().unwrap_or(&BranchMode::Publish) {
-        &BranchMode::Publish => BranchMode::Publish,
-        &BranchMode::Save => BranchMode::Save
+    let mode = match branch_config.mode.as_ref().unwrap_or(&DeployMode::Publish) {
+        &DeployMode::Publish => DeployMode::Publish,
+        &DeployMode::Save => DeployMode::Save
     };
 
     return upload_place(
@@ -219,8 +222,14 @@ fn main() {
         _ => Err("".to_string())
     };
 
-    match result {
-        Ok(_) => println!("success"),
-        Err(e) => println!("{}", e)
-    };
+    std::process::exit(match result {
+        Ok(v) => {
+            println!("{}", v);
+            0
+        },
+        Err(e) => {
+            println!("{}", e);
+            1
+        }
+    });
 }

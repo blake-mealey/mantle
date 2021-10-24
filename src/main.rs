@@ -207,8 +207,6 @@ fn command_deploy(project_file: &str, config_file: &str) -> Result<String, Strin
         return Err(format!("Unable to determine git branch. Are you in a git repository?"));
     }
 
-    println!("Operating on branch: {}", current_branch);
-
     let branches = match config.branches {
         Some(v) => v,
         None => return Err(format!("No branch configurations found"))
@@ -216,20 +214,27 @@ fn command_deploy(project_file: &str, config_file: &str) -> Result<String, Strin
 
     let branch_config = match branches.get(current_branch) {
         Some(v) => v,
-        None => return Ok(format!("No branch configuration found for branch; no deployment necessary"))
+        None => return Ok(format!("No branch configuration found for branch {}; no deployment necessary", current_branch))
     };
+
+    let experience_id = match branch_config.experience_id {
+        Some(v) => v,
+        None => return Err(format!("No experience_id configuration found for branch {}", current_branch))
+    };
+
+    let place_id = match branch_config.place_id {
+        Some(v) => v,
+        None => return Err(format!("No place_id configuration found for branch {}", current_branch))
+    };
+
+    println!("Found branch configuration for branch {}; deploying to experience {} and place {}", current_branch, experience_id, place_id);
 
     let mode = match branch_config.mode.as_ref().unwrap_or(&DeployMode::Publish) {
         &DeployMode::Publish => DeployMode::Publish,
         &DeployMode::Save => DeployMode::Save
     };
 
-    return upload_place(
-        project_file,
-        branch_config.experience_id.unwrap(),
-        branch_config.place_id.unwrap(),
-        mode
-    );
+    return upload_place(project_file, experience_id, place_id, mode);
 }
 
 fn main() {

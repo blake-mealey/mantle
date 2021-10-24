@@ -2,9 +2,11 @@ name: Release
 
 on:
   push:
-    tags: ['*']
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
 
-# TODO: switch to matrix
 jobs:
   windows:
     runs-on: windows-latest
@@ -47,3 +49,31 @@ jobs:
         with:
           name: rocat-linux
           path: target/release/rocat
+  release:
+    runs-on: ubuntu-latest
+    needs: [windows, macos, linux]
+    steps:
+      - name: Download win64 binary
+        uses: actions/download-artifact@v2
+        with:
+          name: rocat-win64
+          path: binaries/win64
+      - name: Download macos binary
+        uses: actions/download-artifact@v2
+        with:
+          name: rocat-macos
+          path: binaries/macos
+      - name: Download linux binary
+        uses: actions/download-artifact@v2
+        with:
+          name: rocat-linux
+          path: binaries/linux
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{ secrets }}
+          # TODO: remove and add body_path once we have an automated release notes generator
+          draft: true
+          # TODO: remove once we reach a stable version
+          prerelease: true
+          files: binaries/*

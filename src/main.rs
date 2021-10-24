@@ -29,8 +29,14 @@ struct BranchConfig {
 
 #[derive(Deserialize)]
 struct RobloxApiError {
+    // Most error models have a `message` property
     message: Option<String>,
+
+    // Some error models (500) have a `title` property instead
     title: Option<String>
+
+    // There are some other possible properties but we currently have no use for them so they are
+    // not included
 }
 
 enum ProjectType {

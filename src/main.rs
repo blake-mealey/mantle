@@ -1,5 +1,5 @@
 extern crate clap;
-use clap::{App, AppSettings, Arg, SubCommand, crate_version};
+use clap::{crate_version, App, AppSettings, Arg, SubCommand};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;

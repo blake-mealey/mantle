@@ -11,7 +11,6 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct Config {
-    file: Option<String>,
     branches: Option<HashMap<String, BranchConfig>>
 }
 
@@ -87,7 +86,7 @@ fn command_publish(project_file: &str, experience_id: u64, place_id: u64) {
     upload_place(project_file, experience_id, place_id, BranchMode::Publish);
 }
 
-fn command_deploy(config_file: &str) {
+fn command_deploy(project_file: &str, config_file: &str) {
     println!("Deploying based on config file {}", config_file);
 
     let data = fs::read_to_string(config_file).expect("Unable to read file.");
@@ -126,7 +125,7 @@ fn command_deploy(config_file: &str) {
     };
 
     upload_place(
-        &config.file.unwrap(),
+        project_file,
         branch_config.unwrap().experience_id.unwrap(),
         branch_config.unwrap().place_id.unwrap(),
         mode
@@ -168,6 +167,10 @@ fn main() {
                 .takes_value(true)))
         .subcommand(SubCommand::with_name("deploy")
             .about("Saves a project file to a Roblox place")
+            .arg(Arg::with_name("FILE")
+                .required(true)
+                .index(1)
+                .takes_value(true))
             .arg(Arg::with_name("config")
                 .short("c")
                 .long("config")
@@ -194,6 +197,7 @@ fn main() {
         }
         ("deploy", Some(deploy_matches)) => {
             command_deploy(
+                deploy_matches.value_of("FILE").unwrap(),
                 deploy_matches.value_of("config").unwrap()
             );
         }

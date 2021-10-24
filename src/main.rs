@@ -1,5 +1,5 @@
 extern crate clap;
-use clap::{App, AppSettings, Arg, SubCommand};
+use clap::{App, AppSettings, Arg, SubCommand, crate_version};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
@@ -335,7 +335,7 @@ fn command_deploy(project_file: &str, config_file: &str) -> Result<String, Strin
 
 fn main() {
     let matches = App::new("rocat")
-        .version("0.1.0")
+        .version(crate_version!())
         .about("Manages Roblox deployments")
         .setting(AppSettings::ArgRequiredElseHelp)
         .subcommand(

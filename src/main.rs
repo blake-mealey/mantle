@@ -334,7 +334,7 @@ fn command_deploy(project_file: &str, config_file: &str) -> Result<String, Strin
 }
 
 fn main() {
-    let matches = App::new("rocat")
+    let matches = App::new("Rocat")
         .version(crate_version!())
         .about("Manages Roblox deployments")
         .setting(AppSettings::ArgRequiredElseHelp)

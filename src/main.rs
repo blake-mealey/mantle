@@ -39,6 +39,12 @@ struct RobloxApiError {
     // not included
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PlaceManagementResponse {
+    version_number: i32
+}
+
 enum ProjectType {
     Xml,
     Binary
@@ -113,7 +119,14 @@ fn upload_place(project_file: &str, experience_id: u64, place_id: u64, mode: Dep
     };
 
     return match res {
-        Ok(response) => Ok(response.into_string().unwrap()),
+        Ok(response) => {
+            let model = response.into_json::<PlaceManagementResponse>().unwrap();
+            Ok(format!("\
+                Successfully {} place to Roblox! \n\
+                Experience ID: {} \n\
+                Place ID: {} \n\
+                Version Number: {}", version_type.to_lowercase(), experience_id, place_id, model.version_number))
+        },
         Err(ureq::Error::Status(_code, response)) => match response.status() {
             400 => Err(format!("Invalid request or file content: {}", get_roblox_api_error_message(response))),
             401 => Err(format!("API key not valid for operation: {}", get_roblox_api_error_message(response))),

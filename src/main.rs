@@ -27,9 +27,38 @@ struct BranchConfig {
     mode: Option<DeployMode>
 }
 
+#[derive(Deserialize)]
+struct RobloxApiError {
+    message: Option<String>,
+    title: Option<String>
+}
+
 enum ProjectType {
     Xml,
     Binary
+}
+
+fn get_roblox_api_error_message(response: ureq::Response) -> String {
+    let is_json = response.content_type() == "application/json";
+
+    let result: Option<String> = if is_json {
+        match response.into_json::<RobloxApiError>() {
+            Ok(v) => {
+                if v.message.is_some() {
+                    Some(v.message.unwrap())
+                } else if v.title.is_some() {
+                    Some(v.title.unwrap())
+                } else {
+                    None
+                }
+            },
+            Err(_) => None
+        }
+    } else {
+        response.into_string().ok()
+    };
+
+    return result.unwrap_or("Unknown error".to_string());
 }
 
 fn upload_place(project_file: &str, experience_id: u64, place_id: u64, mode: DeployMode) -> Result<String, String> {
@@ -80,13 +109,13 @@ fn upload_place(project_file: &str, experience_id: u64, place_id: u64, mode: Dep
     return match res {
         Ok(response) => Ok(response.into_string().unwrap()),
         Err(ureq::Error::Status(_code, response)) => match response.status() {
-            400 => Err(format!("Invalid request or file content: {}", response.into_string().unwrap())),
-            401 => Err(format!("API key not valid for operation: {}", response.into_string().unwrap())),
-            403 => Err(format!("Publish not allowed on place: {}", response.into_string().unwrap())),
-            404 => Err(format!("Place or universe does not exist: {}", response.into_string().unwrap())),
-            409 => Err(format!("Place not part of the universe: {}", response.into_string().unwrap())),
-            500 => Err(format!("Server internal error: {}", response.into_string().unwrap())),
-            status => Err(format!("Unknown error (status {}): {}", status, response.into_string().unwrap()))
+            400 => Err(format!("Invalid request or file content: {}", get_roblox_api_error_message(response))),
+            401 => Err(format!("API key not valid for operation: {}", get_roblox_api_error_message(response))),
+            403 => Err(format!("Publish not allowed on place: {}", get_roblox_api_error_message(response))),
+            404 => Err(format!("Place or universe does not exist: {}", get_roblox_api_error_message(response))),
+            409 => Err(format!("Place not part of the universe: {}", get_roblox_api_error_message(response))),
+            500 => Err(format!("Server internal error: {}", get_roblox_api_error_message(response))),
+            status => Err(format!("Unknown error (status {}): {}", status, get_roblox_api_error_message(response)))
         },
         Err(e) => Err(format!("Generic error: {}", e))
     }

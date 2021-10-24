@@ -62,18 +62,32 @@ fn upload_place(project_file: &str, experience_id: u64, place_id: u64, mode: Dep
 
     let res = match project_type {
         ProjectType::Xml => {
-            let data = fs::read_to_string(project_file).expect("Unable to read project file.");
+            let data = match fs::read_to_string(project_file) {
+                Ok(v) => v,
+                Err(e) => return Err(format!("Unable to read project file: {}\n\t{}", project_file, e))
+            };
             req.send_string(&data)
         },
         ProjectType::Binary => {
-            let data = fs::read(project_file).expect("Unable to read project file.");
+            let data = match fs::read(project_file) {
+                Ok(v) => v,
+                Err(e) => return Err(format!("Unable to read project file: {}\n\t{}", project_file, e))
+            };
             req.send_bytes(&data)
         }
     };
 
     return match res {
         Ok(response) => Ok(response.into_string().unwrap()),
-        Err(ureq::Error::Status(_code, response)) => Err(format!("{}", response.into_string().unwrap())),
+        Err(ureq::Error::Status(_code, response)) => match response.status() {
+            400 => Err(format!("Invalid request or file content: {}", response.into_string().unwrap())),
+            401 => Err(format!("API key not valid for operation: {}", response.into_string().unwrap())),
+            403 => Err(format!("Publish not allowed on place: {}", response.into_string().unwrap())),
+            404 => Err(format!("Place or universe does not exist: {}", response.into_string().unwrap())),
+            409 => Err(format!("Place not part of the universe: {}", response.into_string().unwrap())),
+            500 => Err(format!("Server internal error: {}", response.into_string().unwrap())),
+            status => Err(format!("Unknown error (status {}): {}", status, response.into_string().unwrap()))
+        },
         Err(e) => Err(format!("Generic error: {}", e))
     }
 }

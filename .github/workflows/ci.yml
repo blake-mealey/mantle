@@ -22,7 +22,7 @@ jobs:
         run: cargo build --locked --verbose
       - name: Run tests
         run: cargo test --locked --verbose
-      - name: Rustfmt and Clippy
+      - name: Run linters
         run: |
           cargo fmt -- --check
           cargo clippy

@@ -78,12 +78,32 @@ fn upload_place(project_file: &str, experience_id: u64, place_id: u64, mode: Dep
     }
 }
 
-fn command_save(project_file: &str, experience_id: u64, place_id: u64) -> Result<String, String> {
-    return upload_place(project_file, experience_id, place_id, DeployMode::Save);
+fn command_save(project_file: &str, experience_id: &str, place_id: &str) -> Result<String, String> {
+    let parsed_experience_id = match experience_id.parse::<u64>() {
+        Ok(v) => v,
+        Err(e) => return Err(format!("Invalid EXPERIENCE_ID: {}\n\t{}", experience_id, e))
+    };
+
+    let parsed_place_id = match place_id.parse::<u64>() {
+        Ok(v) => v,
+        Err(e) => return Err(format!("Invalid PLACE_ID: {}\n\t{}", place_id, e))
+    };
+
+    return upload_place(project_file, parsed_experience_id, parsed_place_id, DeployMode::Save);
 }
 
-fn command_publish(project_file: &str, experience_id: u64, place_id: u64) -> Result<String, String> {
-    return upload_place(project_file, experience_id, place_id, DeployMode::Publish);
+fn command_publish(project_file: &str, experience_id: &str, place_id: &str) -> Result<String, String> {
+    let parsed_experience_id = match experience_id.parse::<u64>() {
+        Ok(v) => v,
+        Err(e) => return Err(format!("Invalid EXPERIENCE_ID: {}\n\t{}", experience_id, e))
+    };
+
+    let parsed_place_id = match place_id.parse::<u64>() {
+        Ok(v) => v,
+        Err(e) => return Err(format!("Invalid PLACE_ID: {}\n\t{}", place_id, e))
+    };
+
+    return upload_place(project_file, parsed_experience_id, parsed_place_id, DeployMode::Publish);
 }
 
 fn command_deploy(project_file: &str, config_file: &str) -> Result<String, String> {
@@ -202,15 +222,15 @@ fn main() {
         ("save", Some(save_matches)) => {
             command_save(
                 save_matches.value_of("FILE").unwrap(),
-                save_matches.value_of("EXPERIENCE_ID").unwrap().parse::<u64>().unwrap(),
-                save_matches.value_of("PLACE_ID").unwrap().parse::<u64>().unwrap()
+                save_matches.value_of("EXPERIENCE_ID").unwrap(),
+                save_matches.value_of("PLACE_ID").unwrap()
             )
         }
         ("publish", Some(publish_matches)) => {
             command_publish(
                 publish_matches.value_of("FILE").unwrap(),
-                publish_matches.value_of("EXPERIENCE_ID").unwrap().parse::<u64>().unwrap(),
-                publish_matches.value_of("PLACE_ID").unwrap().parse::<u64>().unwrap()
+                publish_matches.value_of("EXPERIENCE_ID").unwrap(),
+                publish_matches.value_of("PLACE_ID").unwrap()
             )
         }
         ("deploy", Some(deploy_matches)) => {
@@ -219,7 +239,7 @@ fn main() {
                 deploy_matches.value_of("config").unwrap()
             )
         }
-        _ => Err("".to_string())
+        _ => Err("Unreachable code reached!".to_string())
     };
 
     std::process::exit(match result {

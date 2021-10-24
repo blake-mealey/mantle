@@ -2,6 +2,8 @@ name: Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*.*.*'
 
@@ -69,7 +71,6 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
-          token: ${{ secrets }}
           # TODO: remove and add body_path once we have an automated release notes generator
           draft: true
           # TODO: remove once we reach a stable version

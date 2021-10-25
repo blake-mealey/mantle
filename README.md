@@ -100,8 +100,6 @@ jobs:
       - uses: Roblox/setup-foreman@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install toolchain
-        run: foreman install
       - name: Build project
         run: rojo build --output prod.rbxlx
       - name: Deploy project

@@ -48,6 +48,14 @@ enum ProjectType {
     Binary,
 }
 
+static INVALID_API_KEY_HELP: &str = "\
+    Please check your ROBLOX_API_KEY environment variable. \n\
+    \tIf you don't have an API key, you can create one at https://create.roblox.com/credentials \n\
+    \tYou must ensure that your API key has enabled the 'Place Management API System' and you have \n\
+    \tadded the place you are trying to upload to the API System Configuration. You also must ensure \n\
+    \tthat your API key's IP whitelist includes the machine you are running this on. You can set it \n\
+    \tto '0.0.0.0/0' to whitelist all IPs but this should only be used for testing purposes.";
+
 fn get_roblox_api_error_message(response: ureq::Response) -> String {
     let is_json = response.content_type() == "application/json";
 
@@ -79,7 +87,7 @@ fn upload_place(
 ) -> Result<String, String> {
     let api_key = &match env::var("ROBLOX_API_KEY") {
         Ok(val) => val,
-        Err(_) => return Err("ROBLOX_API_KEY environment variable not set".to_string()),
+        Err(_) => return Err(INVALID_API_KEY_HELP.to_string()),
     };
 
     let project_type = match Path::new(project_file).extension().and_then(OsStr::to_str) {
@@ -158,7 +166,10 @@ fn upload_place(
         Err(ureq::Error::Status(_code, response)) => {
             match (response.status(), get_roblox_api_error_message(response)) {
                 (400, message) => Err(format!("Invalid request or file content: {}", message)),
-                (401, message) => Err(format!("API key not valid for operation: {}", message)),
+                (401, message) => Err(format!(
+                    "API key not valid for operation: {}\n{}",
+                    message, INVALID_API_KEY_HELP
+                )),
                 (403, message) => Err(format!("Publish not allowed on place: {}", message)),
                 (404, message) => Err(format!("Place or universe does not exist: {}", message)),
                 (409, message) => Err(format!("Place not part of the universe: {}", message)),

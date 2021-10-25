@@ -1,4 +1,17 @@
 [branches.main]
 experience_id = 3028808377
 place_id = 7818935418
-mode = "Publish"
+# mode = "Publish"
+
+# [place_files]
+# main = "dev.rbxl"
+
+# [environments.dev]
+# experience_id = 3028808377
+
+# [environments.dev.places]
+# main = { id = 7818935418 }
+
+# [branches.main]
+# environment = "dev"
+# mode = "Publish"

@@ -144,47 +144,28 @@ fn upload_place(
             let model = response.into_json::<PlaceManagementResponse>().unwrap();
             Ok(format!(
                 "\
-                Successfully {} place to Roblox! \n\
-                Experience ID: {} \n\
-                Place ID: {} \n\
-                Version Number: {}",
+                Successfully {0} place to Roblox! \n\
+                Configure experience at https://www.roblox.com/universes/configure?id={1} \n\
+                Configure place at https://www.roblox.com/places/{2}/update \n\
+                View place at https://www.roblox.com/games/{2} \n\
+                Version Number: {3}",
                 version_type.to_lowercase(),
                 experience_id,
                 place_id,
                 model.version_number
             ))
         }
-        Err(ureq::Error::Status(_code, response)) => match response.status() {
-            400 => Err(format!(
-                "Invalid request or file content: {}",
-                get_roblox_api_error_message(response)
-            )),
-            401 => Err(format!(
-                "API key not valid for operation: {}",
-                get_roblox_api_error_message(response)
-            )),
-            403 => Err(format!(
-                "Publish not allowed on place: {}",
-                get_roblox_api_error_message(response)
-            )),
-            404 => Err(format!(
-                "Place or universe does not exist: {}",
-                get_roblox_api_error_message(response)
-            )),
-            409 => Err(format!(
-                "Place not part of the universe: {}",
-                get_roblox_api_error_message(response)
-            )),
-            500 => Err(format!(
-                "Server internal error: {}",
-                get_roblox_api_error_message(response)
-            )),
-            status => Err(format!(
-                "Unknown error (status {}): {}",
-                status,
-                get_roblox_api_error_message(response)
-            )),
-        },
+        Err(ureq::Error::Status(_code, response)) => {
+            match (response.status(), get_roblox_api_error_message(response)) {
+                (400, message) => Err(format!("Invalid request or file content: {}", message)),
+                (401, message) => Err(format!("API key not valid for operation: {}", message)),
+                (403, message) => Err(format!("Publish not allowed on place: {}", message)),
+                (404, message) => Err(format!("Place or universe does not exist: {}", message)),
+                (409, message) => Err(format!("Place not part of the universe: {}", message)),
+                (500, message) => Err(format!("Server internal error: {}", message)),
+                (status, message) => Err(format!("Unknown error (status {}): {}", status, message)),
+            }
+        }
         Err(e) => Err(format!("Unknown error: {}", e)),
     }
 }

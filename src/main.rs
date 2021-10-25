@@ -5,11 +5,11 @@ mod roblox_api;
 fn main() {
     std::process::exit(match cli::run() {
         Ok(v) => {
-            println!("{}", v);
+            println!("\n{}", v);
             0
         }
         Err(e) => {
-            println!("{}", e);
+            println!("\n{}", e);
             1
         }
     });

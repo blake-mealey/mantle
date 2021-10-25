@@ -64,12 +64,17 @@ fn get_roblox_api_error_message(response: ureq::Response) -> String {
   result.unwrap_or_else(|| "Unknown error".to_string())
 }
 
+pub struct UploadResult {
+  pub message: String,
+  pub place_version: i32,
+}
+
 pub fn upload_place(
   project_file: &str,
   experience_id: u64,
   place_id: u64,
   mode: DeployMode,
-) -> Result<String, String> {
+) -> Result<UploadResult, String> {
   let api_key = &match env::var("ROBLOX_API_KEY") {
     Ok(val) => val,
     Err(_) => return Err(INVALID_API_KEY_HELP.to_string()),
@@ -135,18 +140,21 @@ pub fn upload_place(
   match res {
     Ok(response) => {
       let model = response.into_json::<PlaceManagementResponse>().unwrap();
-      Ok(format!(
-        "\
+      Ok(UploadResult {
+        place_version: model.version_number,
+        message: format!(
+          "\
                 Successfully {0} place to Roblox! \n\
                 Configure experience at https://www.roblox.com/universes/configure?id={1} \n\
                 Configure place at https://www.roblox.com/places/{2}/update \n\
                 View place at https://www.roblox.com/games/{2} \n\
                 Version Number: {3}",
-        version_type.to_lowercase(),
-        experience_id,
-        place_id,
-        model.version_number
-      ))
+          version_type.to_lowercase(),
+          experience_id,
+          place_id,
+          model.version_number
+        ),
+      })
     }
     Err(ureq::Error::Status(_code, response)) => {
       match (response.status(), get_roblox_api_error_message(response)) {

@@ -15,6 +15,15 @@ struct BranchConfig {
   experience_id: Option<u64>,
   place_id: Option<u64>,
   mode: Option<DeployMode>,
+  tag: Option<bool>,
+}
+
+fn run_command(command: &str) -> std::io::Result<std::process::Output> {
+  if cfg!(target_os = "windows") {
+    return Command::new("cmd").arg("/C").arg(command).output();
+  } else {
+    return Command::new("sh").arg("-c").arg(command).output();
+  }
 }
 
 pub fn run(project_file: &str, config_file: &str) -> Result<String, String> {
@@ -40,18 +49,7 @@ pub fn run(project_file: &str, config_file: &str) -> Result<String, String> {
     }
   };
 
-  let output = if cfg!(target_os = "windows") {
-    Command::new("cmd")
-      .arg("/C")
-      .arg("git symbolic-ref --short HEAD")
-      .output()
-  } else {
-    Command::new("sh")
-      .arg("-c")
-      .arg("git symbolic-ref --short HEAD")
-      .output()
-  };
-
+  let output = run_command("git symbolic-ref --short HEAD");
   let result = match output {
     Ok(v) => v,
     Err(e) => {
@@ -116,5 +114,26 @@ pub fn run(project_file: &str, config_file: &str) -> Result<String, String> {
     DeployMode::Save => DeployMode::Save,
   };
 
-  upload_place(project_file, experience_id, place_id, mode)
+  let result = upload_place(project_file, experience_id, place_id, mode)?;
+
+  let should_tag = match branch_config.tag {
+    Some(v) => v,
+    None => false,
+  };
+
+  if should_tag {
+    let tag = format!("v{}", result.place_version);
+    println!("Tagging commit with {}", tag);
+
+    let tag_output = run_command(&format!("git tag {}", tag));
+    if tag_output.is_err() {
+      return Err(format!("Unable to tag the current commit with {}", tag));
+    }
+    let push_output = run_command("git push --tags");
+    if push_output.is_err() {
+      return Err("Unable to push the tag".to_string());
+    }
+  }
+
+  Ok(result.message)
 }

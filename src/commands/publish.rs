@@ -11,10 +11,12 @@ pub fn run(project_file: &str, experience_id: &str, place_id: &str) -> Result<St
     Err(e) => return Err(format!("Invalid PLACE_ID: {}\n\t{}", place_id, e)),
   };
 
-  upload_place(
+  let result = upload_place(
     project_file,
     parsed_experience_id,
     parsed_place_id,
     DeployMode::Publish,
-  )
+  )?;
+
+  Ok(result.message)
 }

@@ -105,4 +105,4 @@ jobs:
           draft: true
           # TODO: remove once we reach a stable version
           prerelease: true
-          files: binaries/*
+          files: binaries/*/*

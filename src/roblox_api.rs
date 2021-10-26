@@ -1,11 +1,7 @@
 use serde::Deserialize;
-use std::env;
-use std::ffi::OsStr;
-use std::fmt;
-use std::fs;
-use std::path::Path;
+use std::{clone::Clone, env, ffi::OsStr, fmt, fs, path::Path};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Copy, Clone)]
 pub enum DeployMode {
     Publish,
     Save,
@@ -76,7 +72,6 @@ fn get_roblox_api_error_message(response: ureq::Response) -> String {
 }
 
 pub struct UploadResult {
-    pub message: String,
     pub place_version: i32,
 }
 
@@ -153,20 +148,20 @@ pub fn upload_place(
     match res {
         Ok(response) => {
             let model = response.into_json::<PlaceManagementResponse>().unwrap();
-            Ok(UploadResult {
-                place_version: model.version_number,
-                message: format!(
-                    "\
+            println!(
+                "\
                 🎉 Successfully {0} to Roblox! \n\
                 \tConfigure experience at https://www.roblox.com/universes/configure?id={1} \n\
                 \tConfigure place at https://www.roblox.com/places/{2}/update \n\
                 \tView place at https://www.roblox.com/games/{2} \n\
                 \tVersion Number: {3}",
-                    version_type.to_lowercase(),
-                    experience_id,
-                    place_id,
-                    model.version_number
-                ),
+                version_type.to_lowercase(),
+                experience_id,
+                place_id,
+                model.version_number
+            );
+            Ok(UploadResult {
+                place_version: model.version_number,
             })
         }
         Err(ureq::Error::Status(_code, response)) => {

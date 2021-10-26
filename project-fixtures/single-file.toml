@@ -1,0 +1,10 @@
+place_file = "project-fixtures/main.rbxl"
+
+[branches."blake/multi-place-projects"]
+environment = "staging"
+# tag_commit = false
+# deploy_mode = "Save"
+
+[environments.staging]
+experience_id = 3028808377
+place_id = 7818935418

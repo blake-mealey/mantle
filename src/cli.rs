@@ -67,7 +67,7 @@ fn get_app() -> App<'static, 'static> {
         )
 }
 
-pub fn run_with(args: Vec<String>) -> Result<String, String> {
+pub fn run_with(args: Vec<String>) -> Result<(), String> {
     let app = get_app();
     let matches = app.get_matches_from(args);
     match matches.subcommand() {
@@ -88,6 +88,6 @@ pub fn run_with(args: Vec<String>) -> Result<String, String> {
     }
 }
 
-pub fn run() -> Result<String, String> {
+pub fn run() -> Result<(), String> {
     run_with(env::args().collect())
 }

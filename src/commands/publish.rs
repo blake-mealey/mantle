@@ -1,6 +1,6 @@
 use crate::roblox_api::{upload_place, DeployMode};
 
-pub fn run(project_file: &str, experience_id: &str, place_id: &str) -> Result<String, String> {
+pub fn run(project_file: &str, experience_id: &str, place_id: &str) -> Result<(), String> {
     let parsed_experience_id = match experience_id.parse::<u64>() {
         Ok(v) => v,
         Err(e) => return Err(format!("Invalid EXPERIENCE_ID: {}\n\t{}", experience_id, e)),
@@ -15,12 +15,12 @@ pub fn run(project_file: &str, experience_id: &str, place_id: &str) -> Result<St
     println!("\tExperience ID: {}", experience_id);
     println!("\tPlace ID: {}", place_id);
 
-    let result = upload_place(
+    upload_place(
         project_file,
         parsed_experience_id,
         parsed_place_id,
         DeployMode::Publish,
     )?;
 
-    Ok(result.message)
+    Ok(())
 }

@@ -84,7 +84,7 @@ fn get_project_type(config: &Config) -> Result<ProjectType, String> {
     }
 }
 
-pub fn run(config_file: &str) -> Result<String, String> {
+pub fn run(config_file: &str) -> Result<(), String> {
     println!("📃 Config file: {}", config_file);
     let config = load_config_file(config_file)?;
 
@@ -121,7 +121,10 @@ pub fn run(config_file: &str) -> Result<String, String> {
 
     let branch_config = match config.branches.get(current_branch) {
         Some(v) => v,
-        None => return Ok("✅ No branch configuration found; no deployment necessary".to_string()),
+        None => {
+            println!("✅ No branch configuration found; no deployment necessary");
+            return Ok(());
+        }
     };
 
     let environment_name = match &branch_config.environment {
@@ -218,7 +221,7 @@ pub fn run(config_file: &str) -> Result<String, String> {
                 }
             }
 
-            Ok(result.message)
+            Ok(())
         }
         ProjectType::Multi => {
             if environment_config.place_id.is_some() {
@@ -227,18 +230,27 @@ pub fn run(config_file: &str) -> Result<String, String> {
 
             let place_ids = &environment_config.place_ids.as_ref().unwrap();
 
+            println!("✅ Environment configuration:");
+            println!("\tExperience ID: {}", experience_id);
+            println!("\tPlace IDs:");
+
+            for (name, place_id) in place_ids.iter() {
+                println!("\t\t{}: {}", name, place_id);
+            }
+
             let place_files = config.place_files.unwrap();
             for (name, place_file) in place_files.iter() {
+                println!("📦 Deploying place: {}", name);
+
                 let place_id = match place_ids.get(name) {
                     Some(v) => v,
                     None => return Err(format!("No place ID found for configured place {}", name)),
                 };
 
-                let result = upload_place(place_file, experience_id, *place_id, mode)?;
-                println!("{}", result.message);
+                upload_place(place_file, experience_id, *place_id, mode)?;
             }
 
-            Ok("".to_string())
+            Ok(())
         }
     }
 }

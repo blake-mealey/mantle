@@ -1,11 +1,7 @@
 use serde::Deserialize;
-use std::env;
-use std::ffi::OsStr;
-use std::fmt;
-use std::fs;
-use std::path::Path;
+use std::{clone::Clone, env, ffi::OsStr, fmt, fs, path::Path};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Copy, Clone)]
 pub enum DeployMode {
     Publish,
     Save,

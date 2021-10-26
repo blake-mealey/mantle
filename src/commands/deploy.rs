@@ -9,6 +9,8 @@ use std::str;
 struct Config {
     place_file: Option<String>,
 
+    place_files: Option<HashMap<String, String>>,
+
     #[serde(default = "HashMap::new")]
     environments: HashMap<String, EnvironmentConfig>,
 
@@ -21,6 +23,8 @@ struct EnvironmentConfig {
     experience_id: Option<u64>,
 
     place_id: Option<u64>,
+
+    place_ids: Option<HashMap<String, u64>>,
 }
 
 #[derive(Deserialize)]
@@ -32,6 +36,11 @@ struct BranchConfig {
     tag_commit: Option<bool>,
 }
 
+enum ProjectType {
+    Single,
+    Multi,
+}
+
 fn run_command(command: &str) -> std::io::Result<std::process::Output> {
     if cfg!(target_os = "windows") {
         return Command::new("cmd").arg("/C").arg(command).output();
@@ -40,9 +49,7 @@ fn run_command(command: &str) -> std::io::Result<std::process::Output> {
     }
 }
 
-pub fn run(config_file: &str) -> Result<String, String> {
-    println!("📃 Config file: {}", config_file);
-
+fn load_config_file(config_file: &str) -> Result<Config, String> {
     let data = match fs::read_to_string(config_file) {
         Ok(v) => v,
         Err(e) => {
@@ -53,22 +60,42 @@ pub fn run(config_file: &str) -> Result<String, String> {
         }
     };
 
-    let config: Config = match toml::from_str(&data) {
-        Ok(v) => v,
+    match toml::from_str::<Config>(&data) {
+        Ok(v) => Ok(v),
         Err(e) => {
             return Err(format!(
                 "Unable to parse config file {}\n\t{}",
                 config_file, e
             ))
         }
-    };
+    }
+}
 
-    let place_file = match config.place_file {
-        Some(v) => v,
-        None => return Err("No place file found in configuration".to_string()),
-    };
+fn get_project_type(config: &Config) -> Result<ProjectType, String> {
+    match (&config.place_file, &config.place_files) {
+        (Some(_), Some(_)) => Err(format!(
+            "Config file contains both place_file and place_files. Use one or the other."
+        )),
+        (Some(_), None) => Ok(ProjectType::Single),
+        (None, Some(_)) => Ok(ProjectType::Multi),
+        (None, None) => Err(format!(
+            "Config file does not contain place_file or place_files. No files to deploy."
+        )),
+    }
+}
 
-    println!("📁 Project file: {}", place_file);
+pub fn run(config_file: &str) -> Result<String, String> {
+    println!("📃 Config file: {}", config_file);
+    let config = load_config_file(config_file)?;
+
+    let project_type = get_project_type(&config)?;
+    println!(
+        "📁 Deploying a {}-file project",
+        match project_type {
+            ProjectType::Single => "single",
+            ProjectType::Multi => "multi",
+        }
+    );
 
     let output = run_command("git symbolic-ref --short HEAD");
     let result = match output {
@@ -104,16 +131,18 @@ pub fn run(config_file: &str) -> Result<String, String> {
         }
     };
 
-    let mode = match branch_config
-        .deploy_mode
-        .as_ref()
-        .unwrap_or(&DeployMode::Publish)
-    {
+    let mode = match branch_config.deploy_mode.unwrap_or(DeployMode::Publish) {
         DeployMode::Publish => DeployMode::Publish,
         DeployMode::Save => DeployMode::Save,
     };
 
     let should_tag = branch_config.tag_commit.unwrap_or(false);
+    if (matches!(project_type, ProjectType::Multi) && should_tag) {
+        return Err(
+            "Cannot tag a multi-file project. Use a single-file project or set tag_commit to false."
+                .to_string(),
+        );
+    }
 
     println!("✅ Branch configuration:");
     println!("\tEnvironment: {}", environment_name);
@@ -146,41 +175,69 @@ pub fn run(config_file: &str) -> Result<String, String> {
         }
     };
 
-    let place_id = match environment_config.place_id {
-        Some(v) => v,
-        None => {
-            return Err(format!(
-                "No place_id configuration found for branch {}",
-                current_branch
-            ))
+    if matches!(project_type, ProjectType::Single) {
+        if environment_config.place_ids.is_some() {
+            return Err("Found place_ids in environment config for single-file project. Only use place_id for single-file projects.".to_string());
         }
-    };
 
-    println!("✅ Environment configuration:");
-    println!("\tExperience ID: {}", experience_id);
-    println!("\tPlace ID: {}", place_id);
+        let place_id = match environment_config.place_id {
+            Some(v) => v,
+            None => {
+                return Err(format!(
+                    "No place_id configuration found for branch {}",
+                    current_branch
+                ))
+            }
+        };
 
-    let result = upload_place(&place_file, experience_id, place_id, mode)?;
+        println!("✅ Environment configuration:");
+        println!("\tExperience ID: {}", experience_id);
+        println!("\tPlace ID: {}", place_id);
 
-    if should_tag {
-        let tag = format!("v{}", result.place_version);
-        println!("🔖 Tagging commit with: {}", tag);
+        let place_file = config.place_file.unwrap();
+        let result = upload_place(&place_file, experience_id, place_id, mode)?;
 
-        let tag_output = run_command(&format!("git tag {}", tag));
-        if tag_output.is_err() {
-            return Err(format!(
-                "Unable to tag the current commit\n\t{}",
-                tag_output.unwrap_err()
-            ));
+        if should_tag {
+            let tag = format!("v{}", result.place_version);
+            println!("🔖 Tagging commit with: {}", tag);
+
+            let tag_output = run_command(&format!("git tag {}", tag));
+            if tag_output.is_err() {
+                return Err(format!(
+                    "Unable to tag the current commit\n\t{}",
+                    tag_output.unwrap_err()
+                ));
+            }
+            let push_output = run_command("git push --tags");
+            if push_output.is_err() {
+                return Err(format!(
+                    "Unable to push the tag\n\t{}",
+                    tag_output.unwrap_err()
+                ));
+            }
         }
-        let push_output = run_command("git push --tags");
-        if push_output.is_err() {
-            return Err(format!(
-                "Unable to push the tag\n\t{}",
-                tag_output.unwrap_err()
-            ));
+
+        Ok(result.message)
+    } else if matches!(project_type, ProjectType::Multi) {
+        if environment_config.place_id.is_some() {
+            return Err("Found place_id in environment config for multi-file project. Only use place_ids for multi-file projects.".to_string());
         }
+
+        let place_ids = &environment_config.place_ids.as_ref().unwrap();
+
+        let place_files = config.place_files.unwrap();
+        for (name, place_file) in place_files.iter() {
+            let place_id = match place_ids.get(name) {
+                Some(v) => v,
+                None => return Err(format!("No place ID found for configured place {}", name)),
+            };
+
+            let result = upload_place(place_file, experience_id, *place_id, mode)?;
+            println!("{}", result.message);
+        }
+
+        Ok("".to_string())
+    } else {
+        unreachable!()
     }
-
-    Ok(result.message)
 }

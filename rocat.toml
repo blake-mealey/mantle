@@ -1,4 +1,6 @@
-place_file = "dev.rbxl"
+# place_file = "dev.rbxl"
+[place_files]
+main = "dev.rbxl"
 
 [branches."blake/multi-place-projects"]
 environment = "staging"
@@ -7,4 +9,5 @@ environment = "staging"
 
 [environments.staging]
 experience_id = 3028808377
-place_id = 7818935418
+# place_id = 7818935418
+place_ids = { main = 7818935418 }

@@ -117,13 +117,13 @@ function Invoke-BumpVersion() {
     return
   }
 
-  Write-Host "🎉 Bumped Rocat version to $NextVersion. Ready to push with 'git push origin --follow-tags'`n"
+  Write-Host "🎉 Bumped Rocat version to $NextVersion. Ready to push with 'git push origin && git push --tags'`n"
 
   $choices = "&Yes", "&No"
   $selectedIndex = $Host.UI.PromptForChoice($Null, "Automatically push changes to Git?", $choices, 0)
 
   if ($selectedIndex -eq 0) {
-    git push origin --follow-tags > $null 2> $null
+    git push origin && git push --tags > $null 2> $null
     if ($LastExitCode -ne 0) {
       Write-Error "Failed to push changes to Git."
       return

@@ -27,7 +27,7 @@ fn run_command(command: &str) -> std::io::Result<std::process::Output> {
 }
 
 pub fn run(project_file: &str, config_file: &str) -> Result<String, String> {
-    println!("Deploying based on config file: {}", config_file);
+    println!("📃 Config file: {}", config_file);
 
     let data = match fs::read_to_string(config_file) {
         Ok(v) => v,
@@ -69,6 +69,8 @@ pub fn run(project_file: &str, config_file: &str) -> Result<String, String> {
         return Err("Unable to determine git branch. Are you in a git repository?".to_string());
     }
 
+    println!("🌿 Git branch: {}", current_branch);
+
     let branches = match config.branches {
         Some(v) => v,
         None => return Err("No branch configurations found".to_string()),
@@ -76,12 +78,7 @@ pub fn run(project_file: &str, config_file: &str) -> Result<String, String> {
 
     let branch_config = match branches.get(current_branch) {
         Some(v) => v,
-        None => {
-            return Ok(format!(
-                "No branch configuration found for branch {}; no deployment necessary",
-                current_branch
-            ))
-        }
+        None => return Ok("✅ No branch configuration found; no deployment necessary".to_string()),
     };
 
     let experience_id = match branch_config.experience_id {
@@ -104,29 +101,44 @@ pub fn run(project_file: &str, config_file: &str) -> Result<String, String> {
         }
     };
 
-    println!(
-        "Found branch configuration for branch {}; deploying to experience {} and place {}",
-        current_branch, experience_id, place_id
-    );
-
     let mode = match branch_config.mode.as_ref().unwrap_or(&DeployMode::Publish) {
         DeployMode::Publish => DeployMode::Publish,
         DeployMode::Save => DeployMode::Save,
     };
 
+    let should_tag = branch_config.tag.unwrap_or(false);
+
+    println!("✅ Branch configuration:");
+    println!("\tExperience ID: {}", experience_id);
+    println!("\tPlace ID: {}", place_id);
+    println!("\tDeploy mode: {}", mode);
+    println!(
+        "\tTag commit: {}",
+        match should_tag {
+            true => "Yes",
+            false => "No",
+        }
+    );
+
     let result = upload_place(project_file, experience_id, place_id, mode)?;
 
-    if branch_config.tag.unwrap_or(false) {
+    if should_tag {
         let tag = format!("v{}", result.place_version);
-        println!("Tagging commit with {}", tag);
+        println!("🔖 Tagging commit with: {}", tag);
 
         let tag_output = run_command(&format!("git tag {}", tag));
         if tag_output.is_err() {
-            return Err(format!("Unable to tag the current commit with {}", tag));
+            return Err(format!(
+                "Unable to tag the current commit\n\t{}",
+                tag_output.unwrap_err()
+            ));
         }
         let push_output = run_command("git push --tags");
         if push_output.is_err() {
-            return Err("Unable to push the tag".to_string());
+            return Err(format!(
+                "Unable to push the tag\n\t{}",
+                tag_output.unwrap_err()
+            ));
         }
     }
 

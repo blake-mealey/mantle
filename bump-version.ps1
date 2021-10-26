@@ -15,4 +15,14 @@ Set-Content -Path README.md $Readme
 
 git tag $NextVersion
 
-Write-Host "🎉 Bumped Rocat version to $NextVersion. Ready to push!"
+Write-Host "🎉 Bumped Rocat version to $NextVersion. Ready to push with 'git push origin --follow-tags'"
+Write-Host ""
+
+$choices = "&Yes", "&No"
+$selectedIndex = $Host.UI.PromptForChoice($Null, "Automatically push changes to Git?", $choices, 0)
+
+if ($selectedIndex -eq 0) {
+  git push origin --follow-tags
+  Write-Host ""
+  Write-Host "🚀 Changes pushed to Git!"
+}

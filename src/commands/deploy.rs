@@ -7,15 +7,26 @@ use std::str;
 
 #[derive(Deserialize)]
 struct Config {
-    branches: Option<HashMap<String, BranchConfig>>,
+    place_file: Option<String>,
+
+    #[serde(default = "HashMap::new")]
+    environments: HashMap<String, EnvironmentConfig>,
+
+    #[serde(default = "HashMap::new")]
+    branches: HashMap<String, BranchConfig>,
+}
+
+#[derive(Deserialize)]
+struct EnvironmentConfig {
+    experience_id: Option<u64>,
+    place_id: Option<u64>,
 }
 
 #[derive(Deserialize)]
 struct BranchConfig {
-    experience_id: Option<u64>,
-    place_id: Option<u64>,
-    mode: Option<DeployMode>,
-    tag: Option<bool>,
+    environment: Option<String>,
+    deploy_mode: Option<DeployMode>,
+    tag_commit: Option<bool>,
 }
 
 fn run_command(command: &str) -> std::io::Result<std::process::Output> {
@@ -71,17 +82,29 @@ pub fn run(project_file: &str, config_file: &str) -> Result<String, String> {
 
     println!("🌿 Git branch: {}", current_branch);
 
-    let branches = match config.branches {
-        Some(v) => v,
-        None => return Err("No branch configurations found".to_string()),
-    };
-
-    let branch_config = match branches.get(current_branch) {
+    let branch_config = match config.branches.get(current_branch) {
         Some(v) => v,
         None => return Ok("✅ No branch configuration found; no deployment necessary".to_string()),
     };
 
-    let experience_id = match branch_config.experience_id {
+    let environment_name = match branch_config.environment {
+        Some(v) => v,
+        None => {
+            return Err("Branch configuration does not contain an environment name.".to_string())
+        }
+    };
+
+    let environment_config = match config.environments.get(&environment_name) {
+        Some(v) => v,
+        None => {
+            return Err(format!(
+                "No environment configuration found with name {}",
+                environment_name
+            ))
+        }
+    };
+
+    let experience_id = match environment_config.experience_id {
         Some(v) => v,
         None => {
             return Err(format!(
@@ -91,7 +114,7 @@ pub fn run(project_file: &str, config_file: &str) -> Result<String, String> {
         }
     };
 
-    let place_id = match branch_config.place_id {
+    let place_id = match environment_config.place_id {
         Some(v) => v,
         None => {
             return Err(format!(
@@ -101,12 +124,16 @@ pub fn run(project_file: &str, config_file: &str) -> Result<String, String> {
         }
     };
 
-    let mode = match branch_config.mode.as_ref().unwrap_or(&DeployMode::Publish) {
+    let mode = match branch_config
+        .deploy_mode
+        .as_ref()
+        .unwrap_or(&DeployMode::Publish)
+    {
         DeployMode::Publish => DeployMode::Publish,
         DeployMode::Save => DeployMode::Save,
     };
 
-    let should_tag = branch_config.tag.unwrap_or(false);
+    let should_tag = branch_config.tag_commit.unwrap_or(false);
 
     println!("✅ Branch configuration:");
     println!("\tExperience ID: {}", experience_id);

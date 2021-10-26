@@ -19,13 +19,16 @@ struct Config {
 #[derive(Deserialize)]
 struct EnvironmentConfig {
     experience_id: Option<u64>,
+
     place_id: Option<u64>,
 }
 
 #[derive(Deserialize)]
 struct BranchConfig {
     environment: Option<String>,
+
     deploy_mode: Option<DeployMode>,
+
     tag_commit: Option<bool>,
 }
 
@@ -37,7 +40,7 @@ fn run_command(command: &str) -> std::io::Result<std::process::Output> {
     }
 }
 
-pub fn run(project_file: &str, config_file: &str) -> Result<String, String> {
+pub fn run(config_file: &str) -> Result<String, String> {
     println!("📃 Config file: {}", config_file);
 
     let data = match fs::read_to_string(config_file) {
@@ -59,6 +62,13 @@ pub fn run(project_file: &str, config_file: &str) -> Result<String, String> {
             ))
         }
     };
+
+    let place_file = match config.place_file {
+        Some(v) => v,
+        None => return Err("No place file found in configuration".to_string()),
+    };
+
+    println!("📁 Project file: {}", place_file);
 
     let output = run_command("git symbolic-ref --short HEAD");
     let result = match output {
@@ -87,14 +97,36 @@ pub fn run(project_file: &str, config_file: &str) -> Result<String, String> {
         None => return Ok("✅ No branch configuration found; no deployment necessary".to_string()),
     };
 
-    let environment_name = match branch_config.environment {
+    let environment_name = match &branch_config.environment {
         Some(v) => v,
         None => {
             return Err("Branch configuration does not contain an environment name.".to_string())
         }
     };
 
-    let environment_config = match config.environments.get(&environment_name) {
+    let mode = match branch_config
+        .deploy_mode
+        .as_ref()
+        .unwrap_or(&DeployMode::Publish)
+    {
+        DeployMode::Publish => DeployMode::Publish,
+        DeployMode::Save => DeployMode::Save,
+    };
+
+    let should_tag = branch_config.tag_commit.unwrap_or(false);
+
+    println!("✅ Branch configuration:");
+    println!("\tEnvironment: {}", environment_name);
+    println!("\tDeploy mode: {}", mode);
+    println!(
+        "\tTag commit: {}",
+        match should_tag {
+            true => "Yes",
+            false => "No",
+        }
+    );
+
+    let environment_config = match config.environments.get(environment_name) {
         Some(v) => v,
         None => {
             return Err(format!(
@@ -124,30 +156,11 @@ pub fn run(project_file: &str, config_file: &str) -> Result<String, String> {
         }
     };
 
-    let mode = match branch_config
-        .deploy_mode
-        .as_ref()
-        .unwrap_or(&DeployMode::Publish)
-    {
-        DeployMode::Publish => DeployMode::Publish,
-        DeployMode::Save => DeployMode::Save,
-    };
-
-    let should_tag = branch_config.tag_commit.unwrap_or(false);
-
-    println!("✅ Branch configuration:");
+    println!("✅ Environment configuration:");
     println!("\tExperience ID: {}", experience_id);
     println!("\tPlace ID: {}", place_id);
-    println!("\tDeploy mode: {}", mode);
-    println!(
-        "\tTag commit: {}",
-        match should_tag {
-            true => "Yes",
-            false => "No",
-        }
-    );
 
-    let result = upload_place(project_file, experience_id, place_id, mode)?;
+    let result = upload_place(&place_file, experience_id, place_id, mode)?;
 
     if should_tag {
         let tag = format!("v{}", result.place_version);

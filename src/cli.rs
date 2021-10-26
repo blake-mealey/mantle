@@ -56,12 +56,6 @@ fn get_app() -> App<'static, 'static> {
             SubCommand::with_name("deploy")
                 .about("Saves a project file to a Roblox place")
                 .arg(
-                    Arg::with_name("FILE")
-                        .required(true)
-                        .index(1)
-                        .takes_value(true),
-                )
-                .arg(
                     Arg::with_name("config")
                         .short("c")
                         .long("config")
@@ -87,10 +81,9 @@ pub fn run_with(args: Vec<String>) -> Result<String, String> {
             publish_matches.value_of("EXPERIENCE_ID").unwrap(),
             publish_matches.value_of("PLACE_ID").unwrap(),
         ),
-        ("deploy", Some(deploy_matches)) => commands::deploy::run(
-            deploy_matches.value_of("FILE").unwrap(),
-            deploy_matches.value_of("config").unwrap(),
-        ),
+        ("deploy", Some(deploy_matches)) => {
+            commands::deploy::run(deploy_matches.value_of("config").unwrap())
+        }
         _ => Err("Unreachable code reached!".to_string()),
     }
 }

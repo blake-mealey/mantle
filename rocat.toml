@@ -1,18 +1,10 @@
-[branches.main]
+place_file = "dev.rbxl"
+
+[branches."blake/multi-place-projects"]
+environment = "staging"
+# tag_commit = false
+# deploy_mode = "Save"
+
+[environments.staging]
 experience_id = 3028808377
 place_id = 7818935418
-# tag = true
-# mode = "Publish"
-
-# [place_files]
-# main = "dev.rbxl"
-
-# [environments.dev]
-# experience_id = 3028808377
-
-# [environments.dev.places]
-# main = { id = 7818935418 }
-
-# [branches.main]
-# environment = "dev"
-# mode = "Publish"

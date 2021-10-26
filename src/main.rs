@@ -9,7 +9,7 @@ fn main() {
             0
         }
         Err(e) => {
-            println!("\n{}", e);
+            println!("\n❌ {}", e);
             1
         }
     });

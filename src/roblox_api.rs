@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use std::env;
 use std::ffi::OsStr;
+use std::fmt;
 use std::fs;
 use std::path::Path;
 
@@ -8,6 +9,16 @@ use std::path::Path;
 pub enum DeployMode {
     Publish,
     Save,
+}
+
+impl fmt::Display for DeployMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let display = match self {
+            DeployMode::Publish => "Publish",
+            DeployMode::Save => "Save",
+        };
+        write!(f, "{}", display)
+    }
 }
 
 enum ProjectType {
@@ -121,6 +132,7 @@ pub fn upload_place(
                     ))
                 }
             };
+            println!("🚀 Uploading file: {}", project_file);
             req.send_string(&data)
         }
         ProjectType::Binary => {
@@ -133,6 +145,7 @@ pub fn upload_place(
                     ))
                 }
             };
+            println!("🚀 Uploading file: {}", project_file);
             req.send_bytes(&data)
         }
     };
@@ -144,11 +157,11 @@ pub fn upload_place(
                 place_version: model.version_number,
                 message: format!(
                     "\
-                Successfully {0} place to Roblox! \n\
-                Configure experience at https://www.roblox.com/universes/configure?id={1} \n\
-                Configure place at https://www.roblox.com/places/{2}/update \n\
-                View place at https://www.roblox.com/games/{2} \n\
-                Version Number: {3}",
+                🎉 Successfully {0} to Roblox! \n\
+                \tConfigure experience at https://www.roblox.com/universes/configure?id={1} \n\
+                \tConfigure place at https://www.roblox.com/places/{2}/update \n\
+                \tView place at https://www.roblox.com/games/{2} \n\
+                \tVersion Number: {3}",
                     version_type.to_lowercase(),
                     experience_id,
                     place_id,
@@ -160,7 +173,7 @@ pub fn upload_place(
             match (response.status(), get_roblox_api_error_message(response)) {
                 (400, message) => Err(format!("Invalid request or file content: {}", message)),
                 (401, message) => Err(format!(
-                    "API key not valid for operation: {}\n{}",
+                    "API key not valid for operation: {}\n   {}",
                     message, INVALID_API_KEY_HELP
                 )),
                 (403, message) => Err(format!("Publish not allowed on place: {}", message)),

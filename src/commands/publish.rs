@@ -11,6 +11,10 @@ pub fn run(project_file: &str, experience_id: &str, place_id: &str) -> Result<St
         Err(e) => return Err(format!("Invalid PLACE_ID: {}\n\t{}", place_id, e)),
     };
 
+    println!("✅ Configuration:");
+    println!("\tExperience ID: {}", experience_id);
+    println!("\tPlace ID: {}", place_id);
+
     let result = upload_place(
         project_file,
         parsed_experience_id,

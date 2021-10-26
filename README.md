@@ -18,7 +18,7 @@ It is recommended to install with Foreman, with the following config:
 # foreman.toml
 
 [tools]
-rocat = { source = "blake-mealey/rocat", version = "0.1.4" }
+rocat = { source = "blake-mealey/rocat", version = "0.1.5" }
 ```
 
 You can learn more about Foreman including how to install it from [its documentation](https://github.com/Roblox/foreman#readme).

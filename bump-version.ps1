@@ -91,22 +91,11 @@ function Invoke-BumpVersion() {
   $Readme = ((Get-Content -Path README.md -Raw) -replace "version = ""$PreviousVersion""","version = ""$NextVersion""").Trim()
   Set-Content -Path README.md $Readme
 
-  # Tag the commit with the current version
-  $GitTag = "v$NextVersion"
-  git tag $GitTag > $null 2> $null
-  if ($LastExitCode -ne 0) {
-    Write-Error "Failed to tag Git commit."
-    Undo-Changes
-    Undo-Tag $GitTag
-    return
-  }
-
   # Stage changes to Git
   git add Cargo.lock Cargo.toml README.md > $null 2> $null
   if ($LastExitCode -ne 0) {
     Write-Error "Failed to stage changes to Git."
     Undo-Changes
-    Undo-Tag $GitTag
     return
   }
 
@@ -114,6 +103,15 @@ function Invoke-BumpVersion() {
   git commit -m "Bump version number ($NextVersion)" > $null 2> $null
   if ($LastExitCode -ne 0) {
     Write-Error "Failed to commit changes to Git."
+    Undo-Changes
+    return
+  }
+
+  # Tag the commit with the current version
+  $GitTag = "v$NextVersion"
+  git tag $GitTag > $null 2> $null
+  if ($LastExitCode -ne 0) {
+    Write-Error "Failed to tag Git commit."
     Undo-Changes
     Undo-Tag $GitTag
     return

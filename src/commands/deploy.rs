@@ -6,6 +6,7 @@ use std::process::Command;
 use std::str;
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Config {
     place_file: Option<String>,
 
@@ -19,6 +20,7 @@ struct Config {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct EnvironmentConfig {
     experience_id: Option<u64>,
 
@@ -28,6 +30,7 @@ struct EnvironmentConfig {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct BranchConfig {
     environment: Option<String>,
 
@@ -60,7 +63,7 @@ fn load_config_file(config_file: &str) -> Result<Config, String> {
         }
     };
 
-    match toml::from_str::<Config>(&data) {
+    match serde_yaml::from_str::<Config>(&data) {
         Ok(v) => Ok(v),
         Err(e) => {
             return Err(format!(

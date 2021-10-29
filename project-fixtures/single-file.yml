@@ -1,0 +1,15 @@
+placeFile: project-fixtures/main.rbxl
+
+branches:
+  dev:
+    environment: staging
+  main:
+    environment: production
+
+environments:
+  staging:
+    experienceId: 3028808377
+    placeId: 7818935418
+  production:
+    experienceId: 3028808377
+    placeId: 7818935418

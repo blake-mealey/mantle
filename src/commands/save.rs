@@ -15,6 +15,8 @@ pub fn run(project_file: &str, experience_id: &str, place_id: &str) -> Result<()
     println!("\tExperience ID: {}", experience_id);
     println!("\tPlace ID: {}", place_id);
 
+    println!("🚀 Saving place");
+
     upload_place(
         project_file,
         parsed_experience_id,

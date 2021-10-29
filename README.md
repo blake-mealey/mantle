@@ -55,34 +55,37 @@ rocat publish place.rbxl <experience_id> <place_id>
 You can configure reusable Roblox deployments by creating a TOML config file and using the `deploy`
 command.
 
-By default, Rocat will look for a `rocat.toml` file but you may specifiy an alternate file with the
+By default, Rocat will look for a `rocat.yml` file but you may specifiy an alternate file with the
 `--config` argument.
 
-```toml
-# rocat.toml
-place_file = "place.rbxl"
+```yml
+# rocat.yml
+placeFiles:
+  start: start-place.rbxl
 
-[branches.dev]
-environment = "staging"
-deploy_mode = "Save" # optional; defaults to "Publish"
+branches:
+  dev:
+    environment: staging
+    deployMode: Save # optional; defaults to Publish
+  main:
+    environment: production
+    tagCommit: true # optional; defaults to false
 
-[branches.main]
-environment = "production"
-tag_commit = true # optional; defaults to false
-
-[environments.staging]
-experience_id = 3028808377
-place_id = 7818935418
-
-[environments.production]
-experience_id = 6428418832
-place_id = 4927604916
+environments:
+  staging:
+    experienceId: 3028808377
+    placeIds:
+      start: 7818935418
+  production:
+    experienceId: 6428418832
+    placeIds:
+      start: 4927604916
 ```
 
 With the above configuration, we are telling Rocat that when the `deploy` command is run on the
-`dev` branch, it should save the `place.rbxl` file to experience/place specified in the `staging`
-environment, and when it is run on the `main` branch, it should publish the `place.rbxl` file to the
-experience/place specified in the `production` environment.
+`dev` branch, it should save the `start-place.rbxl` file to the experience/place specified in the
+`staging` environment, and when it is run on the `main` branch, it should publish the
+`start-place.rbxl` file to the experience/place specified in the `production` environment.
 
 You can perform the deployment by running the `deploy` command:
 
@@ -95,35 +98,39 @@ success exit code but will not do anything.
 
 ### Multi-file projects
 
-Rocat also supports configurations for multi-file projects which uses a slightly altered
-configuration format:
+If your project consists of more than just a start place, you can simply add new keys to the
+`placeFiles` and `placeIds` fields:
 
-```toml
-# rocat.toml
-[place_files]
-main = "place.rbxl"
-lobby = "lobby.rbxl"
+```yml
+# rocat.yml
+placeFiles:
+  start: start-place.rbxl
+  world: world-place.rbxl
 
-[branches.dev]
-environment = "staging"
-deploy_mode = "Save" # optional; defaults to "Publish"
+branches:
+  dev:
+    environment: staging
+    deployMode: Save # optional; defaults to Publish
+  main:
+    environment: production
+    tagCommit: true # optional; defaults to false
 
-[branches.main]
-environment = "production"
-tag_commit = true # optional; defaults to false
-
-[environments.staging]
-experience_id = 3028808377
-place_ids = { main = 7818935418, lobby = 6179245670 }
-
-[environments.production]
-experience_id = 6428418832
-place_ids = { main = 4927604916, lobby = 7618543001 }
+environments:
+  staging:
+    experienceId: 3028808377
+    placeIds:
+      start: 7818935418
+      world: 6179245670
+  production:
+    experienceId: 6428418832
+    placeIds:
+      start: 4927604916
+      world: 7618543001
 ```
 
 When the `deploy` command is run with this configuration, the same deployments will be made as with
-the above single-file configuration, except that both the `place.rbxl` and `lobby.rbxl` files will
-be uploaded to their respective places.
+the above single-file configuration, except that both the `start-place.rbxl` and `world-place.rbxl`
+files will be uploaded to their respective places.
 
 ### GitHub Actions
 

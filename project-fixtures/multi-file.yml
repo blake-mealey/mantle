@@ -1,6 +1,6 @@
 placeFiles:
-  start: project-fixtures/start.rbxl
-  world: project-fixtures/world.rbxl
+  start: project-fixtures/start.rbxlx
+  world: project-fixtures/world.rbxlx
 
 branches:
   dev:

@@ -1,4 +1,5 @@
-placeFile: project-fixtures/main.rbxl
+placeFiles:
+  start: project-fixtures/start.rbxlx
 
 branches:
   dev:
@@ -9,7 +10,9 @@ branches:
 environments:
   staging:
     experienceId: 3028808377
-    placeId: 7818935418
+    placeIds:
+      start: 7818935418
   production:
     experienceId: 3028808377
-    placeId: 7818935418
+    placeIds:
+      start: 7818935418

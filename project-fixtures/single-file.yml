@@ -14,3 +14,10 @@ deployments:
     experienceId: 3028808377
     placeIds:
       start: 7818935418
+
+templates:
+  experience:
+    name: Rocat Test Experience
+  places:
+    start:
+      name: Rocat Test Start Place

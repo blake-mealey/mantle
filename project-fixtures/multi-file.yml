@@ -11,7 +11,7 @@ deployments:
       world: 7844085774
   - name: production
     branches: [main]
-    tagCommit: true
+    # tagCommit: true
     # deployMode: Save
     experienceId: 3028808377
     placeIds:

@@ -61,22 +61,18 @@ By default, Rocat will look for a `rocat.yml` file but you may specifiy an alter
 ```yml
 # rocat.yml
 placeFiles:
-  start: start-place.rbxl
+  start: start-place.rbxlx
 
-branches:
-  dev:
-    environment: staging
+deployments:
+  - name: staging
+    branches: [dev, experiments/*]
     deployMode: Save # optional; defaults to Publish
-  main:
-    environment: production
-    tagCommit: true # optional; defaults to false
-
-environments:
-  staging:
-    experienceId: 3028808377
+    experienceId: 7067418676
     placeIds:
-      start: 7818935418
-  production:
+      start: 8468630367
+  - name: production
+    branches: [main]
+    tagCommit: true # optional; defaults to false
     experienceId: 6428418832
     placeIds:
       start: 4927604916
@@ -107,21 +103,17 @@ placeFiles:
   start: start-place.rbxl
   world: world-place.rbxl
 
-branches:
-  dev:
-    environment: staging
+deployments:
+  - name: staging
+    branches: [dev, experiments/*]
     deployMode: Save # optional; defaults to Publish
-  main:
-    environment: production
-    tagCommit: true # optional; defaults to false
-
-environments:
-  staging:
-    experienceId: 3028808377
+    experienceId: 7067418676
     placeIds:
-      start: 7818935418
+      start: 8468630367
       world: 6179245670
-  production:
+  - name: production
+    branches: [main]
+    tagCommit: true # optional; defaults to false
     experienceId: 6428418832
     placeIds:
       start: 4927604916
@@ -159,9 +151,9 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build project
-        run: rojo build --output prod.rbxlx
+        run: rojo build --output start-place.rbxlx
       - name: Deploy project
-        run: rocat deploy prod.rbxlx
+        run: rocat deploy
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
 ```

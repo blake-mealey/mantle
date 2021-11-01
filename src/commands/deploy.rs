@@ -1,5 +1,4 @@
 use crate::roblox_api::{upload_place, DeployMode};
-use glob::PatternError;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -62,14 +61,14 @@ fn load_config_file(config_file: &str) -> Result<Config, String> {
     }
 }
 
-fn match_branch(branch: &str, patterns: &Vec<String>) -> bool {
+fn match_branch(branch: &str, patterns: &[String]) -> bool {
     for pattern in patterns {
         let glob_pattern = glob::Pattern::new(pattern);
         if glob_pattern.is_ok() && glob_pattern.unwrap().matches(branch) {
             return true;
         }
     }
-    return false;
+    false
 }
 
 pub fn run(config_file: &str) -> Result<(), String> {

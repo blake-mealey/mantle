@@ -127,7 +127,7 @@ pub fn upload_place(
                     ))
                 }
             };
-            println!("🚀 Uploading file: {}", project_file);
+            println!("📦 Uploading file: {}", project_file);
             req.send_string(&data)
         }
         ProjectType::Binary => {

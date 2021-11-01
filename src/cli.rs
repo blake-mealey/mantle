@@ -61,7 +61,7 @@ fn get_app() -> App<'static, 'static> {
                         .long("config")
                         .value_name("FILE")
                         .help("Sets a custom deploy config file")
-                        .default_value("rocat.toml")
+                        .default_value("rocat.yml")
                         .takes_value(true),
                 ),
         )

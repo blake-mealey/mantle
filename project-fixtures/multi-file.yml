@@ -2,21 +2,18 @@ placeFiles:
   start: project-fixtures/start.rbxlx
   world: project-fixtures/world.rbxlx
 
-branches:
-  dev:
-    environment: staging
-  world:
-    environment: production
-
-environments:
-  staging:
-    namePrefix: 'Staging'
+deployments:
+  - name: staging
+    branches: [dev, experiments/*]
     experienceId: 3028808377
     placeIds:
-      start: 7844085774
-      world: 7818935418
-  production:
+      start: 7818935418
+      world: 7844085774
+  - name: production
+    branches: [main]
+    tagCommit: true
+    # deployMode: Save
     experienceId: 3028808377
     placeIds:
-      start: 7844085774
-      world: 7818935418
+      start: 7818935418
+      world: 7844085774

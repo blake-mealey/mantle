@@ -1,4 +1,5 @@
 use crate::roblox_api::{upload_place, DeployMode};
+use glob::PatternError;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -10,29 +11,25 @@ use std::str;
 struct Config {
     place_files: Option<HashMap<String, String>>,
 
-    #[serde(default = "HashMap::new")]
-    environments: HashMap<String, EnvironmentConfig>,
-
-    #[serde(default = "HashMap::new")]
-    branches: HashMap<String, BranchConfig>,
+    #[serde(default = "Vec::new")]
+    deployments: Vec<DeploymentConfig>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct EnvironmentConfig {
-    experience_id: Option<u64>,
+struct DeploymentConfig {
+    name: Option<String>,
 
-    place_ids: Option<HashMap<String, u64>>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct BranchConfig {
-    environment: Option<String>,
+    #[serde(default = "Vec::new")]
+    branches: Vec<String>,
 
     deploy_mode: Option<DeployMode>,
 
     tag_commit: Option<bool>,
+
+    experience_id: Option<u64>,
+
+    place_ids: Option<HashMap<String, u64>>,
 }
 
 fn run_command(command: &str) -> std::io::Result<std::process::Output> {
@@ -65,6 +62,16 @@ fn load_config_file(config_file: &str) -> Result<Config, String> {
     }
 }
 
+fn match_branch(branch: &str, patterns: &Vec<String>) -> bool {
+    for pattern in patterns {
+        let glob_pattern = glob::Pattern::new(pattern);
+        if glob_pattern.is_ok() && glob_pattern.unwrap().matches(branch) {
+            return true;
+        }
+    }
+    return false;
+}
+
 pub fn run(config_file: &str) -> Result<(), String> {
     println!("📃 Config file: {}", config_file);
     let config = load_config_file(config_file)?;
@@ -91,50 +98,32 @@ pub fn run(config_file: &str) -> Result<(), String> {
 
     println!("🌿 Git branch: {}", current_branch);
 
-    let branch_config = match config.branches.get(current_branch) {
+    let deployment = config
+        .deployments
+        .iter()
+        .find(|deployment| match_branch(current_branch, &deployment.branches));
+
+    let deployment = match deployment {
         Some(v) => v,
         None => {
-            println!("✅ No branch configuration found; no deployment necessary");
+            println!("✅ No deployment configuration found for branch; no deployment necessary.");
             return Ok(());
         }
     };
 
-    let environment_name = match &branch_config.environment {
+    let deployment_name = match &deployment.name {
         Some(v) => v,
-        None => {
-            return Err("Branch configuration does not contain an environment name.".to_string())
-        }
+        None => return Err("Deployment configuration does not contain a name.".to_string()),
     };
 
-    let mode = match branch_config.deploy_mode.unwrap_or(DeployMode::Publish) {
+    let mode = match deployment.deploy_mode.unwrap_or(DeployMode::Publish) {
         DeployMode::Publish => DeployMode::Publish,
         DeployMode::Save => DeployMode::Save,
     };
 
-    let should_tag = branch_config.tag_commit.unwrap_or(false);
+    let should_tag = deployment.tag_commit.unwrap_or(false);
 
-    println!("✅ Branch configuration:");
-    println!("\tEnvironment: {}", environment_name);
-    println!("\tDeploy mode: {}", mode);
-    println!(
-        "\tTag commit: {}",
-        match should_tag {
-            true => "Yes",
-            false => "No",
-        }
-    );
-
-    let environment_config = match config.environments.get(environment_name) {
-        Some(v) => v,
-        None => {
-            return Err(format!(
-                "No environment configuration found with name {}",
-                environment_name
-            ))
-        }
-    };
-
-    let experience_id = match environment_config.experience_id {
+    let experience_id = match deployment.experience_id {
         Some(v) => v,
         None => {
             return Err(format!(
@@ -144,7 +133,7 @@ pub fn run(config_file: &str) -> Result<(), String> {
         }
     };
 
-    let place_ids = match &environment_config.place_ids {
+    let place_ids = match &deployment.place_ids {
         Some(v) => v,
         None => {
             return Err(format!(
@@ -154,10 +143,18 @@ pub fn run(config_file: &str) -> Result<(), String> {
         }
     };
 
-    println!("🌎 Environment configuration:");
+    println!("🌎 Deployment configuration:");
+    println!("\tName: {}", deployment_name);
+    println!("\tDeploy mode: {}", mode);
+    println!(
+        "\tTag commit: {}",
+        match should_tag {
+            true => "Yes",
+            false => "No",
+        }
+    );
     println!("\tExperience ID: {}", experience_id);
     println!("\tPlace IDs:");
-
     for (name, place_id) in place_ids.iter() {
         println!("\t\t{}: {}", name, place_id);
     }
@@ -183,7 +180,7 @@ pub fn run(config_file: &str) -> Result<(), String> {
     }
 
     if should_tag {
-        run_command("git push --tags").map_err(|e| format!("Unable to push the tag\n\t{}", e))?;
+        run_command("git push --tags").map_err(|e| format!("Unable to push the tags\n\t{}", e))?;
     }
 
     Ok(())

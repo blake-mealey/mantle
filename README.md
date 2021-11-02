@@ -37,6 +37,10 @@ API key in the Roblox [Creator portal](https://create.roblox.com/credentials).
 You also must ensure your API key has the required permissions. It must have the Place Management
 API System with the desired places added to it.
 
+If you are using the `templates` feature you will also need to provide a `ROBLOSECURITY` cookie via
+the `ROBLOSECURITY` environment variable. You can get the cookie from your browser dev tools on
+roblox.com.
+
 ### Manually save/publish a place to Roblox
 
 You can use the `save` and `publish` commands to manually save or publish a Roblox place file
@@ -52,7 +56,7 @@ rocat publish place.rbxl <experience_id> <place_id>
 
 ### Configure deployments
 
-You can configure reusable Roblox deployments by creating a TOML config file and using the `deploy`
+You can configure reusable Roblox deployments by creating a YAML config file and using the `deploy`
 command.
 
 By default, Rocat will look for a `rocat.yml` file but you may specifiy an alternate file with the
@@ -123,6 +127,57 @@ deployments:
 When the `deploy` command is run with this configuration, the same deployments will be made as with
 the above single-file configuration, except that both the `start-place.rbxl` and `world-place.rbxl`
 files will be uploaded to their respective places.
+
+### Configuration templates
+
+You can additionally configure templates which will be applied to the experience and places:
+
+```yml
+# rocat.yml
+placeFiles:
+  start: start-place.rbxlx
+
+deployments:
+  - name: staging
+    branches: [dev, experiments/*]
+    deployMode: Save # optional; defaults to Publish
+    experienceId: 7067418676
+    placeIds:
+      start: 8468630367
+  - name: production
+    branches: [main]
+    tagCommit: true # optional; defaults to false
+    experienceId: 6428418832
+    placeIds:
+      start: 4927604916
+
+templates:
+  experience:
+    genre: Building # any valid genre
+    playableDevices: [Computer, Phone, Tablet, Console]
+    playability: Public # or Friends or Private
+    paidAccessPrice: 25 # enables paid access and sets its price
+    # privateServerPrice: 0 # enables private servers and sets their price
+    enableStudioAccessToApis: true
+    allowThirdPartySales: true
+    allowThirdPartyTeleports: true
+    avatarType: R15 # or R6 or PlayerChoice
+    avatarAnimationType: PlayerChoice # or Standard
+    avatarCollisionType: OuterBox # or InnerBox
+  places:
+    start:
+      name: The Best Experience Ever
+      description: |
+        The best multi-line
+        description of all time!
+      maxPlayerCount: 25
+      serverFill: { ReservedSlots: 10 } # or RobloxOptimized or Maximum
+      allowCopying: false
+```
+
+When this deployment is run, the experience will be configured on Roblox with the provided settings,
+and the start place will be configured on Roblox with the provided settings. This feature requires
+the `ROBLOSECURITY` authentication (see above for details).
 
 ### GitHub Actions
 

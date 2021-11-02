@@ -17,8 +17,17 @@ deployments:
 
 templates:
   experience:
-    name: Rocat Test Experience
+    genre: Naval
+    playableDevices: [Computer]
+    playability: Public
+    enableStudioAccessToApis: true
+    avatarType: R15
+    avatarAnimationType: PlayerChoice
+    avatarCollisionType: OuterBox
   places:
     start:
-      name: Rocat Test Start Place
-      description: The starting place for Rocat Test Experience.
+      name: Start name
+      description: Start description
+      maxPlayerCount: 50
+      serverFill: { ReservedSlots: 10 }
+      allowCopying: false

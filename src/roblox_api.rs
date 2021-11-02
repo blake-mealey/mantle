@@ -1,10 +1,7 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{clone::Clone, ffi::OsStr, fmt, fs, path::Path};
 
-use crate::{
-    commands::deploy::{ExperienceTemplateConfig, PlaceTemplateConfig},
-    roblox_auth::RobloxAuth,
-};
+use crate::roblox_auth::RobloxAuth;
 
 #[derive(Deserialize, Copy, Clone)]
 pub enum DeployMode {
@@ -90,6 +87,97 @@ fn get_roblox_api_error_message(response: ureq::Response) -> String {
 
 pub struct UploadResult {
     pub place_version: i32,
+}
+
+#[derive(Serialize)]
+pub enum ExperienceGenre {
+    All,
+    Adventure,
+    Tutorial,
+    Funny,
+    Ninja,
+    FPS,
+    Scary,
+    Fantasy,
+    War,
+    Pirate,
+    RPG,
+    SciFi,
+    Sports,
+    TownAndCity,
+    WildWest,
+}
+
+#[derive(Deserialize, Serialize)]
+pub enum ExperiencePlayableDevice {
+    Computer,
+    Phone,
+    Tablet,
+    Console,
+}
+
+#[derive(Serialize)]
+pub enum ExperienceAvatarType {
+    MorphToR6,
+    MorphToR15,
+    PlayerChoice,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum ExperienceAnimationType {
+    Standard,
+    PlayerChoice,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum ExperienceCollisionType {
+    OuterBox,
+    InnerBox,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct ExperiencePermissionsModel {
+    pub is_third_party_purchase_allowed: Option<bool>,
+    pub is_third_party_teleport_allowed: Option<bool>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExperienceConfigurationModel {
+    pub genre: Option<ExperienceGenre>,
+    pub playable_devices: Option<Vec<ExperiencePlayableDevice>>,
+    pub is_friends_only: Option<bool>,
+
+    pub allow_private_servers: Option<bool>,
+    pub private_server_price: Option<u32>,
+    pub is_for_sale: Option<bool>,
+    pub price: Option<u32>,
+
+    pub studio_access_to_apis_allowed: Option<bool>,
+    pub permissions: Option<ExperiencePermissionsModel>,
+
+    pub universe_avatar_type: Option<ExperienceAvatarType>,
+    pub universe_animation_type: Option<ExperienceAnimationType>,
+    pub universe_collision_type: Option<ExperienceCollisionType>,
+}
+
+#[derive(Serialize)]
+pub enum SocialSlotType {
+    Automatic,
+    Empty,
+    Custom,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaceConfigurationModel {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub max_player_count: Option<u32>,
+    pub allow_copying: Option<bool>,
+    pub social_slot_type: Option<SocialSlotType>,
+    pub custom_social_slot_count: Option<u32>,
 }
 
 pub struct RobloxApi {
@@ -211,7 +299,7 @@ impl RobloxApi {
     pub fn configure_experience(
         self: &mut Self,
         experience_id: u64,
-        experience_template: &ExperienceTemplateConfig,
+        experience_configuration: &ExperienceConfigurationModel,
     ) -> Result<(), String> {
         let roblosecurity = match self.roblox_auth.get_roblosecurity() {
             Ok(val) => val,
@@ -225,9 +313,14 @@ impl RobloxApi {
             Err(e) => return Err(format!("Failed to get the CSRF token\n\t{}", e)),
         };
 
-        let json_data = match serde_json::to_value(&experience_template) {
+        let json_data = match serde_json::to_value(&experience_configuration) {
             Ok(v) => v,
-            Err(e) => return Err(format!("Failed to serialize experience template\n\t{}", e)),
+            Err(e) => {
+                return Err(format!(
+                    "Failed to serialize experience configuration\n\t{}",
+                    e
+                ))
+            }
         };
 
         let res = ureq::request(
@@ -258,7 +351,7 @@ impl RobloxApi {
     pub fn configure_place(
         self: &mut Self,
         place_id: u64,
-        place_template: &PlaceTemplateConfig,
+        place_configuration: &PlaceConfigurationModel,
     ) -> Result<(), String> {
         let roblosecurity = match self.roblox_auth.get_roblosecurity() {
             Ok(val) => val,
@@ -270,9 +363,9 @@ impl RobloxApi {
             Err(e) => return Err(format!("Failed to get the CSRF token\n\t{}", e)),
         };
 
-        let json_data = match serde_json::to_value(&place_template) {
+        let json_data = match serde_json::to_value(&place_configuration) {
             Ok(v) => v,
-            Err(e) => return Err(format!("Failed to serialize place template\n\t{}", e)),
+            Err(e) => return Err(format!("Failed to serialize place configuration\n\t{}", e)),
         };
 
         let res = ureq::request(

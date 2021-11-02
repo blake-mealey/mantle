@@ -1,6 +1,10 @@
-use crate::roblox_api::{DeployMode, RobloxApi};
+use crate::roblox_api::{
+    DeployMode, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
+    ExperienceConfigurationModel, ExperienceGenre, ExperiencePermissionsModel,
+    ExperiencePlayableDevice, PlaceConfigurationModel, RobloxApi, SocialSlotType,
+};
 use crate::roblox_auth::RobloxAuth;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
 use std::process::Command;
@@ -45,36 +49,180 @@ struct TemplateConfig {
     places: HashMap<String, PlaceTemplateConfig>,
 }
 
-#[derive(Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExperienceTemplateConfig {
-    name: Option<String>,
-    allow_private_servers: Option<bool>,
-    private_server_price: Option<i32>,
-    universe_avatar_type: Option<String>,           // TODO: enum
-    universe_animation_type: Option<String>,        // TODO: enum
-    universe_collision_type: Option<String>,        // TODO: enum
-    universe_join_positioning_type: Option<String>, // TODO: enum
-    is_archived: Option<bool>,
-    is_friends_only: Option<bool>,
-    genre: Option<String>,                 //TODO: enum
-    playable_devices: Option<Vec<String>>, //TODO: enum
-    is_for_sale: Option<bool>,
-    price: Option<i32>,
-    // universe_avatar_asset_overrides: Option<Vec<unknown>>,
-    universe_avatar_min_scales: Option<HashMap<String, f32>>, // TODO: enum
-    universe_avatar_max_scales: Option<HashMap<String, f32>>, // TODO: enum
-    studio_access_to_apis_allowed: Option<bool>,
-    // permissions: Option<ExperienceTemplatePermissionsConfig>, // TODO: struct
+//isFriendsOnly: true/false
+//setActive(true/false)
+
+#[derive(Deserialize)]
+pub enum GenreConfig {
+    All,
+    Adventure,
+    Building,
+    Comedy,
+    Fighting,
+    FPS,
+    Horror,
+    Medieval,
+    Military,
+    Naval,
+    RPG,
+    SciFi,
+    Sports,
+    TownAndCity,
+    Western,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize)]
+enum PlayabilityConfig {
+    Private,
+    Public,
+    Friends,
+}
+
+#[derive(Deserialize)]
+enum AvatarTypeConfig {
+    R6,
+    R15,
+    PlayerChoice,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExperienceTemplateConfig {
+    // basic info
+    genre: Option<GenreConfig>,
+    playable_devices: Option<Vec<ExperiencePlayableDevice>>,
+    // icon: Option<String>,   // TODO: call the upload icon api
+    // thumbnails: Option<Vec<String>>  // TODO: call the upload thumbnails api
+
+    // permissions
+    playability: Option<PlayabilityConfig>, // TODO: call the setActive api for Private mode
+
+    // monetization
+    // badges: // TODO: create badges
+    paid_access_price: Option<u32>,
+    private_server_price: Option<u32>,
+    // developer products: // TODO: create developer products
+
+    // security
+    enable_studio_access_to_apis: Option<bool>,
+    allow_third_party_sales: Option<bool>,
+    allow_third_party_teleports: Option<bool>,
+
+    // localization: // TODO: localization
+
+    // avatar
+    avatar_type: Option<AvatarTypeConfig>,
+    avatar_animation_type: Option<ExperienceAnimationType>,
+    avatar_collision_type: Option<ExperienceCollisionType>,
+    // avatar_asset_overrides: Option<HashMap<String, u64>>,    // TODO: figure out api
+    // avatar_scale_constraints: Option<HashMap<String, (f32, f32)>>,   // TODO: figure out api
+
+    // other
+    // is_archived: Option<bool>,
+}
+
+impl From<ExperienceTemplateConfig> for ExperienceConfigurationModel {
+    fn from(config: ExperienceTemplateConfig) -> Self {
+        ExperienceConfigurationModel {
+            genre: match config.genre {
+                Some(GenreConfig::All) => Some(ExperienceGenre::All),
+                Some(GenreConfig::Adventure) => Some(ExperienceGenre::Adventure),
+                Some(GenreConfig::Building) => Some(ExperienceGenre::Tutorial),
+                Some(GenreConfig::Comedy) => Some(ExperienceGenre::Funny),
+                Some(GenreConfig::Fighting) => Some(ExperienceGenre::Ninja),
+                Some(GenreConfig::FPS) => Some(ExperienceGenre::FPS),
+                Some(GenreConfig::Horror) => Some(ExperienceGenre::Scary),
+                Some(GenreConfig::Medieval) => Some(ExperienceGenre::Fantasy),
+                Some(GenreConfig::Military) => Some(ExperienceGenre::War),
+                Some(GenreConfig::Naval) => Some(ExperienceGenre::Pirate),
+                Some(GenreConfig::RPG) => Some(ExperienceGenre::RPG),
+                Some(GenreConfig::SciFi) => Some(ExperienceGenre::SciFi),
+                Some(GenreConfig::Sports) => Some(ExperienceGenre::Sports),
+                Some(GenreConfig::TownAndCity) => Some(ExperienceGenre::TownAndCity),
+                Some(GenreConfig::Western) => Some(ExperienceGenre::WildWest),
+                None => None,
+            },
+            playable_devices: config.playable_devices,
+
+            is_friends_only: match config.playability {
+                Some(PlayabilityConfig::Friends) => Some(true),
+                Some(PlayabilityConfig::Public) => Some(false),
+                _ => None,
+            },
+
+            is_for_sale: match config.paid_access_price {
+                Some(_) => Some(true),
+                _ => None,
+            },
+            price: config.paid_access_price,
+            allow_private_servers: match config.private_server_price {
+                Some(_) => Some(true),
+                _ => None,
+            },
+            private_server_price: config.private_server_price,
+
+            studio_access_to_apis_allowed: config.enable_studio_access_to_apis,
+            permissions: match (
+                config.allow_third_party_sales,
+                config.allow_third_party_teleports,
+            ) {
+                (None, None) => None,
+                (allow_third_party_sales, allow_third_party_teleports) => {
+                    Some(ExperiencePermissionsModel {
+                        is_third_party_purchase_allowed: allow_third_party_sales,
+                        is_third_party_teleport_allowed: allow_third_party_teleports,
+                    })
+                }
+            },
+
+            universe_avatar_type: match config.avatar_type {
+                Some(AvatarTypeConfig::R6) => Some(ExperienceAvatarType::MorphToR6),
+                Some(AvatarTypeConfig::R15) => Some(ExperienceAvatarType::MorphToR15),
+                Some(AvatarTypeConfig::PlayerChoice) => Some(ExperienceAvatarType::PlayerChoice),
+                None => None,
+            },
+            universe_animation_type: config.avatar_animation_type,
+            universe_collision_type: config.avatar_collision_type,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+enum ServerFillConfig {
+    RobloxOptimized,
+    Maximum,
+    ReservedSlots(u32),
+}
+
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaceTemplateConfig {
     name: Option<String>,
     description: Option<String>,
-    max_player_count: Option<i32>,
+    max_player_count: Option<u32>,
     allow_copying: Option<bool>,
+    server_fill: Option<ServerFillConfig>,
+}
+
+impl From<&PlaceTemplateConfig> for PlaceConfigurationModel {
+    fn from(config: &PlaceTemplateConfig) -> Self {
+        PlaceConfigurationModel {
+            name: config.name.clone(),
+            description: config.description.clone(),
+            max_player_count: config.max_player_count,
+            allow_copying: config.allow_copying,
+            social_slot_type: match config.server_fill {
+                Some(ServerFillConfig::RobloxOptimized) => Some(SocialSlotType::Automatic),
+                Some(ServerFillConfig::Maximum) => Some(SocialSlotType::Empty),
+                Some(ServerFillConfig::ReservedSlots(_)) => Some(SocialSlotType::Custom),
+                None => None,
+            },
+            custom_social_slot_count: match config.server_fill {
+                Some(ServerFillConfig::ReservedSlots(count)) => Some(count),
+                _ => None,
+            },
+        }
+    }
 }
 
 fn run_command(command: &str) -> std::io::Result<std::process::Output> {
@@ -209,7 +357,7 @@ pub fn run(config_file: &str) -> Result<(), String> {
     let experience_template = config.templates.experience;
     if experience_template.is_some() {
         println!("🔧 Configuring experience");
-        roblox_api.configure_experience(experience_id, &experience_template.unwrap())?;
+        roblox_api.configure_experience(experience_id, &experience_template.unwrap().into())?;
     }
 
     for (name, place_file) in config.place_files.iter() {
@@ -223,7 +371,7 @@ pub fn run(config_file: &str) -> Result<(), String> {
         let place_template = config.templates.places.get(name);
         if place_template.is_some() {
             println!("\t🔧 Configuring place");
-            roblox_api.configure_place(*place_id, &place_template.unwrap())?;
+            roblox_api.configure_place(*place_id, &place_template.unwrap().into())?;
         }
 
         let upload_result = roblox_api.upload_place(place_file, experience_id, *place_id, mode)?;

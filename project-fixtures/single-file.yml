@@ -19,7 +19,7 @@ templates:
   experience:
     genre: Naval
     playableDevices: [Computer]
-    playability: Public
+    playability: Friends
     enableStudioAccessToApis: true
     avatarType: R15
     avatarAnimationType: PlayerChoice

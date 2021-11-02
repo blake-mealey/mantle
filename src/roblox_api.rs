@@ -108,7 +108,7 @@ pub enum ExperienceGenre {
     WildWest,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone, Copy)]
 pub enum ExperiencePlayableDevice {
     Computer,
     Phone,
@@ -123,13 +123,13 @@ pub enum ExperienceAvatarType {
     PlayerChoice,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum ExperienceAnimationType {
     Standard,
     PlayerChoice,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum ExperienceCollisionType {
     OuterBox,
     InnerBox,
@@ -376,6 +376,46 @@ impl RobloxApi {
         .set("x-csrf-token", &csrf_token)
         .set("Content-Type", "application/json")
         .send_json(json_data);
+
+        match res {
+            Ok(_) => return Ok(()),
+            Err(ureq::Error::Status(_code, response)) => {
+                match (response.status(), get_roblox_api_error_message(response)) {
+                    (status, message) => {
+                        Err(format!("Unknown error (status {}): {}", status, message))
+                    }
+                }
+            }
+            Err(e) => Err(format!("Unknown error: {}", e)),
+        }
+    }
+
+    pub fn set_experience_active(
+        self: &mut Self,
+        experience_id: u64,
+        active: bool,
+    ) -> Result<(), String> {
+        let roblosecurity = match self.roblox_auth.get_roblosecurity() {
+            Ok(val) => val,
+            Err(_) => return Err("Please check your ROBLOSECURITY environment variable".to_owned()),
+        };
+
+        let csrf_token = match self.roblox_auth.get_csrf_token() {
+            Ok(val) => val,
+            Err(e) => return Err(format!("Failed to get the CSRF token\n\t{}", e)),
+        };
+
+        let res = ureq::post(&format!(
+            "https://develop.roblox.com/v1/universes/{}/{}",
+            experience_id,
+            match active {
+                true => "activate",
+                false => "deactivate",
+            }
+        ))
+        .set("cookie", &format!(".ROBLOSECURITY={}", roblosecurity))
+        .set("x-csrf-token", &csrf_token)
+        .send_string("");
 
         match res {
             Ok(_) => return Ok(()),

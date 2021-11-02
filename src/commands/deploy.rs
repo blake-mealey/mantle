@@ -71,7 +71,7 @@ pub enum GenreConfig {
     Western,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone, Copy)]
 enum PlayabilityConfig {
     Private,
     Public,
@@ -95,7 +95,7 @@ pub struct ExperienceTemplateConfig {
     // thumbnails: Option<Vec<String>>  // TODO: call the upload thumbnails api
 
     // permissions
-    playability: Option<PlayabilityConfig>, // TODO: call the setActive api for Private mode
+    playability: Option<PlayabilityConfig>,
 
     // monetization
     // badges: // TODO: create badges
@@ -121,8 +121,8 @@ pub struct ExperienceTemplateConfig {
     // is_archived: Option<bool>,
 }
 
-impl From<ExperienceTemplateConfig> for ExperienceConfigurationModel {
-    fn from(config: ExperienceTemplateConfig) -> Self {
+impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
+    fn from(config: &ExperienceTemplateConfig) -> Self {
         ExperienceConfigurationModel {
             genre: match config.genre {
                 Some(GenreConfig::All) => Some(ExperienceGenre::All),
@@ -142,7 +142,10 @@ impl From<ExperienceTemplateConfig> for ExperienceConfigurationModel {
                 Some(GenreConfig::Western) => Some(ExperienceGenre::WildWest),
                 None => None,
             },
-            playable_devices: config.playable_devices,
+            playable_devices: match &config.playable_devices {
+                Some(devices) => Some(devices.to_vec()),
+                None => None,
+            },
 
             is_friends_only: match config.playability {
                 Some(PlayabilityConfig::Friends) => Some(true),
@@ -181,8 +184,8 @@ impl From<ExperienceTemplateConfig> for ExperienceConfigurationModel {
                 Some(AvatarTypeConfig::PlayerChoice) => Some(ExperienceAvatarType::PlayerChoice),
                 None => None,
             },
-            universe_animation_type: config.avatar_animation_type,
-            universe_collision_type: config.avatar_collision_type,
+            universe_animation_type: config.avatar_animation_type.clone(),
+            universe_collision_type: config.avatar_collision_type.clone(),
         }
     }
 }
@@ -354,10 +357,15 @@ pub fn run(config_file: &str) -> Result<(), String> {
 
     let mut roblox_api = RobloxApi::new(RobloxAuth::new());
 
-    let experience_template = config.templates.experience;
-    if experience_template.is_some() {
+    if let Some(experience_template) = &config.templates.experience {
         println!("🔧 Configuring experience");
-        roblox_api.configure_experience(experience_id, &experience_template.unwrap().into())?;
+        roblox_api.configure_experience(experience_id, &experience_template.into())?;
+        if let Some(playability) = experience_template.playability {
+            roblox_api.set_experience_active(
+                experience_id,
+                !matches!(playability, PlayabilityConfig::Private),
+            )?;
+        }
     }
 
     for (name, place_file) in config.place_files.iter() {

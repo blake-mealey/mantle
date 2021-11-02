@@ -1,6 +1,7 @@
 mod cli;
 mod commands;
 mod roblox_api;
+mod roblox_auth;
 
 fn main() {
     std::process::exit(match cli::run() {

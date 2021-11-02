@@ -1,5 +1,6 @@
-use crate::roblox_api::{upload_place, DeployMode};
-use serde::Deserialize;
+use crate::roblox_api::{DeployMode, RobloxApi};
+use crate::roblox_auth::RobloxAuth;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::process::Command;
@@ -8,10 +9,14 @@ use std::str;
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Config {
-    place_files: Option<HashMap<String, String>>,
+    #[serde(default = "HashMap::new")]
+    place_files: HashMap<String, String>,
 
     #[serde(default = "Vec::new")]
     deployments: Vec<DeploymentConfig>,
+
+    #[serde(default)]
+    templates: TemplateConfig,
 }
 
 #[derive(Deserialize)]
@@ -29,6 +34,47 @@ struct DeploymentConfig {
     experience_id: Option<u64>,
 
     place_ids: Option<HashMap<String, u64>>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct TemplateConfig {
+    experience: Option<ExperienceTemplateConfig>,
+
+    #[serde(default = "HashMap::new")]
+    places: HashMap<String, PlaceTemplateConfig>,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExperienceTemplateConfig {
+    name: Option<String>,
+    allow_private_servers: Option<bool>,
+    private_server_price: Option<i32>,
+    universe_avatar_type: Option<String>,           // TODO: enum
+    universe_animation_type: Option<String>,        // TODO: enum
+    universe_collision_type: Option<String>,        // TODO: enum
+    universe_join_positioning_type: Option<String>, // TODO: enum
+    is_archived: Option<bool>,
+    is_friends_only: Option<bool>,
+    genre: Option<String>,                 //TODO: enum
+    playable_devices: Option<Vec<String>>, //TODO: enum
+    is_for_sale: Option<bool>,
+    price: Option<i32>,
+    // universe_avatar_asset_overrides: Option<Vec<unknown>>,
+    universe_avatar_min_scales: Option<HashMap<String, f32>>, // TODO: enum
+    universe_avatar_max_scales: Option<HashMap<String, f32>>, // TODO: enum
+    studio_access_to_apis_allowed: Option<bool>,
+    // permissions: Option<ExperienceTemplatePermissionsConfig>, // TODO: struct
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaceTemplateConfig {
+    name: Option<String>,
+    description: Option<String>,
+    max_player_count: Option<i32>,
+    allow_copying: Option<bool>,
 }
 
 fn run_command(command: &str) -> std::io::Result<std::process::Output> {
@@ -158,8 +204,15 @@ pub fn run(config_file: &str) -> Result<(), String> {
         println!("\t\t{}: {}", name, place_id);
     }
 
-    let place_files = config.place_files.unwrap();
-    for (name, place_file) in place_files.iter() {
+    let mut roblox_api = RobloxApi::new(RobloxAuth::new());
+
+    let experience_template = config.templates.experience;
+    if experience_template.is_some() {
+        println!("🔧 Configuring experience");
+        roblox_api.configure_experience(experience_id, &experience_template.unwrap())?;
+    }
+
+    for (name, place_file) in config.place_files.iter() {
         println!("🚀 Deploying place: {}", name);
 
         let place_id = match place_ids.get(name) {
@@ -167,11 +220,17 @@ pub fn run(config_file: &str) -> Result<(), String> {
             None => return Err(format!("No place ID found for configured place {}", name)),
         };
 
-        let result = upload_place(place_file, experience_id, *place_id, mode)?;
+        let place_template = config.templates.places.get(name);
+        if place_template.is_some() {
+            println!("\t🔧 Configuring place");
+            roblox_api.configure_place(*place_id, &place_template.unwrap())?;
+        }
+
+        let upload_result = roblox_api.upload_place(place_file, experience_id, *place_id, mode)?;
 
         if should_tag {
-            let tag = format!("{}-v{}", name, result.place_version);
-            println!("🔖 Tagging commit with: {}", tag);
+            let tag = format!("{}-v{}", name, upload_result.place_version);
+            println!("\t🔖 Tagging commit with: {}", tag);
 
             run_command(&format!("git tag {}", tag))
                 .map_err(|e| format!("Unable to tag the current commit\n\t{}", e))?;

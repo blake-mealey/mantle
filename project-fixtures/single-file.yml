@@ -21,3 +21,4 @@ templates:
   places:
     start:
       name: Rocat Test Start Place
+      description: The starting place for Rocat Test Experience.

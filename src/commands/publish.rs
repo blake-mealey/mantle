@@ -1,4 +1,7 @@
-use crate::roblox_api::{upload_place, DeployMode};
+use crate::{
+    roblox_api::{DeployMode, RobloxApi},
+    roblox_auth::RobloxAuth,
+};
 
 pub fn run(project_file: &str, experience_id: &str, place_id: &str) -> Result<(), String> {
     let parsed_experience_id = match experience_id.parse::<u64>() {
@@ -17,7 +20,9 @@ pub fn run(project_file: &str, experience_id: &str, place_id: &str) -> Result<()
 
     println!("🚀 Publishing place");
 
-    upload_place(
+    let mut roblox_api = RobloxApi::new(RobloxAuth::new());
+
+    roblox_api.upload_place(
         project_file,
         parsed_experience_id,
         parsed_place_id,

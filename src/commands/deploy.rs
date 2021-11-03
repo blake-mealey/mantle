@@ -400,6 +400,11 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
         if let Some(icon_path) = &experience_template.icon {
             roblox_api.upload_icon(experience_id, &project_path.join(icon_path))?;
         }
+        if let Some(thumbnail_paths) = &experience_template.thumbnails {
+            for thumbnail_path in thumbnail_paths.iter() {
+                roblox_api.upload_thumbnail(experience_id, &project_path.join(thumbnail_path))?;
+            }
+        }
     }
 
     for (name, place_file) in config.place_files.iter() {

@@ -27,6 +27,7 @@ impl RequestExt for ureq::Request {
 }
 
 #[derive(Deserialize, Copy, Clone)]
+#[serde(rename_all = "camelCase")]
 pub enum DeployMode {
     Publish,
     Save,
@@ -100,6 +101,7 @@ pub enum ExperienceGenre {
 }
 
 #[derive(Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
 pub enum ExperiencePlayableDevice {
     Computer,
     Phone,
@@ -115,12 +117,14 @@ pub enum ExperienceAvatarType {
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
 pub enum ExperienceAnimationType {
     Standard,
     PlayerChoice,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
 pub enum ExperienceCollisionType {
     OuterBox,
     InnerBox,

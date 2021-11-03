@@ -10,24 +10,24 @@ deployments:
   - name: production
     branches: [main]
     # tagCommit: true
-    # deployMode: Save
+    deployMode: save
     experienceId: 3028808377
     placeIds:
       start: 7818935418
 
 templates:
   experience:
-    genre: Naval
-    playableDevices: [Computer]
-    playability: Friends
+    genre: naval
+    playableDevices: [computer]
+    playability: friends
     enableStudioAccessToApis: true
-    avatarType: R15
-    avatarAnimationType: PlayerChoice
-    avatarCollisionType: OuterBox
+    avatarType: r15
+    avatarAnimationType: playerChoice
+    avatarCollisionType: outerBox
   places:
     start:
       name: Start name
       description: Start description
       maxPlayerCount: 50
-      serverFill: { ReservedSlots: 10 }
+      serverFill: { reservedSlots: 10 }
       allowCopying: false

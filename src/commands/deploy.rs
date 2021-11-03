@@ -53,6 +53,7 @@ struct TemplateConfig {
 //setActive(true/false)
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum GenreConfig {
     All,
     Adventure,
@@ -72,6 +73,7 @@ pub enum GenreConfig {
 }
 
 #[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
 enum PlayabilityConfig {
     Private,
     Public,
@@ -79,6 +81,7 @@ enum PlayabilityConfig {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 enum AvatarTypeConfig {
     R6,
     R15,
@@ -191,6 +194,7 @@ impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 enum ServerFillConfig {
     RobloxOptimized,
     Maximum,

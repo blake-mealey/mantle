@@ -12,7 +12,7 @@ deployments:
   - name: production
     branches: [main]
     # tagCommit: true
-    # deployMode: Save
+    # deployMode: save
     experienceId: 3028808377
     placeIds:
       start: 7818935418

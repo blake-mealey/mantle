@@ -140,7 +140,7 @@ placeFiles:
 deployments:
   - name: staging
     branches: [dev, experiments/*]
-    deployMode: Save # optional; defaults to Publish
+    deployMode: save # optional; defaults to Publish
     experienceId: 7067418676
     placeIds:
       start: 8468630367
@@ -153,17 +153,17 @@ deployments:
 
 templates:
   experience:
-    genre: Building # any valid genre
-    playableDevices: [Computer, Phone, Tablet, Console]
-    playability: Public # or Friends or Private
+    genre: building # any valid genre in camelCase
+    playableDevices: [computer, phone, tablet, console]
+    playability: public # or `friends` or `private`
     paidAccessPrice: 25 # enables paid access and sets its price
     # privateServerPrice: 0 # enables private servers and sets their price
     enableStudioAccessToApis: true
     allowThirdPartySales: true
     allowThirdPartyTeleports: true
-    avatarType: R15 # or R6 or PlayerChoice
-    avatarAnimationType: PlayerChoice # or Standard
-    avatarCollisionType: OuterBox # or InnerBox
+    avatarType: r15 # or `r6` or `playerChoice`
+    avatarAnimationType: playerChoice # or `standard`
+    avatarCollisionType: outerBox # or `innerBox`
   places:
     start:
       name: The Best Experience Ever
@@ -171,7 +171,7 @@ templates:
         The best multi-line
         description of all time!
       maxPlayerCount: 25
-      serverFill: { ReservedSlots: 10 } # or RobloxOptimized or Maximum
+      serverFill: { reservedSlots: 10 } # or robloxOptimized or maximum
       allowCopying: false
 ```
 

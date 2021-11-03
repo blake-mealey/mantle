@@ -88,12 +88,14 @@ pub enum ExperienceGenre {
     Tutorial,
     Funny,
     Ninja,
-    FPS,
+    #[serde(rename = "FPS")]
+    Fps,
     Scary,
     Fantasy,
     War,
     Pirate,
-    RPG,
+    #[serde(rename = "RPG")]
+    Rpg,
     SciFi,
     Sports,
     TownAndCity,
@@ -188,7 +190,7 @@ impl RobloxApi {
         let is_json = response.content_type() == "application/json";
 
         fn get_message_from_error(error: RobloxApiErrorModel) -> Option<String> {
-            return if let Some(message) = error.message {
+            if let Some(message) = error.message {
                 Some(message)
             } else if let Some(title) = error.title {
                 Some(title)
@@ -201,7 +203,7 @@ impl RobloxApi {
                 None
             } else {
                 None
-            };
+            }
         }
 
         if is_json {
@@ -230,7 +232,7 @@ impl RobloxApi {
     }
 
     pub fn upload_place(
-        self: &mut Self,
+        &mut self,
         project_file: &str,
         experience_id: u64,
         place_id: u64,
@@ -312,7 +314,7 @@ impl RobloxApi {
     }
 
     pub fn configure_experience(
-        self: &mut Self,
+        &mut self,
         experience_id: u64,
         experience_configuration: &ExperienceConfigurationModel,
     ) -> Result<(), String> {
@@ -343,7 +345,7 @@ impl RobloxApi {
     }
 
     pub fn configure_place(
-        self: &mut Self,
+        &mut self,
         place_id: u64,
         place_configuration: &PlaceConfigurationModel,
     ) -> Result<(), String> {
@@ -366,7 +368,7 @@ impl RobloxApi {
     }
 
     pub fn set_experience_active(
-        self: &mut Self,
+        &mut self,
         experience_id: u64,
         active: bool,
     ) -> Result<(), String> {

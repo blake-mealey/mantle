@@ -60,12 +60,12 @@ pub enum GenreConfig {
     Building,
     Comedy,
     Fighting,
-    FPS,
+    Fps,
     Horror,
     Medieval,
     Military,
     Naval,
-    RPG,
+    Rpg,
     SciFi,
     Sports,
     TownAndCity,
@@ -133,22 +133,22 @@ impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
                 Some(GenreConfig::Building) => Some(ExperienceGenre::Tutorial),
                 Some(GenreConfig::Comedy) => Some(ExperienceGenre::Funny),
                 Some(GenreConfig::Fighting) => Some(ExperienceGenre::Ninja),
-                Some(GenreConfig::FPS) => Some(ExperienceGenre::FPS),
+                Some(GenreConfig::Fps) => Some(ExperienceGenre::Fps),
                 Some(GenreConfig::Horror) => Some(ExperienceGenre::Scary),
                 Some(GenreConfig::Medieval) => Some(ExperienceGenre::Fantasy),
                 Some(GenreConfig::Military) => Some(ExperienceGenre::War),
                 Some(GenreConfig::Naval) => Some(ExperienceGenre::Pirate),
-                Some(GenreConfig::RPG) => Some(ExperienceGenre::RPG),
+                Some(GenreConfig::Rpg) => Some(ExperienceGenre::Rpg),
                 Some(GenreConfig::SciFi) => Some(ExperienceGenre::SciFi),
                 Some(GenreConfig::Sports) => Some(ExperienceGenre::Sports),
                 Some(GenreConfig::TownAndCity) => Some(ExperienceGenre::TownAndCity),
                 Some(GenreConfig::Western) => Some(ExperienceGenre::WildWest),
                 None => None,
             },
-            playable_devices: match &config.playable_devices {
-                Some(devices) => Some(devices.to_vec()),
-                None => None,
-            },
+            playable_devices: config
+                .playable_devices
+                .as_ref()
+                .map(|devices| devices.to_vec()),
 
             is_friends_only: match config.playability {
                 Some(PlayabilityConfig::Friends) => Some(true),
@@ -187,8 +187,8 @@ impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
                 Some(AvatarTypeConfig::PlayerChoice) => Some(ExperienceAvatarType::PlayerChoice),
                 None => None,
             },
-            universe_animation_type: config.avatar_animation_type.clone(),
-            universe_collision_type: config.avatar_collision_type.clone(),
+            universe_animation_type: config.avatar_animation_type,
+            universe_collision_type: config.avatar_collision_type,
         }
     }
 }

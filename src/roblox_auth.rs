@@ -14,22 +14,22 @@ impl RobloxAuth {
         Default::default()
     }
 
-    pub fn get_api_key(self: &mut Self) -> Result<String, String> {
+    pub fn get_api_key(&mut self) -> Result<String, String> {
         if self.api_key.is_none() {
             let var = match env::var("ROBLOX_API_KEY") {
                 Ok(v) => v,
-                Err(e) => return Err(INVALID_API_KEY_HELP.to_owned()),
+                Err(_) => return Err(INVALID_API_KEY_HELP.to_owned()),
             };
             self.api_key = Some(var);
         }
         Ok(self.api_key.clone().unwrap())
     }
 
-    pub fn get_roblosecurity(self: &mut Self) -> Result<String, String> {
+    pub fn get_roblosecurity(&mut self) -> Result<String, String> {
         if self.roblosecurity.is_none() {
             let var = match env::var("ROBLOSECURITY") {
                 Ok(v) => v,
-                Err(e) => {
+                Err(_) => {
                     return Err("Please check your ROBLOSECURITY environment variable".to_owned())
                 }
             };
@@ -38,7 +38,7 @@ impl RobloxAuth {
         Ok(self.roblosecurity.clone().unwrap())
     }
 
-    pub fn get_csrf_token(self: &mut Self) -> Result<String, String> {
+    pub fn get_csrf_token(&mut self) -> Result<String, String> {
         if self.csrf_token.is_none() {
             let res = ureq::post("https://auth.roblox.com")
                 .set(

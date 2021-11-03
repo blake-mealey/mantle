@@ -1,10 +1,10 @@
 placeFiles:
-  start: project-fixtures/start.rbxlx
-  world: project-fixtures/world.rbxlx
+  start: start.rbxlx
+  world: world.rbxlx
 
 deployments:
   - name: staging
-    branches: [dev, experiments/*]
+    branches: [dev, dev/*]
     experienceId: 3028808377
     placeIds:
       start: 7818935418

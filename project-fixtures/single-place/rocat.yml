@@ -1,16 +1,16 @@
 placeFiles:
-  start: project-fixtures/start.rbxlx
+  start: start.rbxlx
 
 deployments:
   - name: staging
-    branches: [dev, experiments/*]
+    branches: [dev, dev/*]
     experienceId: 3028808377
     placeIds:
       start: 7818935418
   - name: production
     branches: [main]
     # tagCommit: true
-    deployMode: save
+    # deployMode: save
     experienceId: 3028808377
     placeIds:
       start: 7818935418

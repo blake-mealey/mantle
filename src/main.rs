@@ -4,11 +4,14 @@ mod roblox_api;
 mod roblox_auth;
 
 fn main() {
-    std::process::exit(match cli::run() {
+    let result = cli::run();
+
+    if let Err(e) = &result {
+        println!("\n❌ {}", e);
+    }
+
+    std::process::exit(match &result {
         Ok(()) => 0,
-        Err(e) => {
-            println!("\n❌ {}", e);
-            1
-        }
+        Err(_) => 1,
     });
 }

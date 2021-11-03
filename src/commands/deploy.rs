@@ -7,6 +7,7 @@ use crate::roblox_auth::RobloxAuth;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 
@@ -240,13 +241,14 @@ fn run_command(command: &str) -> std::io::Result<std::process::Output> {
     }
 }
 
-fn load_config_file(config_file: &str) -> Result<Config, String> {
+fn load_config_file(config_file: &Path) -> Result<Config, String> {
     let data = match fs::read_to_string(config_file) {
         Ok(v) => v,
         Err(e) => {
             return Err(format!(
                 "Unable to read config file: {}\n\t{}",
-                config_file, e
+                config_file.display(),
+                e
             ))
         }
     };
@@ -256,7 +258,8 @@ fn load_config_file(config_file: &str) -> Result<Config, String> {
         Err(e) => {
             return Err(format!(
                 "Unable to parse config file {}\n\t{}",
-                config_file, e
+                config_file.display(),
+                e
             ))
         }
     }
@@ -272,9 +275,33 @@ fn match_branch(branch: &str, patterns: &[String]) -> bool {
     false
 }
 
-pub fn run(config_file: &str) -> Result<(), String> {
-    println!("📃 Config file: {}", config_file);
-    let config = load_config_file(config_file)?;
+fn parse_project(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {
+    let project = project.unwrap_or(".");
+    let project_path = Path::new(project).to_owned();
+
+    let (project_dir, config_file) = if project_path.is_dir() {
+        (project_path.clone(), project_path.join("rocat.yml"))
+    } else if project_path.is_file() {
+        (project_path.parent().unwrap().into(), project_path)
+    } else {
+        return Err(format!("Unable to parse project path: {}", project));
+    };
+
+    if config_file.exists() {
+        return Ok((project_dir, config_file));
+    }
+
+    Err(format!(
+        "Config file does not exist: {}",
+        config_file.display()
+    ))
+}
+
+pub fn run(project: Option<&str>) -> Result<(), String> {
+    let (project_path, config_file) = parse_project(project)?;
+    println!("📃 Config file: {}", config_file.display());
+
+    let config = load_config_file(&config_file)?;
 
     let output = run_command("git symbolic-ref --short HEAD");
     let result = match output {
@@ -386,7 +413,12 @@ pub fn run(config_file: &str) -> Result<(), String> {
             roblox_api.configure_place(*place_id, &place_template.unwrap().into())?;
         }
 
-        let upload_result = roblox_api.upload_place(place_file, experience_id, *place_id, mode)?;
+        let upload_result = roblox_api.upload_place(
+            &project_path.join(place_file),
+            experience_id,
+            *place_id,
+            mode,
+        )?;
 
         if should_tag {
             let tag = format!("{}-v{}", name, upload_result.place_version);

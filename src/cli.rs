@@ -56,12 +56,9 @@ fn get_app() -> App<'static, 'static> {
             SubCommand::with_name("deploy")
                 .about("Saves a project file to a Roblox place")
                 .arg(
-                    Arg::with_name("config")
-                        .short("c")
-                        .long("config")
-                        .value_name("FILE")
-                        .help("Sets a custom deploy config file")
-                        .default_value("rocat.yml")
+                    Arg::with_name("PROJECT")
+                        .index(1)
+                        .help("The project to deploy: either the path to a directory containing a 'rocat.yml' file or the path to a configuration file. Defaults to the current directory.")
                         .takes_value(true),
                 ),
         )
@@ -82,7 +79,7 @@ pub fn run_with(args: Vec<String>) -> Result<(), String> {
             publish_matches.value_of("PLACE_ID").unwrap(),
         ),
         ("deploy", Some(deploy_matches)) => {
-            commands::deploy::run(deploy_matches.value_of("config").unwrap())
+            commands::deploy::run(deploy_matches.value_of("PROJECT"))
         }
         _ => Err("Unreachable code reached!".to_string()),
     }

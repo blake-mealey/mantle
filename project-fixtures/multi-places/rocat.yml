@@ -1,6 +1,6 @@
 placeFiles:
-  start: project-fixtures/start.rbxlx
-  world: project-fixtures/world.rbxlx
+  start: start.rbxlx
+  world: world.rbxlx
 
 deployments:
   - name: staging

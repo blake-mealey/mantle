@@ -233,19 +233,19 @@ impl RobloxApi {
 
     pub fn upload_place(
         &mut self,
-        project_file: &str,
+        place_file: &Path,
         experience_id: u64,
         place_id: u64,
         mode: DeployMode,
     ) -> Result<UploadResult, String> {
-        let project_type = match Path::new(project_file).extension().and_then(OsStr::to_str) {
+        let project_type = match place_file.extension().and_then(OsStr::to_str) {
             Some("rbxlx") => ProjectType::Xml,
             Some("rbxl") => ProjectType::Binary,
             Some(v) => return Err(format!("Invalid project file extension: {}", v)),
             None => {
                 return Err(format!(
                     "No project file extension in project file: {}",
-                    project_file
+                    place_file.display()
                 ))
             }
         };
@@ -270,29 +270,31 @@ impl RobloxApi {
 
         let res = match project_type {
             ProjectType::Xml => {
-                let data = match fs::read_to_string(project_file) {
+                let data = match fs::read_to_string(place_file) {
                     Ok(v) => v,
                     Err(e) => {
                         return Err(format!(
-                            "Unable to read project file: {}\n\t{}",
-                            project_file, e
+                            "Unable to read place file: {}\n\t{}",
+                            place_file.display(),
+                            e
                         ))
                     }
                 };
-                println!("\t📦 Uploading file: {}", project_file);
+                println!("\t📦 Uploading file: {}", place_file.display());
                 req.send_string(&data)
             }
             ProjectType::Binary => {
-                let data = match fs::read(project_file) {
+                let data = match fs::read(place_file) {
                     Ok(v) => v,
                     Err(e) => {
                         return Err(format!(
-                            "Unable to read project file: {}\n\t{}",
-                            project_file, e
+                            "Unable to read place file: {}\n\t{}",
+                            place_file.display(),
+                            e
                         ))
                     }
                 };
-                println!("📦 Uploading file: {}", project_file);
+                println!("📦 Uploading file: {}", place_file.display());
                 req.send_bytes(&data)
             }
         };

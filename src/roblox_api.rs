@@ -3,6 +3,29 @@ use std::{clone::Clone, ffi::OsStr, fmt, fs, path::Path};
 
 use crate::roblox_auth::RobloxAuth;
 
+enum AuthType {
+    ApiKey,
+    CookieWithCsrfToken,
+}
+
+trait RequestExt {
+    fn set_auth(self, auth_type: AuthType, auth: &mut RobloxAuth) -> Result<ureq::Request, String>;
+}
+
+impl RequestExt for ureq::Request {
+    fn set_auth(self, auth_type: AuthType, auth: &mut RobloxAuth) -> Result<ureq::Request, String> {
+        match auth_type {
+            AuthType::ApiKey => Ok(self.set("x-api-key", &auth.get_api_key()?)),
+            AuthType::CookieWithCsrfToken => Ok(self
+                .set(
+                    "cookie",
+                    &format!(".ROBLOSECURITY={}", auth.get_roblosecurity()?),
+                )
+                .set("x-csrf-token", &auth.get_csrf_token()?)),
+        }
+    }
+}
+
 #[derive(Deserialize, Copy, Clone)]
 pub enum DeployMode {
     Publish,
@@ -24,8 +47,8 @@ enum ProjectType {
     Binary,
 }
 
-#[derive(Deserialize)]
-struct RobloxApiError {
+#[derive(Deserialize, Debug)]
+struct RobloxApiErrorModel {
     // There are some other possible properties but we currently have no use for them so they are not
     // included
 
@@ -36,7 +59,7 @@ struct RobloxApiError {
     title: Option<String>,
 
     // Some error models on older APIs have an errors array
-    errors: Option<Vec<RobloxApiError>>,
+    errors: Option<Vec<RobloxApiErrorModel>>,
 }
 
 #[derive(Deserialize)]
@@ -45,45 +68,13 @@ struct PlaceManagementResponse {
     version_number: i32,
 }
 
-static INVALID_API_KEY_HELP: &str = "\
+pub static INVALID_API_KEY_HELP: &str = "\
     Please check your ROBLOX_API_KEY environment variable. \n\
     \tIf you don't have an API key, you can create one at https://create.roblox.com/credentials \n\
     \tYou must ensure that your API key has enabled the 'Place Management API System' and you have \n\
     \tadded the place you are trying to upload to the API System Configuration. You also must ensure \n\
     \tthat your API key's IP whitelist includes the machine you are running this on. You can set it \n\
     \tto '0.0.0.0/0' to whitelist all IPs but this should only be used for testing purposes.";
-
-fn get_roblox_api_error_message(response: ureq::Response) -> String {
-    let is_json = response.content_type() == "application/json";
-
-    fn get_message_from_error(error: RobloxApiError) -> Option<String> {
-        return if error.message.is_some() {
-            Some(error.message.unwrap())
-        } else if error.title.is_some() {
-            Some(error.title.unwrap())
-        } else if error.errors.is_some() {
-            for e in error.errors.unwrap() {
-                if let Some(message) = get_message_from_error(e) {
-                    return Some(message);
-                }
-            }
-            None
-        } else {
-            None
-        };
-    }
-
-    let result: Option<String> = if is_json {
-        match response.into_json::<RobloxApiError>() {
-            Ok(v) => get_message_from_error(v),
-            Err(_) => None,
-        }
-    } else {
-        response.into_string().ok()
-    };
-
-    result.unwrap_or_else(|| "Unknown error".to_string())
-}
 
 pub struct UploadResult {
     pub place_version: i32,
@@ -189,6 +180,51 @@ impl RobloxApi {
         Self { roblox_auth }
     }
 
+    fn get_roblox_api_error_message(response: ureq::Response) -> Option<String> {
+        let is_json = response.content_type() == "application/json";
+
+        fn get_message_from_error(error: RobloxApiErrorModel) -> Option<String> {
+            return if let Some(message) = error.message {
+                Some(message)
+            } else if let Some(title) = error.title {
+                Some(title)
+            } else if let Some(errors) = error.errors {
+                for e in errors {
+                    if let Some(message) = get_message_from_error(e) {
+                        return Some(message);
+                    }
+                }
+                None
+            } else {
+                None
+            };
+        }
+
+        if is_json {
+            match response.into_json::<RobloxApiErrorModel>() {
+                Ok(v) => get_message_from_error(v),
+                Err(_) => None,
+            }
+        } else {
+            response.into_string().ok()
+        }
+    }
+
+    fn handle_response(
+        result: Result<ureq::Response, ureq::Error>,
+    ) -> Result<ureq::Response, String> {
+        match result {
+            Ok(response) => Ok(response),
+            Err(ureq::Error::Status(status, response)) => {
+                match Self::get_roblox_api_error_message(response) {
+                    Some(message) => Err(message),
+                    None => Err(format!("Unknown error (status {})", status)),
+                }
+            }
+            Err(e) => Err(format!("Unknown error: {}", e)),
+        }
+    }
+
     pub fn upload_place(
         self: &mut Self,
         project_file: &str,
@@ -196,11 +232,6 @@ impl RobloxApi {
         place_id: u64,
         mode: DeployMode,
     ) -> Result<UploadResult, String> {
-        let api_key = &match self.roblox_auth.get_api_key() {
-            Ok(val) => val,
-            Err(_) => return Err(INVALID_API_KEY_HELP.to_string()),
-        };
-
         let project_type = match Path::new(project_file).extension().and_then(OsStr::to_str) {
             Some("rbxlx") => ProjectType::Xml,
             Some("rbxl") => ProjectType::Binary,
@@ -227,7 +258,7 @@ impl RobloxApi {
             "https://apis.roblox.com/universes/v1/{}/places/{}/versions",
             experience_id, place_id
         ))
-        .set("x-api-key", api_key)
+        .set_auth(AuthType::ApiKey, &mut self.roblox_auth)?
         .set("Content-Type", content_type)
         .query("versionType", version_type);
 
@@ -255,45 +286,25 @@ impl RobloxApi {
                         ))
                     }
                 };
-                println!("🚀 Uploading file: {}", project_file);
+                println!("📦 Uploading file: {}", project_file);
                 req.send_bytes(&data)
             }
         };
 
-        match res {
-            Ok(response) => {
-                let model = response.into_json::<PlaceManagementResponse>().unwrap();
-                println!(
-                    "\
+        let response = Self::handle_response(res)?;
+        let model = response.into_json::<PlaceManagementResponse>().unwrap();
+        println!(
+            "\
                 \t🎉 Successfully {} to Roblox! \n\
                 \t\tView place at https://www.roblox.com/games/{} \n\
                 \t\tVersion Number: {}",
-                    version_type.to_lowercase(),
-                    place_id,
-                    model.version_number
-                );
-                Ok(UploadResult {
-                    place_version: model.version_number,
-                })
-            }
-            Err(ureq::Error::Status(_code, response)) => {
-                match (response.status(), get_roblox_api_error_message(response)) {
-                    (400, message) => Err(format!("Invalid request or file content: {}", message)),
-                    (401, message) => Err(format!(
-                        "API key not valid for operation: {}\n   {}",
-                        message, INVALID_API_KEY_HELP
-                    )),
-                    (403, message) => Err(format!("Publish not allowed on place: {}", message)),
-                    (404, message) => Err(format!("Place or universe does not exist: {}", message)),
-                    (409, message) => Err(format!("Place not part of the universe: {}", message)),
-                    (500, message) => Err(format!("Server internal error: {}", message)),
-                    (status, message) => {
-                        Err(format!("Unknown error (status {}): {}", status, message))
-                    }
-                }
-            }
-            Err(e) => Err(format!("Unknown error: {}", e)),
-        }
+            version_type.to_lowercase(),
+            place_id,
+            model.version_number
+        );
+        Ok(UploadResult {
+            place_version: model.version_number,
+        })
     }
 
     pub fn configure_experience(
@@ -301,18 +312,6 @@ impl RobloxApi {
         experience_id: u64,
         experience_configuration: &ExperienceConfigurationModel,
     ) -> Result<(), String> {
-        let roblosecurity = match self.roblox_auth.get_roblosecurity() {
-            Ok(val) => val,
-            Err(_) => {
-                return Err("Please check your ROBLOSECURITY environment variable.".to_owned())
-            }
-        };
-
-        let csrf_token = match self.roblox_auth.get_csrf_token() {
-            Ok(val) => val,
-            Err(e) => return Err(format!("Failed to get the CSRF token\n\t{}", e)),
-        };
-
         let json_data = match serde_json::to_value(&experience_configuration) {
             Ok(v) => v,
             Err(e) => {
@@ -330,22 +329,13 @@ impl RobloxApi {
                 experience_id
             ),
         )
-        .set("cookie", &format!(".ROBLOSECURITY={}", roblosecurity))
-        .set("x-csrf-token", &csrf_token)
+        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
         .set("Content-Type", "application/json")
         .send_json(json_data);
 
-        match res {
-            Ok(_) => return Ok(()),
-            Err(ureq::Error::Status(_code, response)) => {
-                match (response.status(), get_roblox_api_error_message(response)) {
-                    (status, message) => {
-                        Err(format!("Unknown error (status {}): {}", status, message))
-                    }
-                }
-            }
-            Err(e) => Err(format!("Unknown error: {}", e)),
-        }
+        Self::handle_response(res)?;
+
+        Ok(())
     }
 
     pub fn configure_place(
@@ -353,16 +343,6 @@ impl RobloxApi {
         place_id: u64,
         place_configuration: &PlaceConfigurationModel,
     ) -> Result<(), String> {
-        let roblosecurity = match self.roblox_auth.get_roblosecurity() {
-            Ok(val) => val,
-            Err(_) => return Err("Please check your ROBLOSECURITY environment variable".to_owned()),
-        };
-
-        let csrf_token = match self.roblox_auth.get_csrf_token() {
-            Ok(val) => val,
-            Err(e) => return Err(format!("Failed to get the CSRF token\n\t{}", e)),
-        };
-
         let json_data = match serde_json::to_value(&place_configuration) {
             Ok(v) => v,
             Err(e) => return Err(format!("Failed to serialize place configuration\n\t{}", e)),
@@ -372,22 +352,13 @@ impl RobloxApi {
             "PATCH",
             &format!("https://develop.roblox.com/v2/places/{}", place_id),
         )
-        .set("cookie", &format!(".ROBLOSECURITY={}", roblosecurity))
-        .set("x-csrf-token", &csrf_token)
+        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
         .set("Content-Type", "application/json")
         .send_json(json_data);
 
-        match res {
-            Ok(_) => return Ok(()),
-            Err(ureq::Error::Status(_code, response)) => {
-                match (response.status(), get_roblox_api_error_message(response)) {
-                    (status, message) => {
-                        Err(format!("Unknown error (status {}): {}", status, message))
-                    }
-                }
-            }
-            Err(e) => Err(format!("Unknown error: {}", e)),
-        }
+        Self::handle_response(res)?;
+
+        Ok(())
     }
 
     pub fn set_experience_active(
@@ -395,38 +366,16 @@ impl RobloxApi {
         experience_id: u64,
         active: bool,
     ) -> Result<(), String> {
-        let roblosecurity = match self.roblox_auth.get_roblosecurity() {
-            Ok(val) => val,
-            Err(_) => return Err("Please check your ROBLOSECURITY environment variable".to_owned()),
-        };
-
-        let csrf_token = match self.roblox_auth.get_csrf_token() {
-            Ok(val) => val,
-            Err(e) => return Err(format!("Failed to get the CSRF token\n\t{}", e)),
-        };
-
+        let endpoint = if active { "activate" } else { "deactivate" };
         let res = ureq::post(&format!(
             "https://develop.roblox.com/v1/universes/{}/{}",
-            experience_id,
-            match active {
-                true => "activate",
-                false => "deactivate",
-            }
+            experience_id, endpoint
         ))
-        .set("cookie", &format!(".ROBLOSECURITY={}", roblosecurity))
-        .set("x-csrf-token", &csrf_token)
+        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
         .send_string("");
 
-        match res {
-            Ok(_) => return Ok(()),
-            Err(ureq::Error::Status(_code, response)) => {
-                match (response.status(), get_roblox_api_error_message(response)) {
-                    (status, message) => {
-                        Err(format!("Unknown error (status {}): {}", status, message))
-                    }
-                }
-            }
-            Err(e) => Err(format!("Unknown error: {}", e)),
-        }
+        Self::handle_response(res)?;
+
+        Ok(())
     }
 }

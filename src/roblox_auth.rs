@@ -1,5 +1,7 @@
 use std::env;
 
+use crate::roblox_api::INVALID_API_KEY_HELP;
+
 #[derive(Default)]
 pub struct RobloxAuth {
     api_key: Option<String>,
@@ -16,28 +18,24 @@ impl RobloxAuth {
         if self.api_key.is_none() {
             let var = match env::var("ROBLOX_API_KEY") {
                 Ok(v) => v,
-                Err(e) => return Err(format!("{}", e)),
+                Err(e) => return Err(INVALID_API_KEY_HELP.to_owned()),
             };
             self.api_key = Some(var);
         }
-        match self.api_key.clone() {
-            Some(api_key) => Ok(api_key),
-            None => unreachable!("api_key must be set"),
-        }
+        Ok(self.api_key.clone().unwrap())
     }
 
     pub fn get_roblosecurity(self: &mut Self) -> Result<String, String> {
         if self.roblosecurity.is_none() {
             let var = match env::var("ROBLOSECURITY") {
                 Ok(v) => v,
-                Err(e) => return Err(format!("{}", e)),
+                Err(e) => {
+                    return Err("Please check your ROBLOSECURITY environment variable".to_owned())
+                }
             };
             self.roblosecurity = Some(var);
         }
-        match self.roblosecurity.clone() {
-            Some(roblosecurity) => Ok(roblosecurity),
-            None => unreachable!("roblosecurity must be set"),
-        }
+        Ok(self.roblosecurity.clone().unwrap())
     }
 
     pub fn get_csrf_token(self: &mut Self) -> Result<String, String> {
@@ -49,18 +47,21 @@ impl RobloxAuth {
                 )
                 .send_string("");
             self.csrf_token = match res {
-                Ok(_) => None,
+                Ok(_) => {
+                    return Err("Request for csrf token returned 200 (expected 403)".to_owned())
+                }
                 Err(ureq::Error::Status(_code, response)) => match response.status() {
                     403 => response.header("x-csrf-token").map(|v| v.to_owned()),
-                    _ => None,
+                    status => {
+                        return Err(format!(
+                            "Request for csrf token returned {} (expected 403)",
+                            status
+                        ))
+                    }
                 },
-                Err(e) => return Err(format!("{}", e)),
+                Err(e) => return Err(format!("Request for csrf token failed: {}", e)),
             };
         }
-
-        match self.csrf_token.clone() {
-            Some(csrf_token) => Ok(csrf_token),
-            None => Ok("".to_owned()),
-        }
+        Ok(self.csrf_token.clone().unwrap())
     }
 }

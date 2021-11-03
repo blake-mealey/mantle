@@ -12,8 +12,17 @@ deployments:
   - name: production
     branches: [main]
     # tagCommit: true
-    # deployMode: Save
+    # deployMode: save
     experienceId: 3028808377
     placeIds:
       start: 7818935418
       world: 7844085774
+
+templates:
+  experience:
+    name: Rocat Test Experience
+  places:
+    start:
+      name: Rocat Test Start Place
+    world:
+      name: Rocat Test World Place

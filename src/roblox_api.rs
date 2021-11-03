@@ -1,5 +1,6 @@
+use multipart::client::lazy::Multipart;
 use serde::{Deserialize, Serialize};
-use std::{clone::Clone, ffi::OsStr, fmt, fs, path::Path};
+use std::{clone::Clone, ffi::OsStr, fmt, fs, io::Read, path::Path};
 
 use crate::roblox_auth::RobloxAuth;
 
@@ -381,6 +382,40 @@ impl RobloxApi {
         ))
         .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
         .send_string("");
+
+        Self::handle_response(res)?;
+
+        Ok(())
+    }
+
+    pub fn upload_icon(&mut self, experience_id: u64, icon_file: &Path) -> Result<(), String> {
+        let stream = fs::File::open(icon_file)
+            .map_err(|e| format!("Failed to open icon file {}: {}", icon_file.display(), e))?;
+        let file_name = Some(
+            icon_file
+                .file_name()
+                .and_then(OsStr::to_str)
+                .ok_or("Unable to determine icon name")?,
+        );
+        let mime = Some(mime_guess::from_path(icon_file).first_or_octet_stream());
+
+        let mut multipart = Multipart::new();
+        multipart.add_stream("request.files", stream, file_name, mime);
+
+        let multipart = multipart
+            .prepare()
+            .map_err(|e| format!("Failed to load icon file {}: {}", icon_file.display(), e))?;
+
+        let res = ureq::post(&format!(
+            "https://publish.roblox.com/v1/games/{}/icon",
+            experience_id
+        ))
+        .set(
+            "Content-Type",
+            &format!("multipart/form-data; boundary={}", multipart.boundary()),
+        )
+        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
+        .send(multipart);
 
         Self::handle_response(res)?;
 

@@ -24,6 +24,11 @@ templates:
     avatarType: r15
     avatarAnimationType: playerChoice
     avatarCollisionType: outerBox
+    icon: game-icon.png
+    thumbnails:
+      - game-thumbnail-1.png
+      - game-thumbnail-2.png
+      - game-thumbnail-3.png
   places:
     start:
       name: Start name

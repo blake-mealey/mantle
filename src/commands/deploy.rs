@@ -95,8 +95,8 @@ pub struct ExperienceTemplateConfig {
     // basic info
     genre: Option<GenreConfig>,
     playable_devices: Option<Vec<ExperiencePlayableDevice>>,
-    // icon: Option<String>,   // TODO: call the upload icon api
-    // thumbnails: Option<Vec<String>>  // TODO: call the upload thumbnails api
+    icon: Option<String>,
+    thumbnails: Option<Vec<String>>,
 
     // permissions
     playability: Option<PlayabilityConfig>,
@@ -396,6 +396,9 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
                 experience_id,
                 !matches!(playability, PlayabilityConfig::Private),
             )?;
+        }
+        if let Some(icon_path) = &experience_template.icon {
+            roblox_api.upload_icon(experience_id, &project_path.join(icon_path))?;
         }
     }
 

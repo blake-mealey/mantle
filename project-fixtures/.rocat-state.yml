@@ -1,0 +1,13 @@
+version: 1
+state:
+  experience:
+    assetId: 000
+    icon:
+      hash: blah
+      assetId: 000
+    thumbnails:
+      - hash: blah
+        assetId: 000
+  places:
+    name:
+      assetId: 000

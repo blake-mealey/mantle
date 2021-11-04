@@ -2,6 +2,7 @@ mod cli;
 mod commands;
 mod roblox_api;
 mod roblox_auth;
+mod state;
 
 fn main() {
     let result = cli::run();

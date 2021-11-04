@@ -1,8 +1,10 @@
 use multipart::client::lazy::{Multipart, PreparedFields};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use sha2::{Digest, Sha256};
 use std::{clone::Clone, ffi::OsStr, fmt, fs, path::Path};
 
-use crate::roblox_auth::RobloxAuth;
+use crate::{roblox_auth::RobloxAuth, state::RocatState};
 
 enum AuthType {
     ApiKey,
@@ -67,7 +69,13 @@ struct RobloxApiErrorModel {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PlaceManagementResponse {
-    version_number: i32,
+    version_number: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UploadImageResponse {
+    target_id: u64,
 }
 
 pub static INVALID_API_KEY_HELP: &str = "\
@@ -79,7 +87,12 @@ pub static INVALID_API_KEY_HELP: &str = "\
     \tto '0.0.0.0/0' to whitelist all IPs but this should only be used for testing purposes.";
 
 pub struct UploadResult {
-    pub place_version: i32,
+    pub place_version: u32,
+}
+
+pub struct UploadImageResult {
+    pub asset_id: u64,
+    pub hash: String,
 }
 
 #[derive(Serialize)]
@@ -301,7 +314,9 @@ impl RobloxApi {
         };
 
         let response = Self::handle_response(res)?;
-        let model = response.into_json::<PlaceManagementResponse>().unwrap();
+        let model = response
+            .into_json::<PlaceManagementResponse>()
+            .map_err(|e| format!("Failed to deserialize upload place response: {}", e))?;
         println!(
             "\
                 \t🎉 Successfully {} to Roblox! \n\
@@ -339,7 +354,6 @@ impl RobloxApi {
             ),
         )
         .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
-        .set("Content-Type", "application/json")
         .send_json(json_data);
 
         Self::handle_response(res)?;
@@ -407,7 +421,34 @@ impl RobloxApi {
             .map_err(|e| format!("Failed to load image file {}: {}", image_file.display(), e))
     }
 
-    pub fn upload_icon(&mut self, experience_id: u64, icon_file: &Path) -> Result<(), String> {
+    fn get_file_hash(file_path: &Path) -> Result<String, String> {
+        let buffer = fs::read(file_path).map_err(|e| {
+            format!(
+                "Failed to read file {} for hashing: {}",
+                file_path.display(),
+                e
+            )
+        })?;
+        let digest = Sha256::digest(&buffer);
+        Ok(format!("{:x}", digest))
+    }
+
+    pub fn upload_icon(
+        &mut self,
+        state: &RocatState,
+        experience_id: u64,
+        icon_file: &Path,
+    ) -> Result<UploadImageResult, String> {
+        let file_hash = Self::get_file_hash(icon_file)?;
+
+        if !state.needs_to_upload_experience_icon(file_hash.clone())? {
+            return Ok(UploadImageResult {
+                asset_id: state.get_experience_icon_asset_id(),
+                hash: file_hash,
+            });
+        }
+        println!("upload icon");
+
         let multipart = Self::get_image_from_data(icon_file)?;
 
         let res = ureq::post(&format!(
@@ -421,16 +462,33 @@ impl RobloxApi {
         .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
         .send(multipart);
 
-        Self::handle_response(res)?;
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<UploadImageResponse>()
+            .map_err(|e| format!("Failed to deserialize upload image response: {}", e))?;
 
-        Ok(())
+        Ok(UploadImageResult {
+            asset_id: model.target_id,
+            hash: file_hash,
+        })
     }
 
     pub fn upload_thumbnail(
         &mut self,
+        state: &RocatState,
         experience_id: u64,
         thumbnail_file: &Path,
-    ) -> Result<(), String> {
+    ) -> Result<UploadImageResult, String> {
+        let file_hash = Self::get_file_hash(thumbnail_file)?;
+
+        if !state.needs_to_upload_experience_thumbnail(file_hash.clone())? {
+            return Ok(UploadImageResult {
+                asset_id: state.get_experience_thumbnail_asset_id_from_hash(file_hash.clone()),
+                hash: file_hash,
+            });
+        }
+        println!("upload thumbnail");
+
         let multipart = Self::get_image_from_data(thumbnail_file)?;
 
         let res = ureq::post(&format!(
@@ -443,6 +501,46 @@ impl RobloxApi {
         )
         .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
         .send(multipart);
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<UploadImageResponse>()
+            .map_err(|e| format!("Failed to deserialize upload image response: {}", e))?;
+
+        Ok(UploadImageResult {
+            asset_id: model.target_id,
+            hash: file_hash,
+        })
+    }
+
+    pub fn set_experience_thumbnail_order(
+        &mut self,
+        experience_id: u64,
+        new_thumbnail_order: &Vec<u64>,
+    ) -> Result<(), String> {
+        let res = ureq::post(&format!(
+            "https://develop.roblox.com/v1/universes/{}/thumbnails/order",
+            experience_id
+        ))
+        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
+        .send_json(json!({ "thumbnailIds": new_thumbnail_order }));
+
+        Self::handle_response(res)?;
+
+        Ok(())
+    }
+
+    pub fn delete_experience_thumbnail(
+        &mut self,
+        experience_id: u64,
+        thumbnail_id: u64,
+    ) -> Result<(), String> {
+        let res = ureq::delete(&format!(
+            "https://develop.roblox.com/v1/universes/{}/thumbnails/{}",
+            experience_id, thumbnail_id
+        ))
+        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
+        .send_string("");
 
         Self::handle_response(res)?;
 

@@ -2,8 +2,10 @@ use crate::roblox_api::{
     DeployMode, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
     ExperienceConfigurationModel, ExperienceGenre, ExperiencePermissionsModel,
     ExperiencePlayableDevice, PlaceConfigurationModel, RobloxApi, SocialSlotType,
+    UploadImageResult,
 };
 use crate::roblox_auth::RobloxAuth;
+use crate::state::{load_state_file, RocatState, RocatStateRoot};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -303,6 +305,8 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
 
     let config = load_config_file(&config_file)?;
 
+    let mut state = RocatState::load_from_file(&project_path)?;
+
     let output = run_command("git symbolic-ref --short HEAD");
     let result = match output {
         Ok(v) => v,
@@ -388,8 +392,10 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
 
     let mut roblox_api = RobloxApi::new(RobloxAuth::new());
 
+    state.set_experience_asset_id(experience_id);
     if let Some(experience_template) = &config.templates.experience {
         println!("🔧 Configuring experience");
+
         roblox_api.configure_experience(experience_id, &experience_template.into())?;
         if let Some(playability) = experience_template.playability {
             roblox_api.set_experience_active(
@@ -397,12 +403,41 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
                 !matches!(playability, PlayabilityConfig::Private),
             )?;
         }
+
         if let Some(icon_path) = &experience_template.icon {
-            roblox_api.upload_icon(experience_id, &project_path.join(icon_path))?;
+            let result =
+                roblox_api.upload_icon(&state, experience_id, &project_path.join(icon_path))?;
+            state.set_experience_icon(result.asset_id, result.hash);
         }
+
         if let Some(thumbnail_paths) = &experience_template.thumbnails {
+            let original_thumbnail_order = state.get_experience_thumbnail_order();
+            let mut results: Vec<UploadImageResult> = Vec::new();
             for thumbnail_path in thumbnail_paths.iter() {
-                roblox_api.upload_thumbnail(experience_id, &project_path.join(thumbnail_path))?;
+                let result = roblox_api.upload_thumbnail(
+                    &state,
+                    experience_id,
+                    &project_path.join(thumbnail_path),
+                )?;
+                results.push(result);
+            }
+            state.set_experience_thumbnails(results);
+            let new_thumbnail_order = state.get_experience_thumbnail_order();
+
+            let removed_thumbnails: Vec<&u64> = original_thumbnail_order
+                .iter()
+                .filter(|id| !new_thumbnail_order.contains(id))
+                .collect();
+            for thumbnail_id in removed_thumbnails {
+                roblox_api.delete_experience_thumbnail(experience_id, *thumbnail_id)?;
+            }
+
+            let order_changed = original_thumbnail_order
+                .iter()
+                .zip(new_thumbnail_order.iter())
+                .any(|(old, new)| *old != *new);
+            if order_changed {
+                roblox_api.set_experience_thumbnail_order(experience_id, &new_thumbnail_order)?;
             }
         }
     }
@@ -440,6 +475,8 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
     if should_tag {
         run_command("git push --tags").map_err(|e| format!("Unable to push the tags\n\t{}", e))?;
     }
+
+    state.save_to_file()?;
 
     Ok(())
 }

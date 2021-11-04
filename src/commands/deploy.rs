@@ -450,7 +450,6 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
             None => return Err(format!("No place ID found for configured place {}", name)),
         };
 
-        state.set_place_asset_id(name.to_owned(), *place_id);
         let place_template = config.templates.places.get(name);
         if place_template.is_some() {
             println!("\t🔧 Configuring place");
@@ -458,11 +457,18 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
         }
 
         let upload_result = roblox_api.upload_place(
+            &state,
             &project_path.join(place_file),
             experience_id,
             *place_id,
             mode,
         )?;
+        state.set_place(
+            name.to_owned(),
+            *place_id,
+            upload_result.hash,
+            upload_result.place_version,
+        );
 
         if should_tag {
             let tag = format!("{}-v{}", name, upload_result.place_version);

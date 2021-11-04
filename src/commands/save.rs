@@ -3,6 +3,7 @@ use std::path::Path;
 use crate::{
     roblox_api::{DeployMode, RobloxApi},
     roblox_auth::RobloxAuth,
+    state::RocatState,
 };
 
 pub fn run(place_file: &str, experience_id: &str, place_id: &str) -> Result<(), String> {
@@ -25,6 +26,7 @@ pub fn run(place_file: &str, experience_id: &str, place_id: &str) -> Result<(), 
     let mut roblox_api = RobloxApi::new(RobloxAuth::new());
 
     roblox_api.upload_place(
+        &RocatState::new(),
         Path::new(place_file),
         parsed_experience_id,
         parsed_place_id,

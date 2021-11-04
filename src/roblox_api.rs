@@ -86,8 +86,9 @@ pub static INVALID_API_KEY_HELP: &str = "\
     \tthat your API key's IP whitelist includes the machine you are running this on. You can set it \n\
     \tto '0.0.0.0/0' to whitelist all IPs but this should only be used for testing purposes.";
 
-pub struct UploadResult {
+pub struct UploadPlaceResult {
     pub place_version: u32,
+    pub hash: String,
 }
 
 pub struct UploadImageResult {
@@ -247,11 +248,21 @@ impl RobloxApi {
 
     pub fn upload_place(
         &mut self,
+        state: &RocatState,
         place_file: &Path,
         experience_id: u64,
         place_id: u64,
         mode: DeployMode,
-    ) -> Result<UploadResult, String> {
+    ) -> Result<UploadPlaceResult, String> {
+        let file_hash = Self::get_file_hash(place_file)?;
+
+        if !state.needs_to_upload_place(place_id, file_hash.clone()) {
+            return Ok(UploadPlaceResult {
+                place_version: state.get_place_version(place_id),
+                hash: file_hash,
+            });
+        }
+
         let project_type = match place_file.extension().and_then(OsStr::to_str) {
             Some("rbxlx") => ProjectType::Xml,
             Some("rbxl") => ProjectType::Binary,
@@ -326,8 +337,9 @@ impl RobloxApi {
             place_id,
             model.version_number
         );
-        Ok(UploadResult {
+        Ok(UploadPlaceResult {
             place_version: model.version_number,
+            hash: file_hash,
         })
     }
 
@@ -441,7 +453,7 @@ impl RobloxApi {
     ) -> Result<UploadImageResult, String> {
         let file_hash = Self::get_file_hash(icon_file)?;
 
-        if !state.needs_to_upload_experience_icon(file_hash.clone())? {
+        if !state.needs_to_upload_experience_icon(file_hash.clone()) {
             return Ok(UploadImageResult {
                 asset_id: state.get_experience_icon_asset_id(),
                 hash: file_hash,
@@ -480,7 +492,7 @@ impl RobloxApi {
     ) -> Result<UploadImageResult, String> {
         let file_hash = Self::get_file_hash(thumbnail_file)?;
 
-        if !state.needs_to_upload_experience_thumbnail(file_hash.clone())? {
+        if !state.needs_to_upload_experience_thumbnail(file_hash.clone()) {
             return Ok(UploadImageResult {
                 asset_id: state.get_experience_thumbnail_asset_id_from_hash(file_hash.clone()),
                 hash: file_hash,

@@ -35,13 +35,15 @@ pub struct RocatExperienceStateV1 {
 #[serde(rename_all = "camelCase")]
 pub struct RocatPlaceStateV1 {
     pub asset_id: u64,
+    pub hash: String,
+    pub version: u32,
 }
 
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RocatImageStateV1 {
-    pub hash: String,
     pub asset_id: u64,
+    pub hash: String,
 }
 
 pub struct RocatState {
@@ -75,6 +77,16 @@ pub fn load_state_file(state_file: &Path) -> Result<RocatStateRoot, String> {
 }
 
 impl RocatState {
+    pub fn new() -> RocatState {
+        RocatState {
+            path: Path::new("").to_path_buf(),
+            state: RocatStateRoot::V1(RocatStateV1 {
+                experience: None,
+                places: HashMap::new(),
+            }),
+        }
+    }
+
     pub fn load_from_file(project_path: &Path) -> Result<Self, String> {
         let state_file = project_path.join(".rocat-state.yml");
         Ok(RocatState {
@@ -116,17 +128,30 @@ impl RocatState {
         }
     }
 
-    pub fn set_place_asset_id(&mut self, name: String, asset_id: u64) {
+    pub fn set_place(&mut self, name: String, asset_id: u64, hash: String, version: u32) {
         match &mut self.state {
-            RocatStateRoot::V1(root) => Self::set_place_asset_id_v1(root, name, asset_id),
+            RocatStateRoot::V1(root) => Self::set_place_v1(root, name, asset_id, hash, version),
         }
     }
 
-    fn set_place_asset_id_v1(root: &mut RocatStateV1, name: String, asset_id: u64) {
+    fn set_place_v1(
+        root: &mut RocatStateV1,
+        name: String,
+        asset_id: u64,
+        hash: String,
+        version: u32,
+    ) {
         if let Some(place) = root.places.get_mut(&name) {
             place.asset_id = asset_id;
         } else {
-            root.places.insert(name, RocatPlaceStateV1 { asset_id });
+            root.places.insert(
+                name,
+                RocatPlaceStateV1 {
+                    asset_id,
+                    hash,
+                    version,
+                },
+            );
         }
     }
 
@@ -144,46 +169,66 @@ impl RocatState {
         panic!("Attempted to set the icon of an uninitialized experience.");
     }
 
-    pub fn needs_to_upload_experience_icon(&self, hash: String) -> Result<bool, String> {
+    pub fn needs_to_upload_experience_icon(&self, hash: String) -> bool {
         match &self.state {
             RocatStateRoot::V1(root) => Self::needs_to_upload_experience_icon_v1(root, hash),
         }
     }
 
-    pub fn needs_to_upload_experience_icon_v1(
-        root: &RocatStateV1,
-        hash: String,
-    ) -> Result<bool, String> {
+    pub fn needs_to_upload_experience_icon_v1(root: &RocatStateV1, hash: String) -> bool {
         if let Some(experience) = &root.experience {
             if let Some(icon) = &experience.icon {
-                return Ok(icon.hash != hash);
+                return icon.hash != hash;
             }
         }
 
-        Ok(true)
+        true
     }
 
-    pub fn needs_to_upload_experience_thumbnail(&self, hash: String) -> Result<bool, String> {
+    pub fn needs_to_upload_place(&self, place_id: u64, hash: String) -> bool {
+        match &self.state {
+            RocatStateRoot::V1(root) => Self::needs_to_upload_place_v1(root, place_id, hash),
+        }
+    }
+
+    pub fn needs_to_upload_place_v1(root: &RocatStateV1, place_id: u64, hash: String) -> bool {
+        root.places
+            .values()
+            .all(|place| place.asset_id != place_id || place.hash != hash)
+    }
+
+    pub fn get_place_version(&self, place_id: u64) -> u32 {
+        match &self.state {
+            RocatStateRoot::V1(root) => Self::get_place_version_v1(root, place_id),
+        }
+    }
+
+    fn get_place_version_v1(root: &RocatStateV1, place_id: u64) -> u32 {
+        root.places
+            .values()
+            .find(|place| place.asset_id == place_id)
+            .map(|place| place.version)
+            .expect("Attempted to get the version of an unintialized place.")
+    }
+
+    pub fn needs_to_upload_experience_thumbnail(&self, hash: String) -> bool {
         match &self.state {
             RocatStateRoot::V1(root) => Self::needs_to_upload_experience_thumbnail_v1(root, hash),
         }
     }
 
-    pub fn needs_to_upload_experience_thumbnail_v1(
-        root: &RocatStateV1,
-        hash: String,
-    ) -> Result<bool, String> {
+    pub fn needs_to_upload_experience_thumbnail_v1(root: &RocatStateV1, hash: String) -> bool {
         if let Some(experience) = &root.experience {
             if let Some(thumbnails) = &experience.thumbnails {
                 for thumbnail in thumbnails {
                     if thumbnail.hash == hash {
-                        return Ok(false);
+                        return false;
                     }
                 }
             }
         }
 
-        Ok(true)
+        true
     }
 
     pub fn get_experience_icon_asset_id(&self) -> u64 {

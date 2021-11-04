@@ -450,6 +450,7 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
             None => return Err(format!("No place ID found for configured place {}", name)),
         };
 
+        state.set_place_asset_id(name.to_owned(), *place_id);
         let place_template = config.templates.places.get(name);
         if place_template.is_some() {
             println!("\t🔧 Configuring place");

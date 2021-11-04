@@ -13,4 +13,6 @@ state:
         assetId: 50415302
       - hash: 66c276e730608cac1c95be4dabd9e12303b477fe6091772b3e998067ed6e3da0
         assetId: 50415097
-  places: {}
+  places:
+    start:
+      assetId: 7818935418

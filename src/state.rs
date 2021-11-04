@@ -116,6 +116,20 @@ impl RocatState {
         }
     }
 
+    pub fn set_place_asset_id(&mut self, name: String, asset_id: u64) {
+        match &mut self.state {
+            RocatStateRoot::V1(root) => Self::set_place_asset_id_v1(root, name, asset_id),
+        }
+    }
+
+    fn set_place_asset_id_v1(root: &mut RocatStateV1, name: String, asset_id: u64) {
+        if let Some(place) = root.places.get_mut(&name) {
+            place.asset_id = asset_id;
+        } else {
+            root.places.insert(name, RocatPlaceStateV1 { asset_id });
+        }
+    }
+
     pub fn set_experience_icon(&mut self, asset_id: u64, hash: String) {
         match &mut self.state {
             RocatStateRoot::V1(root) => Self::set_experience_icon_v1(root, asset_id, hash),

@@ -1,0 +1,16 @@
+---
+version: "1"
+state:
+  experience:
+    assetId: 3028808377
+    icon: ~
+    thumbnails: ~
+  places:
+    world:
+      assetId: 7844085774
+      hash: 4d3f78c80cbcf5ba8f104555f2bbd9c8f7485d3970de9fbbba5d2c7bc1219ffc
+      version: 4
+    start:
+      assetId: 7818935418
+      hash: 4d3f78c80cbcf5ba8f104555f2bbd9c8f7485d3970de9fbbba5d2c7bc1219ffc
+      version: 12

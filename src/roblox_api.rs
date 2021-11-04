@@ -447,7 +447,6 @@ impl RobloxApi {
                 hash: file_hash,
             });
         }
-        println!("upload icon");
 
         let multipart = Self::get_image_from_data(icon_file)?;
 
@@ -487,7 +486,6 @@ impl RobloxApi {
                 hash: file_hash,
             });
         }
-        println!("upload thumbnail");
 
         let multipart = Self::get_image_from_data(thumbnail_file)?;
 

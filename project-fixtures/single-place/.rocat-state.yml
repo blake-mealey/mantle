@@ -1,5 +1,5 @@
 ---
-version: "1"
+version: '1'
 state:
   experience:
     assetId: 3028808377
@@ -17,12 +17,12 @@ state:
     - imageType: gameThumbnail
       filePath: game-thumbnail-1.png
       fileHash: c1811300860fcd79a178142a4f4f7aa73198afa3b64a1b3ae19fc50235e7fa75
-      assetId: 50433857
+      assetId: 50443571
     - imageType: gameThumbnail
       filePath: game-thumbnail-2.png
       fileHash: d36757cf3312ca2683eb597bed3359367861cd3e4f1c71668fef24f86edb3a12
-      assetId: 50433858
+      assetId: 50443572
     - imageType: gameThumbnail
       filePath: game-thumbnail-3.png
       fileHash: 66c276e730608cac1c95be4dabd9e12303b477fe6091772b3e998067ed6e3da0
-      assetId: 50433859
+      assetId: 50443573

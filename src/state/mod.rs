@@ -1,17 +1,26 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::HashMap,
-    fmt::Display,
     fs,
     path::{Path, PathBuf},
 };
 
 use crate::{
     commands::deploy::{Config, DeploymentConfig},
-    roblox_api::{RobloxApi, UploadImageResult, UploadPlaceResult},
+    roblox_api::RobloxApi,
     roblox_auth::RobloxAuth,
 };
+
+use self::{
+    experience::ExperienceResource,
+    image::{ImageResource, ImageResourceType},
+    place::PlaceResource,
+};
+
+mod experience;
+mod image;
+mod place;
+mod thumbnail_order;
 
 pub type AssetId = u64;
 
@@ -76,60 +85,16 @@ pub enum Resource {
     Image(ImageResource),
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ExperienceResource {
-    // TODO: make optional for creating new experiences
-    pub asset_id: AssetId,
-    // TODO: configuration
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct PlaceResource {
-    pub name: String,
-    // TODO: make optional for creating new places
-    pub asset_id: AssetId,
-    pub file_path: Option<String>,
-    pub file_hash: Option<String>,
-    pub version: Option<u32>,
-    // TODO: configuration
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ImageResource {
-    pub image_type: ImageResourceType,
-    pub file_path: String,
-    pub file_hash: String,
-    pub asset_id: Option<AssetId>,
-}
-
-#[derive(Deserialize, Serialize, Clone, PartialEq, Debug)]
-#[serde(rename_all = "camelCase")]
-pub enum ImageResourceType {
-    GameIcon,
-    GameThumbnail,
-}
-
-impl Display for ImageResourceType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                ImageResourceType::GameIcon => "gameIcon",
-                ImageResourceType::GameThumbnail => "gameThumbnail",
-            }
-        )
-    }
-}
-
 fn get_state_file_path(project_path: &Path) -> PathBuf {
     project_path.join(".rocat-state.yml")
 }
 
-fn get_file_hash(file_path: &Path) -> Result<String, String> {
+pub fn get_hash(data: &[u8]) -> String {
+    let digest = Sha256::digest(data);
+    format!("{:x}", digest)
+}
+
+pub fn get_file_hash(file_path: &Path) -> Result<String, String> {
     let buffer = fs::read(file_path).map_err(|e| {
         format!(
             "Failed to read file {} for hashing: {}",
@@ -137,8 +102,7 @@ fn get_file_hash(file_path: &Path) -> Result<String, String> {
             e
         )
     })?;
-    let digest = Sha256::digest(&buffer);
-    Ok(format!("{:x}", digest))
+    Ok(get_hash(&buffer))
 }
 
 pub fn get_previous_state(
@@ -251,26 +215,26 @@ enum ResourceOp {
 
 fn get_id(resource: &Resource) -> String {
     match resource {
-        Resource::Experience(r) => "experience".to_owned(),
-        Resource::Place(r) => r.name.clone(),
-        Resource::Image(r) => format!("{}-{}", r.image_type, r.file_path),
+        Resource::Experience(experience) => experience.get_id(),
+        Resource::Place(place) => place.get_id(),
+        Resource::Image(image) => image.get_id(),
     }
 }
 
 fn get_asset_id(resource: &Resource) -> Option<AssetId> {
     match resource {
-        Resource::Experience(r) => Some(r.asset_id.clone()),
-        Resource::Place(r) => Some(r.asset_id.clone()),
-        Resource::Image(r) => r.asset_id.clone(),
+        Resource::Experience(experience) => experience.get_asset_id(),
+        Resource::Place(place) => place.get_asset_id(),
+        Resource::Image(image) => image.get_asset_id(),
     }
 }
 
 fn get_hash(resource: &Resource) -> Option<String> {
     match resource {
         // TODO: hash configuration
-        Resource::Experience(r) => None,
-        Resource::Place(r) => r.file_hash.clone(),
-        Resource::Image(r) => Some(r.file_hash.clone()),
+        Resource::Experience(experience) => experience.get_hash(),
+        Resource::Place(place) => place.get_hash(),
+        Resource::Image(image) => image.get_hash(),
     }
 }
 
@@ -311,7 +275,6 @@ fn execute_op(
     project_path: &Path,
     roblox_api: &mut RobloxApi,
     deployment_config: &DeploymentConfig,
-    previous_state: &StateV1,
     desired_state: &StateV1,
     previous_resource: &Option<Resource>,
     resource: &Resource,
@@ -319,100 +282,45 @@ fn execute_op(
 ) -> Result<Option<Resource>, String> {
     match resource {
         Resource::Experience(experience) => match op {
+            ResourceOp::Keep => Ok(Some(Resource::Experience(experience.keep()))),
             // TODO: configure experience
-            ResourceOp::Keep => Ok(Some(Resource::Experience(experience.clone()))),
-            ResourceOp::Update => Ok(Some(Resource::Experience(experience.clone()))),
+            ResourceOp::Update => Ok(Some(Resource::Experience(experience.update()))),
             _ => panic!("Not implemented for experience"),
         },
         Resource::Place(place) => match op {
             ResourceOp::Keep => {
                 if let Some(Resource::Place(previous_place)) = previous_resource {
-                    return Ok(Some(Resource::Place(PlaceResource {
-                        name: place.name.clone(),
-                        asset_id: place.asset_id.clone(),
-                        file_hash: place.file_hash.clone(),
-                        file_path: place.file_path.clone(),
-                        version: previous_place.version.clone(),
-                    })));
+                    return Ok(Some(Resource::Place(place.keep(&previous_place))));
                 }
                 unreachable!()
             }
-            ResourceOp::Update => {
-                let UploadPlaceResult { place_version } = roblox_api.upload_place(
-                    project_path
-                        .join(place.file_path.clone().unwrap())
-                        .as_path(),
-                    desired_state.experience.asset_id,
-                    place.asset_id,
-                    deployment_config.deploy_mode,
-                )?;
-                Ok(Some(Resource::Place(PlaceResource {
-                    name: place.name.clone(),
-                    asset_id: place.asset_id.clone(),
-                    file_hash: place.file_hash.clone(),
-                    file_path: place.file_path.clone(),
-                    version: Some(place_version),
-                })))
-            }
+            ResourceOp::Update => Ok(Some(Resource::Place(place.update(
+                project_path,
+                roblox_api,
+                deployment_config,
+                desired_state,
+            )?))),
             _ => panic!("Not implemented for place"),
         },
         Resource::Image(image) => match op {
             ResourceOp::Keep => {
                 if let Some(Resource::Image(previous_image)) = previous_resource {
-                    return Ok(Some(Resource::Image(ImageResource {
-                        image_type: image.image_type.clone(),
-                        file_path: image.file_path.clone(),
-                        file_hash: image.file_hash.clone(),
-                        asset_id: previous_image.asset_id.clone(),
-                    })));
+                    return Ok(Some(Resource::Image(image.keep(&previous_image))));
                 }
                 unreachable!()
             }
-            ResourceOp::Create => {
-                let file_path = project_path.join(&image.file_path);
-                let UploadImageResult { asset_id } = match image.image_type {
-                    ImageResourceType::GameIcon => roblox_api
-                        .upload_icon(desired_state.experience.asset_id, file_path.as_path())?,
-                    ImageResourceType::GameThumbnail => roblox_api
-                        .upload_thumbnail(desired_state.experience.asset_id, file_path.as_path())?,
-                };
-                Ok(Some(Resource::Image(ImageResource {
-                    image_type: image.image_type.clone(),
-                    file_path: image.file_path.clone(),
-                    file_hash: image.file_hash.clone(),
-                    asset_id: Some(asset_id),
-                })))
-            }
-            ResourceOp::Update => {
-                execute_op(
-                    project_path,
-                    roblox_api,
-                    deployment_config,
-                    previous_state,
-                    desired_state,
-                    previous_resource,
-                    resource,
-                    ResourceOp::Delete,
-                )?;
-                execute_op(
-                    project_path,
-                    roblox_api,
-                    deployment_config,
-                    previous_state,
-                    desired_state,
-                    previous_resource,
-                    resource,
-                    ResourceOp::Create,
-                )
-            }
+            ResourceOp::Create => Ok(Some(Resource::Image(image.create(
+                project_path,
+                roblox_api,
+                desired_state,
+            )?))),
+            ResourceOp::Update => Ok(Some(Resource::Image(image.update(
+                project_path,
+                roblox_api,
+                desired_state,
+            )?))),
             ResourceOp::Delete => {
-                match image.image_type {
-                    ImageResourceType::GameThumbnail => roblox_api.delete_experience_thumbnail(
-                        desired_state.experience.asset_id,
-                        image.asset_id.ok_or("No asset id".to_owned())?,
-                    )?,
-                    _ => {}
-                };
+                image.delete(roblox_api, desired_state)?;
                 Ok(None)
             }
         },
@@ -453,7 +361,6 @@ pub fn get_next_state(
             project_path,
             &mut roblox_api,
             deployment_config,
-            previous_state,
             desired_state,
             &previous_resource,
             desired_resource,
@@ -471,7 +378,6 @@ pub fn get_next_state(
                 project_path,
                 &mut roblox_api,
                 deployment_config,
-                previous_state,
                 desired_state,
                 &None,
                 previous_resource,

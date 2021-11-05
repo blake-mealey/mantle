@@ -342,6 +342,8 @@ impl RobloxApi {
         experience_id: u64,
         experience_configuration: &ExperienceConfigurationModel,
     ) -> Result<(), String> {
+        println!("TRACE: configure_experience {}", experience_id);
+
         let json_data = match serde_json::to_value(&experience_configuration) {
             Ok(v) => v,
             Err(e) => {
@@ -372,6 +374,8 @@ impl RobloxApi {
         place_id: u64,
         place_configuration: &PlaceConfigurationModel,
     ) -> Result<(), String> {
+        println!("TRACE: configure_place {}", place_id);
+
         let json_data = match serde_json::to_value(&place_configuration) {
             Ok(v) => v,
             Err(e) => return Err(format!("Failed to serialize place configuration\n\t{}", e)),
@@ -395,6 +399,8 @@ impl RobloxApi {
         experience_id: u64,
         active: bool,
     ) -> Result<(), String> {
+        println!("TRACE: set_experience_active {}", active);
+
         let endpoint = if active { "activate" } else { "deactivate" };
         let res = ureq::post(&format!(
             "https://develop.roblox.com/v1/universes/{}/{}",
@@ -425,18 +431,6 @@ impl RobloxApi {
         multipart
             .prepare()
             .map_err(|e| format!("Failed to load image file {}: {}", image_file.display(), e))
-    }
-
-    fn get_file_hash(file_path: &Path) -> Result<String, String> {
-        let buffer = fs::read(file_path).map_err(|e| {
-            format!(
-                "Failed to read file {} for hashing: {}",
-                file_path.display(),
-                e
-            )
-        })?;
-        let digest = Sha256::digest(&buffer);
-        Ok(format!("{:x}", digest))
     }
 
     pub fn upload_icon(
@@ -504,6 +498,11 @@ impl RobloxApi {
         experience_id: u64,
         new_thumbnail_order: &Vec<u64>,
     ) -> Result<(), String> {
+        println!(
+            "TRACE: set_experience_thumbnail_order {:?}",
+            new_thumbnail_order
+        );
+
         let res = ureq::post(&format!(
             "https://develop.roblox.com/v1/universes/{}/thumbnails/order",
             experience_id
@@ -521,6 +520,8 @@ impl RobloxApi {
         experience_id: u64,
         thumbnail_id: u64,
     ) -> Result<(), String> {
+        println!("TRACE: delete_experience_thumbnail {}", thumbnail_id);
+
         let res = ureq::delete(&format!(
             "https://develop.roblox.com/v1/universes/{}/thumbnails/{}",
             experience_id, thumbnail_id

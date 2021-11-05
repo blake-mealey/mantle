@@ -2,9 +2,9 @@ use multipart::client::lazy::{Multipart, PreparedFields};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use std::{clone::Clone, ffi::OsStr, fmt, fs, path::Path};
+use std::{clone::Clone, default, ffi::OsStr, fmt, fs, path::Path};
 
-use crate::{roblox_auth::RobloxAuth, state::RocatState};
+use crate::roblox_auth::RobloxAuth;
 
 enum AuthType {
     ApiKey,
@@ -34,6 +34,11 @@ impl RequestExt for ureq::Request {
 pub enum DeployMode {
     Publish,
     Save,
+}
+impl default::Default for DeployMode {
+    fn default() -> Self {
+        DeployMode::Publish
+    }
 }
 
 impl fmt::Display for DeployMode {
@@ -88,12 +93,10 @@ pub static INVALID_API_KEY_HELP: &str = "\
 
 pub struct UploadPlaceResult {
     pub place_version: u32,
-    pub hash: String,
 }
 
 pub struct UploadImageResult {
     pub asset_id: u64,
-    pub hash: String,
 }
 
 #[derive(Serialize)]
@@ -248,20 +251,12 @@ impl RobloxApi {
 
     pub fn upload_place(
         &mut self,
-        state: &RocatState,
         place_file: &Path,
         experience_id: u64,
         place_id: u64,
         mode: DeployMode,
     ) -> Result<UploadPlaceResult, String> {
-        let file_hash = Self::get_file_hash(place_file)?;
-
-        if !state.needs_to_upload_place(place_id, file_hash.clone()) {
-            return Ok(UploadPlaceResult {
-                place_version: state.get_place_version(place_id),
-                hash: file_hash,
-            });
-        }
+        println!("TRACE: upload_place {}", place_file.display());
 
         let project_type = match place_file.extension().and_then(OsStr::to_str) {
             Some("rbxlx") => ProjectType::Xml,
@@ -339,7 +334,6 @@ impl RobloxApi {
         );
         Ok(UploadPlaceResult {
             place_version: model.version_number,
-            hash: file_hash,
         })
     }
 
@@ -447,18 +441,10 @@ impl RobloxApi {
 
     pub fn upload_icon(
         &mut self,
-        state: &RocatState,
         experience_id: u64,
         icon_file: &Path,
     ) -> Result<UploadImageResult, String> {
-        let file_hash = Self::get_file_hash(icon_file)?;
-
-        if !state.needs_to_upload_experience_icon(file_hash.clone()) {
-            return Ok(UploadImageResult {
-                asset_id: state.get_experience_icon_asset_id(),
-                hash: file_hash,
-            });
-        }
+        println!("TRACE: upload_icon {}", icon_file.display());
 
         let multipart = Self::get_image_from_data(icon_file)?;
 
@@ -480,24 +466,15 @@ impl RobloxApi {
 
         Ok(UploadImageResult {
             asset_id: model.target_id,
-            hash: file_hash,
         })
     }
 
     pub fn upload_thumbnail(
         &mut self,
-        state: &RocatState,
         experience_id: u64,
         thumbnail_file: &Path,
     ) -> Result<UploadImageResult, String> {
-        let file_hash = Self::get_file_hash(thumbnail_file)?;
-
-        if !state.needs_to_upload_experience_thumbnail(file_hash.clone()) {
-            return Ok(UploadImageResult {
-                asset_id: state.get_experience_thumbnail_asset_id_from_hash(file_hash.clone()),
-                hash: file_hash,
-            });
-        }
+        println!("TRACE: upload_thumbnail {}", thumbnail_file.display());
 
         let multipart = Self::get_image_from_data(thumbnail_file)?;
 
@@ -519,7 +496,6 @@ impl RobloxApi {
 
         Ok(UploadImageResult {
             asset_id: model.target_id,
-            hash: file_hash,
         })
     }
 

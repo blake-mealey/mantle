@@ -1,55 +1,59 @@
-use crate::roblox_api::{
-    DeployMode, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
-    ExperienceConfigurationModel, ExperienceGenre, ExperiencePermissionsModel,
-    ExperiencePlayableDevice, PlaceConfigurationModel, RobloxApi, SocialSlotType,
-    UploadImageResult,
+use crate::{
+    roblox_api::{
+        DeployMode, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
+        ExperienceConfigurationModel, ExperienceGenre, ExperiencePermissionsModel,
+        ExperiencePlayableDevice, PlaceConfigurationModel, SocialSlotType,
+    },
+    state::{get_desired_state, get_next_state, get_previous_state, save_state},
 };
-use crate::roblox_auth::RobloxAuth;
-use crate::state::{load_state_file, RocatState, RocatStateRoot};
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::str;
+use std::{
+    collections::HashMap,
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+    str,
+};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Config {
+pub struct Config {
     #[serde(default = "HashMap::new")]
-    place_files: HashMap<String, String>,
+    pub place_files: HashMap<String, String>,
 
     #[serde(default = "Vec::new")]
-    deployments: Vec<DeploymentConfig>,
+    pub deployments: Vec<DeploymentConfig>,
 
     #[serde(default)]
-    templates: TemplateConfig,
+    pub templates: TemplateConfig,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct DeploymentConfig {
-    name: Option<String>,
+pub struct DeploymentConfig {
+    pub name: String,
 
     #[serde(default = "Vec::new")]
-    branches: Vec<String>,
+    pub branches: Vec<String>,
 
-    deploy_mode: Option<DeployMode>,
+    #[serde(default)]
+    pub deploy_mode: DeployMode,
 
-    tag_commit: Option<bool>,
+    #[serde(default)]
+    pub tag_commit: bool,
 
-    experience_id: Option<u64>,
+    pub experience_id: u64,
 
-    place_ids: Option<HashMap<String, u64>>,
+    pub place_ids: HashMap<String, u64>,
 }
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-struct TemplateConfig {
-    experience: Option<ExperienceTemplateConfig>,
+pub struct TemplateConfig {
+    pub experience: Option<ExperienceTemplateConfig>,
 
     #[serde(default = "HashMap::new")]
-    places: HashMap<String, PlaceTemplateConfig>,
+    pub places: HashMap<String, PlaceTemplateConfig>,
 }
 
 //isFriendsOnly: true/false
@@ -77,7 +81,7 @@ pub enum GenreConfig {
 
 #[derive(Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
-enum PlayabilityConfig {
+pub enum PlayabilityConfig {
     Private,
     Public,
     Friends,
@@ -85,7 +89,7 @@ enum PlayabilityConfig {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-enum AvatarTypeConfig {
+pub enum AvatarTypeConfig {
     R6,
     R15,
     PlayerChoice,
@@ -95,31 +99,31 @@ enum AvatarTypeConfig {
 #[serde(rename_all = "camelCase")]
 pub struct ExperienceTemplateConfig {
     // basic info
-    genre: Option<GenreConfig>,
-    playable_devices: Option<Vec<ExperiencePlayableDevice>>,
-    icon: Option<String>,
-    thumbnails: Option<Vec<String>>,
+    pub genre: Option<GenreConfig>,
+    pub playable_devices: Option<Vec<ExperiencePlayableDevice>>,
+    pub icon: Option<String>,
+    pub thumbnails: Option<Vec<String>>,
 
     // permissions
-    playability: Option<PlayabilityConfig>,
+    pub playability: Option<PlayabilityConfig>,
 
     // monetization
     // badges: // TODO: create badges
-    paid_access_price: Option<u32>,
-    private_server_price: Option<u32>,
+    pub paid_access_price: Option<u32>,
+    pub private_server_price: Option<u32>,
     // developer products: // TODO: create developer products
 
     // security
-    enable_studio_access_to_apis: Option<bool>,
-    allow_third_party_sales: Option<bool>,
-    allow_third_party_teleports: Option<bool>,
+    pub enable_studio_access_to_apis: Option<bool>,
+    pub allow_third_party_sales: Option<bool>,
+    pub allow_third_party_teleports: Option<bool>,
 
     // localization: // TODO: localization
 
     // avatar
-    avatar_type: Option<AvatarTypeConfig>,
-    avatar_animation_type: Option<ExperienceAnimationType>,
-    avatar_collision_type: Option<ExperienceCollisionType>,
+    pub avatar_type: Option<AvatarTypeConfig>,
+    pub avatar_animation_type: Option<ExperienceAnimationType>,
+    pub avatar_collision_type: Option<ExperienceCollisionType>,
     // avatar_asset_overrides: Option<HashMap<String, u64>>,    // TODO: figure out api
     // avatar_scale_constraints: Option<HashMap<String, (f32, f32)>>,   // TODO: figure out api
 
@@ -198,7 +202,7 @@ impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-enum ServerFillConfig {
+pub enum ServerFillConfig {
     RobloxOptimized,
     Maximum,
     ReservedSlots(u32),
@@ -207,11 +211,11 @@ enum ServerFillConfig {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaceTemplateConfig {
-    name: Option<String>,
-    description: Option<String>,
-    max_player_count: Option<u32>,
-    allow_copying: Option<bool>,
-    server_fill: Option<ServerFillConfig>,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub max_player_count: Option<u32>,
+    pub allow_copying: Option<bool>,
+    pub server_fill: Option<ServerFillConfig>,
 }
 
 impl From<&PlaceTemplateConfig> for PlaceConfigurationModel {
@@ -299,14 +303,7 @@ fn parse_project(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {
     ))
 }
 
-pub fn run(project: Option<&str>) -> Result<(), String> {
-    let (project_path, config_file) = parse_project(project)?;
-    println!("📃 Config file: {}", config_file.display());
-
-    let config = load_config_file(&config_file)?;
-
-    let mut state = RocatState::load_from_file(&project_path)?;
-
+fn get_current_branch() -> Result<String, String> {
     let output = run_command("git symbolic-ref --short HEAD");
     let result = match output {
         Ok(v) => v,
@@ -327,14 +324,24 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
         return Err("Unable to determine git branch. Are you in a git repository?".to_string());
     }
 
+    Ok(current_branch.to_owned())
+}
+
+pub fn run(project: Option<&str>) -> Result<(), String> {
+    let (project_path, config_file) = parse_project(project)?;
+    println!("📃 Config file: {}", config_file.display());
+
+    let config = load_config_file(&config_file)?;
+
+    let current_branch = get_current_branch()?;
     println!("🌿 Git branch: {}", current_branch);
 
-    let deployment = config
+    let deployment_config = config
         .deployments
         .iter()
-        .find(|deployment| match_branch(current_branch, &deployment.branches));
+        .find(|deployment| match_branch(&current_branch, &deployment.branches));
 
-    let deployment = match deployment {
+    let deployment_config = match deployment_config {
         Some(v) => v,
         None => {
             println!("✅ No deployment configuration found for branch; no deployment necessary.");
@@ -342,148 +349,201 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
         }
     };
 
-    let deployment_name = match &deployment.name {
-        Some(v) => v,
-        None => return Err("Deployment configuration does not contain a name.".to_string()),
-    };
-
-    let mode = match deployment.deploy_mode.unwrap_or(DeployMode::Publish) {
-        DeployMode::Publish => DeployMode::Publish,
-        DeployMode::Save => DeployMode::Save,
-    };
-
-    let should_tag = deployment.tag_commit.unwrap_or(false);
-
-    let experience_id = match deployment.experience_id {
-        Some(v) => v,
-        None => {
-            return Err(format!(
-                "No experience_id configuration found for branch {}",
-                current_branch
-            ))
-        }
-    };
-
-    let place_ids = match &deployment.place_ids {
-        Some(v) => v,
-        None => {
-            return Err(format!(
-                "No place_ids configuration found for branch {}.",
-                current_branch
-            ))
-        }
-    };
-
     println!("🌎 Deployment configuration:");
-    println!("\tName: {}", deployment_name);
-    println!("\tDeploy mode: {}", mode);
+    println!("\tName: {}", deployment_config.name);
+    println!("\tDeploy mode: {}", deployment_config.deploy_mode);
     println!(
         "\tTag commit: {}",
-        match should_tag {
+        match deployment_config.tag_commit {
             true => "Yes",
             false => "No",
         }
     );
-    println!("\tExperience ID: {}", experience_id);
+    println!("\tExperience ID: {}", deployment_config.experience_id);
     println!("\tPlace IDs:");
-    for (name, place_id) in place_ids.iter() {
+    for (name, place_id) in deployment_config.place_ids.iter() {
         println!("\t\t{}: {}", name, place_id);
     }
 
-    let mut roblox_api = RobloxApi::new(RobloxAuth::new());
-
-    state.set_experience_asset_id(experience_id);
-    if let Some(experience_template) = &config.templates.experience {
-        println!("🔧 Configuring experience");
-
-        roblox_api.configure_experience(experience_id, &experience_template.into())?;
-        if let Some(playability) = experience_template.playability {
-            roblox_api.set_experience_active(
-                experience_id,
-                !matches!(playability, PlayabilityConfig::Private),
-            )?;
-        }
-
-        if let Some(icon_path) = &experience_template.icon {
-            let result =
-                roblox_api.upload_icon(&state, experience_id, &project_path.join(icon_path))?;
-            state.set_experience_icon(result.asset_id, result.hash);
-        }
-
-        if let Some(thumbnail_paths) = &experience_template.thumbnails {
-            let original_thumbnail_order = state.get_experience_thumbnail_order();
-            let mut results: Vec<UploadImageResult> = Vec::new();
-            for thumbnail_path in thumbnail_paths.iter() {
-                let result = roblox_api.upload_thumbnail(
-                    &state,
-                    experience_id,
-                    &project_path.join(thumbnail_path),
-                )?;
-                results.push(result);
-            }
-            state.set_experience_thumbnails(results);
-            let new_thumbnail_order = state.get_experience_thumbnail_order();
-
-            let removed_thumbnails: Vec<&u64> = original_thumbnail_order
-                .iter()
-                .filter(|id| !new_thumbnail_order.contains(id))
-                .collect();
-            for thumbnail_id in removed_thumbnails {
-                roblox_api.delete_experience_thumbnail(experience_id, *thumbnail_id)?;
-            }
-
-            let order_changed = original_thumbnail_order
-                .iter()
-                .zip(new_thumbnail_order.iter())
-                .any(|(old, new)| *old != *new);
-            if order_changed {
-                roblox_api.set_experience_thumbnail_order(experience_id, &new_thumbnail_order)?;
-            }
-        }
-    }
-
-    for (name, place_file) in config.place_files.iter() {
-        println!("🚀 Deploying place: {}", name);
-
-        let place_id = match place_ids.get(name) {
-            Some(v) => v,
-            None => return Err(format!("No place ID found for configured place {}", name)),
-        };
-
-        let place_template = config.templates.places.get(name);
-        if place_template.is_some() {
-            println!("\t🔧 Configuring place");
-            roblox_api.configure_place(*place_id, &place_template.unwrap().into())?;
-        }
-
-        let upload_result = roblox_api.upload_place(
-            &state,
-            &project_path.join(place_file),
-            experience_id,
-            *place_id,
-            mode,
-        )?;
-        state.set_place(
-            name.to_owned(),
-            *place_id,
-            upload_result.hash,
-            upload_result.place_version,
-        );
-
-        if should_tag {
-            let tag = format!("{}-v{}", name, upload_result.place_version);
-            println!("\t🔖 Tagging commit with: {}", tag);
-
-            run_command(&format!("git tag {}", tag))
-                .map_err(|e| format!("Unable to tag the current commit\n\t{}", e))?;
-        }
-    }
-
-    if should_tag {
-        run_command("git push --tags").map_err(|e| format!("Unable to push the tags\n\t{}", e))?;
-    }
-
-    state.save_to_file()?;
+    let previous_state = get_previous_state(&project_path, &deployment_config)?;
+    let desired_state = get_desired_state(&project_path, &config, &deployment_config)?;
+    let next_state = get_next_state(
+        &project_path,
+        &previous_state,
+        &desired_state,
+        &deployment_config,
+    )?;
+    save_state(&project_path, &next_state)?;
 
     Ok(())
 }
+
+// pub fn _run(project: Option<&str>) -> Result<(), String> {
+//     let (project_path, config_file) = parse_project(project)?;
+//     println!("📃 Config file: {}", config_file.display());
+
+//     let config = load_config_file(&config_file)?;
+
+//     let mut state = RocatState::load_from_file(&project_path)?;
+
+//     let current_branch = get_current_branch()?;
+//     println!("🌿 Git branch: {}", current_branch);
+
+//     let deployment = config
+//         .deployments
+//         .iter()
+//         .find(|deployment| match_branch(&current_branch, &deployment.branches));
+
+//     let deployment = match deployment {
+//         Some(v) => v,
+//         None => {
+//             println!("✅ No deployment configuration found for branch; no deployment necessary.");
+//             return Ok(());
+//         }
+//     };
+
+//     let deployment_name = match &deployment.name {
+//         Some(v) => v,
+//         None => return Err("Deployment configuration does not contain a name.".to_string()),
+//     };
+
+//     let mode = match deployment.deploy_mode.unwrap_or(DeployMode::Publish) {
+//         DeployMode::Publish => DeployMode::Publish,
+//         DeployMode::Save => DeployMode::Save,
+//     };
+
+//     let should_tag = deployment.tag_commit.unwrap_or(false);
+
+//     let experience_id = match deployment.experience_id {
+//         Some(v) => v,
+//         None => {
+//             return Err(format!(
+//                 "No experience_id configuration found for branch {}",
+//                 current_branch
+//             ))
+//         }
+//     };
+
+//     let place_ids = match &deployment.place_ids {
+//         Some(v) => v,
+//         None => {
+//             return Err(format!(
+//                 "No place_ids configuration found for branch {}.",
+//                 current_branch
+//             ))
+//         }
+//     };
+
+//     println!("🌎 Deployment configuration:");
+//     println!("\tName: {}", deployment_name);
+//     println!("\tDeploy mode: {}", mode);
+//     println!(
+//         "\tTag commit: {}",
+//         match should_tag {
+//             true => "Yes",
+//             false => "No",
+//         }
+//     );
+//     println!("\tExperience ID: {}", experience_id);
+//     println!("\tPlace IDs:");
+//     for (name, place_id) in place_ids.iter() {
+//         println!("\t\t{}: {}", name, place_id);
+//     }
+
+//     let mut roblox_api = RobloxApi::new(RobloxAuth::new());
+
+//     state.set_experience_asset_id(experience_id);
+//     if let Some(experience_template) = &config.templates.experience {
+//         println!("🔧 Configuring experience");
+
+//         roblox_api.configure_experience(experience_id, &experience_template.into())?;
+//         if let Some(playability) = experience_template.playability {
+//             roblox_api.set_experience_active(
+//                 experience_id,
+//                 !matches!(playability, PlayabilityConfig::Private),
+//             )?;
+//         }
+
+//         if let Some(icon_path) = &experience_template.icon {
+//             let result =
+//                 roblox_api.upload_icon(&state, experience_id, &project_path.join(icon_path))?;
+//             state.set_experience_icon(result.asset_id, result.hash);
+//         }
+
+//         if let Some(thumbnail_paths) = &experience_template.thumbnails {
+//             let original_thumbnail_order = state.get_experience_thumbnail_order();
+//             let mut results: Vec<UploadImageResult> = Vec::new();
+//             for thumbnail_path in thumbnail_paths.iter() {
+//                 let result = roblox_api.upload_thumbnail(
+//                     &state,
+//                     experience_id,
+//                     &project_path.join(thumbnail_path),
+//                 )?;
+//                 results.push(result);
+//             }
+//             state.set_experience_thumbnails(results);
+//             let new_thumbnail_order = state.get_experience_thumbnail_order();
+
+//             let removed_thumbnails: Vec<&u64> = original_thumbnail_order
+//                 .iter()
+//                 .filter(|id| !new_thumbnail_order.contains(id))
+//                 .collect();
+//             for thumbnail_id in removed_thumbnails {
+//                 roblox_api.delete_experience_thumbnail(experience_id, *thumbnail_id)?;
+//             }
+
+//             let order_changed = original_thumbnail_order
+//                 .iter()
+//                 .zip(new_thumbnail_order.iter())
+//                 .any(|(old, new)| *old != *new);
+//             if order_changed {
+//                 roblox_api.set_experience_thumbnail_order(experience_id, &new_thumbnail_order)?;
+//             }
+//         }
+//     }
+
+//     for (name, place_file) in config.place_files.iter() {
+//         println!("🚀 Deploying place: {}", name);
+
+//         let place_id = match place_ids.get(name) {
+//             Some(v) => v,
+//             None => return Err(format!("No place ID found for configured place {}", name)),
+//         };
+
+//         let place_template = config.templates.places.get(name);
+//         if place_template.is_some() {
+//             println!("\t🔧 Configuring place");
+//             roblox_api.configure_place(*place_id, &place_template.unwrap().into())?;
+//         }
+
+//         let upload_result = roblox_api.upload_place(
+//             &state,
+//             &project_path.join(place_file),
+//             experience_id,
+//             *place_id,
+//             mode,
+//         )?;
+//         state.set_place(
+//             name.to_owned(),
+//             *place_id,
+//             upload_result.hash,
+//             upload_result.place_version,
+//         );
+
+//         if should_tag {
+//             let tag = format!("{}-v{}", name, upload_result.place_version);
+//             println!("\t🔖 Tagging commit with: {}", tag);
+
+//             run_command(&format!("git tag {}", tag))
+//                 .map_err(|e| format!("Unable to tag the current commit\n\t{}", e))?;
+//         }
+//     }
+
+//     if should_tag {
+//         run_command("git push --tags").map_err(|e| format!("Unable to push the tags\n\t{}", e))?;
+//     }
+
+//     state.save_to_file()?;
+
+//     Ok(())
+// }

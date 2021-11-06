@@ -299,7 +299,6 @@ impl RobloxApi {
                         ))
                     }
                 };
-                println!("\t📦 Uploading file: {}", place_file.display());
                 req.send_string(&data)
             }
             ProjectType::Binary => {
@@ -313,7 +312,6 @@ impl RobloxApi {
                         ))
                     }
                 };
-                println!("📦 Uploading file: {}", place_file.display());
                 req.send_bytes(&data)
             }
         };
@@ -322,15 +320,6 @@ impl RobloxApi {
         let model = response
             .into_json::<PlaceManagementResponse>()
             .map_err(|e| format!("Failed to deserialize upload place response: {}", e))?;
-        println!(
-            "\
-                \t🎉 Successfully {} to Roblox! \n\
-                \t\tView place at https://www.roblox.com/games/{} \n\
-                \t\tVersion Number: {}",
-            version_type.to_lowercase(),
-            place_id,
-            model.version_number
-        );
         Ok(UploadPlaceResult {
             place_version: model.version_number,
         })

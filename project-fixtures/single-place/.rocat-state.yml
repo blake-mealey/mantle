@@ -139,9 +139,9 @@
         - singleton
         - assetId
     fileHash:
-      value: a158d9c358facbbac6df299462b9874526fc4acea91bfa80d0244e290e22c5a9
+      value: 4d3f78c80cbcf5ba8f104555f2bbd9c8f7485d3970de9fbbba5d2c7bc1219ffc
     filePath:
       value: start.rbxlx
   outputs:
     assetId: 7818935418
-    version: 13
+    version: 16

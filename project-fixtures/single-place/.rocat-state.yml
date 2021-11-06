@@ -19,6 +19,17 @@
         universeCollisionType: outerBox
   outputs:
     assetId: 3028808377
+- resourceType: experience_activation
+  id: singleton
+  inputs:
+    experienceId:
+      ref:
+        - experience
+        - singleton
+        - assetId
+    isActive:
+      value: true
+  outputs: ~
 - resourceType: experience_icon
   id: game-icon.png
   inputs:

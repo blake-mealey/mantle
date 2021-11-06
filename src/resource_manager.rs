@@ -6,7 +6,7 @@ use crate::{
     commands::deploy::DeploymentConfig,
     resources::ResourceManagerBackend,
     roblox_api::{
-        ExperienceConfigurationModel, PlaceConfigurationModel, RobloxApi, UploadImageResult,
+        self, ExperienceConfigurationModel, PlaceConfigurationModel, RobloxApi, UploadImageResult,
         UploadPlaceResult,
     },
     roblox_auth::RobloxAuth,
@@ -16,6 +16,7 @@ pub type AssetId = u64;
 
 pub mod resource_types {
     pub const EXPERIENCE: &str = "experience";
+    pub const EXPERIENCE_ACTIVATION: &str = "experience_activation";
     pub const EXPERIENCE_ICON: &str = "experience_icon";
     pub const EXPERIENCE_THUMBNAIL: &str = "experience_thumbnail";
     pub const EXPERIENCE_THUMBNAIL_ORDER: &str = "experience_thumbnail_order";
@@ -34,6 +35,13 @@ struct ExperienceInputs {
 #[serde(rename_all = "camelCase")]
 struct ExperienceOutputs {
     asset_id: AssetId,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ExperienceActivationInputs {
+    experience_id: AssetId,
+    is_active: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -120,6 +128,15 @@ impl ResourceManagerBackend for RobloxResourceManager {
         //     serde_yaml::to_string(&resource_inputs).map_err(|_| "".to_owned())?
         // );
         match resource_type {
+            resource_types::EXPERIENCE_ACTIVATION => {
+                let inputs = serde_yaml::from_value::<ExperienceActivationInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                self.roblox_api
+                    .set_experience_active(inputs.experience_id, inputs.is_active)?;
+
+                Ok(None)
+            }
             resource_types::EXPERIENCE_ICON => {
                 let inputs = serde_yaml::from_value::<ExperienceIconInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
@@ -181,14 +198,13 @@ impl ResourceManagerBackend for RobloxResourceManager {
 
                 self.roblox_api
                     .configure_experience(outputs.asset_id, &inputs.configuration)?;
-                // TODO: new resource type to manage this
-                // self.roblox_api.set_experience_active(outputs.asset_id)?;
 
                 Ok(None)
             }
-            resource_types::EXPERIENCE_ICON => {
-                self.create(resource_type.clone(), resource_inputs.clone())
+            resource_types::EXPERIENCE_ACTIVATION => {
+                self.create(resource_type, resource_inputs.clone())
             }
+            resource_types::EXPERIENCE_ICON => self.create(resource_type, resource_inputs.clone()),
             resource_types::EXPERIENCE_THUMBNAIL => {
                 self.delete(
                     resource_type,

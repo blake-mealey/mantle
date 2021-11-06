@@ -439,11 +439,27 @@ pub fn get_desired_graph(
             "configuration",
             &experience_configuration.into(),
         )?;
+        resources.push(
+            Resource::new(resource_types::EXPERIENCE_ACTIVATION, SINGLETON_RESOURCE_ID)
+                .add_value_input(
+                    "isActive",
+                    &match experience_configuration.playability {
+                        Some(PlayabilityConfig::Private) => false,
+                        _ => true,
+                    },
+                )?
+                .add_ref_input(
+                    "experienceId",
+                    resource_types::EXPERIENCE,
+                    SINGLETON_RESOURCE_ID,
+                    "assetId",
+                )
+                .clone(),
+        );
     }
     resources.push(experience.clone());
 
     for (name, id) in deployment_config.place_ids.iter() {
-        // TODO: what about version??
         let place_file = config
             .place_files
             .get(name)

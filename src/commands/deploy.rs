@@ -1,6 +1,6 @@
 use crate::{
     resource_manager::{resource_types, AssetId, RobloxResourceManager, SINGLETON_RESOURCE_ID},
-    resources::{Resource, ResourceGraph, ResourceManager},
+    resources::{InputRef, Resource, ResourceGraph, ResourceManager},
     roblox_api::{
         DeployMode, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
         ExperienceConfigurationModel, ExperienceGenre, ExperiencePermissionsModel,
@@ -373,20 +373,20 @@ pub fn get_previous_graph(
                 .place_files
                 .get(name)
                 .ok_or(format!("No place file configured for place {}", name))?;
-            resources.push(
-                Resource::new(resource_types::PLACE_FILE, name)
-                    .add_output("assetId", &id)?
-                    .add_ref_input("experienceId", &experience_asset_id_ref)
-                    .add_value_input("filePath", &place_file)?
-                    .add_value_stub_input("fileHash")
-                    .add_value_stub_input("version")
-                    .clone(),
-            );
+            let place_file_resource = Resource::new(resource_types::PLACE_FILE, name)
+                .add_output("assetId", &id)?
+                .add_ref_input("experienceId", &experience_asset_id_ref)
+                .add_value_input("filePath", &place_file)?
+                .add_value_stub_input("fileHash")
+                .add_value_stub_input("version")
+                .clone();
+            let place_file_asset_id_ref = place_file_resource.get_input_ref("assetId");
+            resources.push(place_file_resource);
             if let Some(_) = config.templates.places.get(name) {
                 resources.push(
                     Resource::new(resource_types::PLACE_CONFIGURATION, name)
                         .add_ref_input("experienceId", &experience_asset_id_ref)
-                        .add_raw_ref_input("assetId", resource_types::PLACE_FILE, name, "assetId")
+                        .add_ref_input("assetId", &place_file_asset_id_ref)
                         .add_value_stub_input("configuration")
                         .clone(),
                 );
@@ -451,22 +451,22 @@ pub fn get_desired_graph(
             .place_files
             .get(name)
             .ok_or(format!("No place file configured for place {}", name))?;
-        resources.push(
-            Resource::new(resource_types::PLACE_FILE, name)
-                .add_output("assetId", &id)?
-                .add_ref_input("experienceId", &experience_asset_id_ref)
-                .add_value_input("filePath", &place_file)?
-                .add_value_input(
-                    "fileHash",
-                    &get_file_hash(project_path.join(place_file).as_path())?,
-                )?
-                .clone(),
-        );
+        let place_file_resource = Resource::new(resource_types::PLACE_FILE, name)
+            .add_output("assetId", &id)?
+            .add_ref_input("experienceId", &experience_asset_id_ref)
+            .add_value_input("filePath", &place_file)?
+            .add_value_input(
+                "fileHash",
+                &get_file_hash(project_path.join(place_file).as_path())?,
+            )?
+            .clone();
+        let place_file_asset_id_ref = place_file_resource.get_input_ref("assetId");
+        resources.push(place_file_resource);
         if let Some(place_configuration) = config.templates.places.get(name) {
             resources.push(
                 Resource::new(resource_types::PLACE_CONFIGURATION, name)
                     .add_ref_input("experienceId", &experience_asset_id_ref)
-                    .add_raw_ref_input("assetId", resource_types::PLACE_FILE, name, "assetId")
+                    .add_ref_input("assetId", &place_file_asset_id_ref)
                     .add_value_input::<PlaceConfigurationModel>(
                         "configuration",
                         &place_configuration.clone().into(),
@@ -490,8 +490,9 @@ pub fn get_desired_graph(
             );
         }
         if let Some(thumbnails) = &experience_configuration.thumbnails {
+            let mut thumbnail_asset_id_refs: Vec<InputRef> = Vec::new();
             for file_path in thumbnails {
-                resources.push(
+                let thumbnail_resource =
                     Resource::new(resource_types::EXPERIENCE_THUMBNAIL, file_path)
                         .add_ref_input("experienceId", &experience_asset_id_ref)
                         .add_value_input("filePath", file_path)?
@@ -499,8 +500,9 @@ pub fn get_desired_graph(
                             "fileHash",
                             &get_file_hash(project_path.join(file_path).as_path())?,
                         )?
-                        .clone(),
-                );
+                        .clone();
+                thumbnail_asset_id_refs.push(thumbnail_resource.get_input_ref("assetId"));
+                resources.push(thumbnail_resource);
             }
             resources.push(
                 Resource::new(
@@ -508,19 +510,7 @@ pub fn get_desired_graph(
                     SINGLETON_RESOURCE_ID,
                 )
                 .add_ref_input("experienceId", &experience_asset_id_ref)
-                .add_ref_input_list(
-                    "assetIds",
-                    &thumbnails
-                        .iter()
-                        .map(|file_path| {
-                            (
-                                resource_types::EXPERIENCE_THUMBNAIL,
-                                file_path.as_str(),
-                                "assetId",
-                            )
-                        })
-                        .collect(),
-                )
+                .add_ref_input_list("assetIds", &thumbnail_asset_id_refs)
                 .clone(),
             );
         }

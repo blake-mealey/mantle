@@ -49,44 +49,9 @@ impl Resource {
         self
     }
 
-    pub fn add_raw_ref_input(
-        &mut self,
-        name: &str,
-        input_ref_type: &str,
-        input_ref_id: &str,
-        input_ref_output: &str,
-    ) -> &mut Self {
-        self.inputs.insert(
-            name.to_owned(),
-            Input::Ref((
-                input_ref_type.to_owned(),
-                input_ref_id.to_owned(),
-                input_ref_output.to_owned(),
-            )),
-        );
-        self
-    }
-
-    pub fn add_ref_input_list(
-        &mut self,
-        name: &str,
-        input_ref_list: &Vec<(&str, &str, &str)>,
-    ) -> &mut Self {
-        self.inputs.insert(
-            name.to_owned(),
-            Input::RefList(
-                input_ref_list
-                    .iter()
-                    .map(|(input_ref_type, input_ref_id, input_ref_output)| {
-                        (
-                            input_ref_type.to_owned().to_owned(),
-                            input_ref_id.to_owned().to_owned(),
-                            input_ref_output.to_owned().to_owned(),
-                        )
-                    })
-                    .collect(),
-            ),
-        );
+    pub fn add_ref_input_list(&mut self, name: &str, input_ref_list: &Vec<InputRef>) -> &mut Self {
+        self.inputs
+            .insert(name.to_owned(), Input::RefList(input_ref_list.clone()));
         self
     }
 

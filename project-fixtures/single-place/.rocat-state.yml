@@ -46,7 +46,7 @@
     filePath:
       value: game-thumbnail-1.png
   outputs:
-    assetId: 50455168
+    assetId: 50455216
 - resourceType: experience_thumbnail
   id: game-thumbnail-2.png
   inputs:
@@ -60,7 +60,7 @@
     filePath:
       value: game-thumbnail-2.png
   outputs:
-    assetId: 50455165
+    assetId: 50455215
 - resourceType: experience_thumbnail
   id: game-thumbnail-3.png
   inputs:
@@ -74,7 +74,7 @@
     filePath:
       value: game-thumbnail-3.png
   outputs:
-    assetId: 50455167
+    assetId: 50455234
 - resourceType: experience_thumbnail_order
   id: singleton
   inputs:

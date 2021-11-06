@@ -362,16 +362,12 @@ pub fn get_previous_graph(
         let mut experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
             .add_output::<AssetId>("assetId", &deployment_config.experience_id.clone())?
             .clone();
-        if let Some(experience_configuration) = &config.templates.experience {
-            experience.add_value_input::<ExperienceConfigurationModel>(
-                "configuration",
-                &experience_configuration.into(),
-            )?;
+        if let Some(_) = &config.templates.experience {
+            experience.add_value_stub_input("configuration");
         }
         resources.push(experience.clone());
 
         for (name, id) in deployment_config.place_ids.iter() {
-            // TODO: what about version??
             let place_file = config
                 .place_files
                 .get(name)
@@ -386,13 +382,11 @@ pub fn get_previous_graph(
                         "assetId",
                     )
                     .add_value_input("filePath", &place_file)?
-                    .add_value_input(
-                        "fileHash",
-                        &get_file_hash(project_path.join(place_file).as_path())?,
-                    )?
+                    .add_value_stub_input("fileHash")
+                    .add_value_stub_input("version")
                     .clone(),
             );
-            if let Some(place_configuration) = config.templates.places.get(name) {
+            if let Some(_) = config.templates.places.get(name) {
                 resources.push(
                     Resource::new(resource_types::PLACE_CONFIGURATION, name)
                         .add_ref_input(
@@ -402,10 +396,7 @@ pub fn get_previous_graph(
                             "assetId",
                         )
                         .add_ref_input("assetId", resource_types::PLACE_FILE, name, "assetId")
-                        .add_value_input::<PlaceConfigurationModel>(
-                            "configuration",
-                            &place_configuration.clone().into(),
-                        )?
+                        .add_value_stub_input("configuration")
                         .clone(),
                 );
             }

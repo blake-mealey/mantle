@@ -540,12 +540,10 @@ fn save_state(project_path: &Path, resources: &Vec<Resource>) -> Result<(), Stri
 
 pub fn run(project: Option<&str>) -> Result<(), String> {
     let (project_path, config_file) = parse_project(project)?;
-    println!("📃 Config file: {}", config_file.display());
 
     let config = load_config_file(&config_file)?;
 
     let current_branch = get_current_branch()?;
-    println!("🌿 Git branch: {}", current_branch);
 
     let deployment_config = config
         .deployments
@@ -555,26 +553,10 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
     let deployment_config = match deployment_config {
         Some(v) => v,
         None => {
-            println!("✅ No deployment configuration found for branch; no deployment necessary.");
+            println!("No deployment configuration found for branch; no deployment necessary.");
             return Ok(());
         }
     };
-
-    println!("🌎 Deployment configuration:");
-    println!("\tName: {}", deployment_config.name);
-    println!("\tDeploy mode: {}", deployment_config.deploy_mode);
-    println!(
-        "\tTag commit: {}",
-        match deployment_config.tag_commit {
-            true => "Yes",
-            false => "No",
-        }
-    );
-    println!("\tExperience ID: {}", deployment_config.experience_id);
-    println!("\tPlace IDs:");
-    for (name, place_id) in deployment_config.place_ids.iter() {
-        println!("\t\t{}: {}", name, place_id);
-    }
 
     let mut resource_manager =
         ResourceManager::new(Box::new(RobloxResourceManager::new(&project_path)));

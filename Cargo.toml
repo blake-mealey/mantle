@@ -14,3 +14,4 @@ glob = "0.3.0"
 mime_guess = "2.0.3"
 multipart = { version = "0.18.0", features = ["client"] }
 sha2 = "0.9.8"
+difference = "2.0.0"

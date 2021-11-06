@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
+use difference::{Changeset, Difference};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -272,6 +273,109 @@ impl ResourceGraph {
         serde_yaml::to_string(&inputs).map_err(|e| format!("Failed to compute input hash\n\t{}", e))
     }
 
+    fn log_diff(&self, message: String, changeset: &Changeset, add_pipes: bool) {
+        let mut lines: Vec<Difference> = Vec::new();
+        for diff in &changeset.diffs {
+            let diff_lines: Vec<Difference> = match diff {
+                Difference::Same(diff) => diff
+                    .split("\n")
+                    .map(|line| Difference::Same(line.to_owned()))
+                    .collect(),
+                Difference::Add(diff) => diff
+                    .split("\n")
+                    .map(|line| Difference::Add(line.to_owned()))
+                    .collect(),
+                Difference::Rem(diff) => diff
+                    .split("\n")
+                    .map(|line| Difference::Rem(line.to_owned()))
+                    .collect(),
+            };
+            lines.extend(diff_lines);
+        }
+        let prefix = if add_pipes { "│" } else { " " };
+        print!(
+            "{}\n{}",
+            message,
+            lines
+                .iter()
+                .map(|d| match d {
+                    Difference::Same(x) => format!("  {}    \x1b[90m{}\x1b[0m\n", prefix, x),
+                    Difference::Add(x) =>
+                        format!("  {}  \x1b[92m+\x1b[0m \x1b[92m{}\x1b[0m\n", prefix, x),
+                    Difference::Rem(x) =>
+                        format!("  {}  \x1b[91m-\x1b[0m \x1b[91m{}\x1b[0m\n", prefix, x),
+                })
+                .collect::<Vec<String>>()
+                .join("")
+        );
+    }
+
+    fn log_create(&self, resource: &Resource, new_inputs_hash: &String) {
+        let changeset = Changeset::new("", new_inputs_hash.replace("---", "").trim(), "\n");
+        self.log_diff(
+            format!(
+                "\x1b[92m+\x1b[0m Creating {} {}:\n  ╷",
+                resource.resource_type, resource.id
+            ),
+            &changeset,
+            true,
+        );
+    }
+
+    fn log_update(
+        &self,
+        resource: &Resource,
+        previous_inputs_hash: &String,
+        new_inputs_hash: &String,
+    ) {
+        let changeset = Changeset::new(
+            previous_inputs_hash.replace("---", "").trim(),
+            new_inputs_hash.replace("---", "").trim(),
+            "\n",
+        );
+        self.log_diff(
+            format!(
+                "\x1b[93m~\x1b[0m Updating {} {}:\n  ╷",
+                resource.resource_type, resource.id,
+            ),
+            &changeset,
+            true,
+        );
+    }
+
+    fn log_delete(&self, resource: &Resource, previous_inputs_hash: &String) {
+        let changeset = Changeset::new(previous_inputs_hash.replace("---", "").trim(), "", "\n");
+        self.log_diff(
+            format!(
+                "\x1b[91m-\x1b[0m Deleting {} {}:\n  ╷",
+                resource.resource_type, resource.id
+            ),
+            &changeset,
+            true,
+        );
+    }
+
+    fn log_success(&self, outputs: &Option<serde_yaml::Value>) -> Result<(), String> {
+        println!("  │");
+        if let Some(outputs) = outputs {
+            let outputs_hash = serde_yaml::to_string(outputs)
+                .map_err(|e| format!("Failed to serialize outputs:\n\t{}", e))?;
+            let outputs_hash = outputs_hash.replace("---", "");
+            let outputs_hash = outputs_hash.trim();
+            let changeset = Changeset::new(&outputs_hash, &outputs_hash, "\n");
+            self.log_diff("  ╰─ Succeeded with outputs:".to_owned(), &changeset, false);
+        } else {
+            println!("  ╰─ Succeeded!");
+        }
+        println!();
+        Ok(())
+    }
+
+    fn log_error(&self, error: String) {
+        println!("  │");
+        println!("  ╰─ Failed: \x1b[91m{}\x1b[0m", error);
+    }
+
     fn get_resource_diffs(
         &self,
         previous_graph: &ResourceGraph,
@@ -310,7 +414,9 @@ impl ResourceGraph {
         previous_graph: &ResourceGraph,
     ) -> Result<(), String> {
         // TODO: Something more elegant than this loop (i.e. build dependency graph)
-        // TODO: Catch edge circular dependencies (currently inifinte loops)
+        // TODO: Catch circular dependencies (currently inifinte loops)
+        // TODO: Print planned changes before actually applying them (for a dry run option)
+        // TODO: Return Ok even if changes fail so that the state can be updated for requests that did succeed
         let mut resource_diffs = self.get_resource_diffs(previous_graph)?;
         while !resource_diffs.is_empty() {
             let mut next_resource_diffs: Vec<ResourceDiff> = Vec::new();
@@ -330,18 +436,19 @@ impl ResourceGraph {
                         });
                     }
                     Some(inputs) => {
+                        let inputs_hash = self.get_inputs_hash(&inputs)?;
                         let outputs = match previous_hash {
                             None => {
+                                self.log_create(resource, &inputs_hash);
                                 Some(resource_manager.create(
                                     &resource.resource_type,
                                     serde_yaml::to_value(&inputs).map_err(|e| {
                                         format!("Failed to serialize inputs: {}", e)
                                     })?,
-                                )?)
+                                ))
                             }
-                            Some(previous_hash)
-                                if previous_hash.to_owned() != self.get_inputs_hash(&inputs)? =>
-                            {
+                            Some(previous_hash) if previous_hash.to_owned() != inputs_hash => {
+                                self.log_update(resource, previous_hash, &inputs_hash);
                                 let outputs = resource.outputs.clone().unwrap_or_default();
                                 Some(resource_manager.update(
                                     &resource.resource_type,
@@ -351,17 +458,29 @@ impl ResourceGraph {
                                     serde_yaml::to_value(outputs).map_err(|e| {
                                         format!("Failed to serialize inputs: {}", e)
                                     })?,
-                                )?)
+                                ))
                             }
                             _ => None,
                         };
                         let mut new_resource = resource.clone();
-                        if let Some(Some(outputs)) = outputs {
-                            let outputs =
-                                serde_yaml::from_value::<BTreeMap<String, OutputValue>>(outputs)
+                        if let Some(outputs) = outputs {
+                            if let Ok(outputs) = outputs {
+                                self.log_success(&outputs)?;
+                                if let Some(outputs) = outputs {
+                                    let outputs = serde_yaml::from_value::<
+                                        BTreeMap<String, OutputValue>,
+                                    >(outputs)
                                     .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
-                            for (key, value) in outputs {
-                                new_resource.add_output(&key, &value)?;
+                                    for (key, value) in outputs {
+                                        new_resource.add_output(&key, &value)?;
+                                    }
+                                }
+                            } else {
+                                self.log_error(outputs.unwrap_err());
+                                return Err(format!(
+                                    "Failed to create or update resource {} {}",
+                                    resource.resource_type, resource.id
+                                ));
                             }
                         }
                         self.resources.insert(new_resource.get_ref(), new_resource);
@@ -374,17 +493,29 @@ impl ResourceGraph {
         }
 
         for (resource_ref, resource) in previous_graph.resources.iter() {
-            let resolved_inputs = previous_graph.resolve_inputs(&resource)?;
+            let resolved_inputs = previous_graph
+                .resolve_inputs(&resource)?
+                .unwrap_or_default();
             match self.get_resource_from_ref(resource_ref) {
                 None => {
+                    self.log_delete(resource, &previous_graph.get_inputs_hash(&resolved_inputs)?);
                     let outputs = resource.outputs.clone().unwrap_or_default();
-                    resource_manager.delete(
+                    let result = resource_manager.delete(
                         &resource.resource_type,
                         serde_yaml::to_value(resolved_inputs)
                             .map_err(|e| format!("Failed to serialize inputs: {}", e))?,
                         serde_yaml::to_value(outputs)
                             .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
-                    )?;
+                    );
+                    if let Err(error) = result {
+                        self.log_error(error);
+                        return Err(format!(
+                            "Failed to delete resource {} {}",
+                            resource.resource_type, resource.id
+                        ));
+                    } else {
+                        self.log_success(&None)?;
+                    }
                 }
                 _ => {}
             }

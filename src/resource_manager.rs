@@ -120,11 +120,11 @@ impl ResourceManagerBackend for RobloxResourceManager {
         resource_type: &str,
         resource_inputs: serde_yaml::Value,
     ) -> Result<Option<serde_yaml::Value>, String> {
-        println!(
-            "CREATE: {} {}",
-            resource_type,
-            serde_yaml::to_string(&resource_inputs).map_err(|_| "".to_owned())?
-        );
+        // println!(
+        //     "CREATE: {} {}",
+        //     resource_type,
+        //     serde_yaml::to_string(&resource_inputs).map_err(|_| "".to_owned())?
+        // );
         match resource_type {
             resource_types::EXPERIENCE_ACTIVATION => {
                 let inputs = serde_yaml::from_value::<ExperienceActivationInputs>(resource_inputs)
@@ -186,7 +186,7 @@ impl ResourceManagerBackend for RobloxResourceManager {
         resource_inputs: serde_yaml::Value,
         resource_outputs: serde_yaml::Value,
     ) -> Result<Option<serde_yaml::Value>, String> {
-        println!("UPDATE: {} {:?}", resource_type, resource_inputs);
+        // println!("UPDATE: {} {:?}", resource_type, resource_inputs);
         match resource_type {
             resource_types::EXPERIENCE => {
                 let inputs = serde_yaml::from_value::<ExperienceInputs>(resource_inputs)
@@ -257,7 +257,7 @@ impl ResourceManagerBackend for RobloxResourceManager {
         resource_inputs: serde_yaml::Value,
         resource_outputs: serde_yaml::Value,
     ) -> Result<(), String> {
-        println!("DELETE: {} {:?}", resource_type, resource_outputs);
+        // println!("DELETE: {} {:?}", resource_type, resource_outputs);
         match resource_type {
             resource_types::EXPERIENCE_ICON => {
                 // TODO: figure out which endpoint to use to delete an icon

@@ -57,7 +57,7 @@
     filePath:
       value: game-thumbnail-1.png
   outputs:
-    assetId: 50464476
+    assetId: 50476156
 - resourceType: experience_thumbnail
   id: game-thumbnail-2.png
   inputs:
@@ -71,7 +71,7 @@
     filePath:
       value: game-thumbnail-2.png
   outputs:
-    assetId: 50464477
+    assetId: 50476158
 - resourceType: experience_thumbnail
   id: game-thumbnail-3.png
   inputs:
@@ -85,7 +85,7 @@
     filePath:
       value: game-thumbnail-3.png
   outputs:
-    assetId: 50464479
+    assetId: 50476181
 - resourceType: experience_thumbnail_order
   id: singleton
   inputs:
@@ -139,9 +139,9 @@
         - singleton
         - assetId
     fileHash:
-      value: 4d3f78c80cbcf5ba8f104555f2bbd9c8f7485d3970de9fbbba5d2c7bc1219ffc
+      value: a158d9c358facbbac6df299462b9874526fc4acea91bfa80d0244e290e22c5a9
     filePath:
       value: start.rbxlx
   outputs:
     assetId: 7818935418
-    version: 12
+    version: 13

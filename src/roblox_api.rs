@@ -255,7 +255,7 @@ impl RobloxApi {
         place_id: u64,
         mode: DeployMode,
     ) -> Result<UploadPlaceResult, String> {
-        println!("TRACE: upload_place {}", place_file.display());
+        // println!("TRACE: upload_place {}", place_file.display());
 
         let project_type = match place_file.extension().and_then(OsStr::to_str) {
             Some("rbxlx") => ProjectType::Xml,
@@ -341,7 +341,7 @@ impl RobloxApi {
         experience_id: u64,
         experience_configuration: &ExperienceConfigurationModel,
     ) -> Result<(), String> {
-        println!("TRACE: configure_experience {}", experience_id);
+        // println!("TRACE: configure_experience {}", experience_id);
 
         let json_data = match serde_json::to_value(&experience_configuration) {
             Ok(v) => v,
@@ -373,7 +373,7 @@ impl RobloxApi {
         place_id: u64,
         place_configuration: &PlaceConfigurationModel,
     ) -> Result<(), String> {
-        println!("TRACE: configure_place {}", place_id);
+        // println!("TRACE: configure_place {}", place_id);
 
         let json_data = match serde_json::to_value(&place_configuration) {
             Ok(v) => v,
@@ -398,7 +398,7 @@ impl RobloxApi {
         experience_id: u64,
         active: bool,
     ) -> Result<(), String> {
-        println!("TRACE: set_experience_active {}", active);
+        // println!("TRACE: set_experience_active {}", active);
 
         let endpoint = if active { "activate" } else { "deactivate" };
         let res = ureq::post(&format!(
@@ -437,7 +437,7 @@ impl RobloxApi {
         experience_id: u64,
         icon_file: &Path,
     ) -> Result<UploadImageResult, String> {
-        println!("TRACE: upload_icon {}", icon_file.display());
+        // println!("TRACE: upload_icon {}", icon_file.display());
 
         let multipart = Self::get_image_from_data(icon_file)?;
 
@@ -467,7 +467,7 @@ impl RobloxApi {
         experience_id: u64,
         thumbnail_file: &Path,
     ) -> Result<UploadImageResult, String> {
-        println!("TRACE: upload_thumbnail {}", thumbnail_file.display());
+        // println!("TRACE: upload_thumbnail {}", thumbnail_file.display());
 
         let multipart = Self::get_image_from_data(thumbnail_file)?;
 
@@ -497,10 +497,10 @@ impl RobloxApi {
         experience_id: u64,
         new_thumbnail_order: &Vec<u64>,
     ) -> Result<(), String> {
-        println!(
-            "TRACE: set_experience_thumbnail_order {:?}",
-            new_thumbnail_order
-        );
+        // println!(
+        //     "TRACE: set_experience_thumbnail_order {:?}",
+        //     new_thumbnail_order
+        // );
 
         let res = ureq::post(&format!(
             "https://develop.roblox.com/v1/universes/{}/thumbnails/order",
@@ -519,7 +519,7 @@ impl RobloxApi {
         experience_id: u64,
         thumbnail_id: u64,
     ) -> Result<(), String> {
-        println!("TRACE: delete_experience_thumbnail {}", thumbnail_id);
+        // println!("TRACE: delete_experience_thumbnail {}", thumbnail_id);
 
         let res = ureq::delete(&format!(
             "https://develop.roblox.com/v1/universes/{}/thumbnails/{}",

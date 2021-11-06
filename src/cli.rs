@@ -9,50 +9,6 @@ fn get_app() -> App<'static, 'static> {
         .about("Manages Roblox deployments")
         .setting(AppSettings::ArgRequiredElseHelp)
         .subcommand(
-            SubCommand::with_name("save")
-                .about("Saves a project file to a Roblox place")
-                .arg(
-                    Arg::with_name("FILE")
-                        .required(true)
-                        .index(1)
-                        .takes_value(true),
-                )
-                .arg(
-                    Arg::with_name("EXPERIENCE_ID")
-                        .required(true)
-                        .index(2)
-                        .takes_value(true),
-                )
-                .arg(
-                    Arg::with_name("PLACE_ID")
-                        .required(true)
-                        .index(3)
-                        .takes_value(true),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("publish")
-                .about("Publishes a project file to a Roblox place")
-                .arg(
-                    Arg::with_name("FILE")
-                        .required(true)
-                        .index(1)
-                        .takes_value(true),
-                )
-                .arg(
-                    Arg::with_name("EXPERIENCE_ID")
-                        .required(true)
-                        .index(2)
-                        .takes_value(true),
-                )
-                .arg(
-                    Arg::with_name("PLACE_ID")
-                        .required(true)
-                        .index(3)
-                        .takes_value(true),
-                ),
-        )
-        .subcommand(
             SubCommand::with_name("deploy")
                 .about("Saves a project file to a Roblox place")
                 .arg(
@@ -68,16 +24,6 @@ pub fn run_with(args: Vec<String>) -> Result<(), String> {
     let app = get_app();
     let matches = app.get_matches_from(args);
     match matches.subcommand() {
-        ("save", Some(save_matches)) => commands::save::run(
-            save_matches.value_of("FILE").unwrap(),
-            save_matches.value_of("EXPERIENCE_ID").unwrap(),
-            save_matches.value_of("PLACE_ID").unwrap(),
-        ),
-        ("publish", Some(publish_matches)) => commands::publish::run(
-            publish_matches.value_of("FILE").unwrap(),
-            publish_matches.value_of("EXPERIENCE_ID").unwrap(),
-            publish_matches.value_of("PLACE_ID").unwrap(),
-        ),
         ("deploy", Some(deploy_matches)) => {
             commands::deploy::run(deploy_matches.value_of("PROJECT"))
         }

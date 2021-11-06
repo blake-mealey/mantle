@@ -1,5 +1,7 @@
+use multipart::client::lazy::{Multipart, PreparedFields};
 use serde::{Deserialize, Serialize};
-use std::{clone::Clone, ffi::OsStr, fmt, fs, path::Path};
+use serde_json::json;
+use std::{clone::Clone, default, ffi::OsStr, fmt, fs, path::Path};
 
 use crate::roblox_auth::RobloxAuth;
 
@@ -26,11 +28,16 @@ impl RequestExt for ureq::Request {
     }
 }
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Serialize, Deserialize, Copy, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum DeployMode {
     Publish,
     Save,
+}
+impl default::Default for DeployMode {
+    fn default() -> Self {
+        DeployMode::Publish
+    }
 }
 
 impl fmt::Display for DeployMode {
@@ -66,7 +73,13 @@ struct RobloxApiErrorModel {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PlaceManagementResponse {
-    version_number: i32,
+    version_number: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UploadImageResponse {
+    target_id: u64,
 }
 
 pub static INVALID_API_KEY_HELP: &str = "\
@@ -77,11 +90,15 @@ pub static INVALID_API_KEY_HELP: &str = "\
     \tthat your API key's IP whitelist includes the machine you are running this on. You can set it \n\
     \tto '0.0.0.0/0' to whitelist all IPs but this should only be used for testing purposes.";
 
-pub struct UploadResult {
-    pub place_version: i32,
+pub struct UploadPlaceResult {
+    pub place_version: u32,
 }
 
-#[derive(Serialize)]
+pub struct UploadImageResult {
+    pub asset_id: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub enum ExperienceGenre {
     All,
     Adventure,
@@ -111,7 +128,7 @@ pub enum ExperiencePlayableDevice {
     Console,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum ExperienceAvatarType {
     MorphToR6,
     MorphToR15,
@@ -132,14 +149,14 @@ pub enum ExperienceCollisionType {
     InnerBox,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct ExperiencePermissionsModel {
     pub is_third_party_purchase_allowed: Option<bool>,
     pub is_third_party_teleport_allowed: Option<bool>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ExperienceConfigurationModel {
     pub genre: Option<ExperienceGenre>,
@@ -159,14 +176,14 @@ pub struct ExperienceConfigurationModel {
     pub universe_collision_type: Option<ExperienceCollisionType>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum SocialSlotType {
     Automatic,
     Empty,
     Custom,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaceConfigurationModel {
     pub name: Option<String>,
@@ -237,7 +254,9 @@ impl RobloxApi {
         experience_id: u64,
         place_id: u64,
         mode: DeployMode,
-    ) -> Result<UploadResult, String> {
+    ) -> Result<UploadPlaceResult, String> {
+        // println!("TRACE: upload_place {}", place_file.display());
+
         let project_type = match place_file.extension().and_then(OsStr::to_str) {
             Some("rbxlx") => ProjectType::Xml,
             Some("rbxl") => ProjectType::Binary,
@@ -280,7 +299,6 @@ impl RobloxApi {
                         ))
                     }
                 };
-                println!("\t📦 Uploading file: {}", place_file.display());
                 req.send_string(&data)
             }
             ProjectType::Binary => {
@@ -294,23 +312,15 @@ impl RobloxApi {
                         ))
                     }
                 };
-                println!("📦 Uploading file: {}", place_file.display());
                 req.send_bytes(&data)
             }
         };
 
         let response = Self::handle_response(res)?;
-        let model = response.into_json::<PlaceManagementResponse>().unwrap();
-        println!(
-            "\
-                \t🎉 Successfully {} to Roblox! \n\
-                \t\tView place at https://www.roblox.com/games/{} \n\
-                \t\tVersion Number: {}",
-            version_type.to_lowercase(),
-            place_id,
-            model.version_number
-        );
-        Ok(UploadResult {
+        let model = response
+            .into_json::<PlaceManagementResponse>()
+            .map_err(|e| format!("Failed to deserialize upload place response: {}", e))?;
+        Ok(UploadPlaceResult {
             place_version: model.version_number,
         })
     }
@@ -320,6 +330,8 @@ impl RobloxApi {
         experience_id: u64,
         experience_configuration: &ExperienceConfigurationModel,
     ) -> Result<(), String> {
+        // println!("TRACE: configure_experience {}", experience_id);
+
         let json_data = match serde_json::to_value(&experience_configuration) {
             Ok(v) => v,
             Err(e) => {
@@ -338,7 +350,6 @@ impl RobloxApi {
             ),
         )
         .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
-        .set("Content-Type", "application/json")
         .send_json(json_data);
 
         Self::handle_response(res)?;
@@ -351,6 +362,8 @@ impl RobloxApi {
         place_id: u64,
         place_configuration: &PlaceConfigurationModel,
     ) -> Result<(), String> {
+        // println!("TRACE: configure_place {}", place_id);
+
         let json_data = match serde_json::to_value(&place_configuration) {
             Ok(v) => v,
             Err(e) => return Err(format!("Failed to serialize place configuration\n\t{}", e)),
@@ -374,10 +387,132 @@ impl RobloxApi {
         experience_id: u64,
         active: bool,
     ) -> Result<(), String> {
+        // println!("TRACE: set_experience_active {}", active);
+
         let endpoint = if active { "activate" } else { "deactivate" };
         let res = ureq::post(&format!(
             "https://develop.roblox.com/v1/universes/{}/{}",
             experience_id, endpoint
+        ))
+        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
+        .send_string("");
+
+        Self::handle_response(res)?;
+
+        Ok(())
+    }
+
+    fn get_image_from_data(image_file: &Path) -> Result<PreparedFields, String> {
+        let stream = fs::File::open(image_file)
+            .map_err(|e| format!("Failed to open image file {}: {}", image_file.display(), e))?;
+        let file_name = Some(
+            image_file
+                .file_name()
+                .and_then(OsStr::to_str)
+                .ok_or("Unable to determine image name")?,
+        );
+        let mime = Some(mime_guess::from_path(image_file).first_or_octet_stream());
+
+        let mut multipart = Multipart::new();
+        multipart.add_stream("request.files", stream, file_name, mime);
+
+        multipart
+            .prepare()
+            .map_err(|e| format!("Failed to load image file {}: {}", image_file.display(), e))
+    }
+
+    pub fn upload_icon(
+        &mut self,
+        experience_id: u64,
+        icon_file: &Path,
+    ) -> Result<UploadImageResult, String> {
+        // println!("TRACE: upload_icon {}", icon_file.display());
+
+        let multipart = Self::get_image_from_data(icon_file)?;
+
+        let res = ureq::post(&format!(
+            "https://publish.roblox.com/v1/games/{}/icon",
+            experience_id
+        ))
+        .set(
+            "Content-Type",
+            &format!("multipart/form-data; boundary={}", multipart.boundary()),
+        )
+        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
+        .send(multipart);
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<UploadImageResponse>()
+            .map_err(|e| format!("Failed to deserialize upload image response: {}", e))?;
+
+        Ok(UploadImageResult {
+            asset_id: model.target_id,
+        })
+    }
+
+    pub fn upload_thumbnail(
+        &mut self,
+        experience_id: u64,
+        thumbnail_file: &Path,
+    ) -> Result<UploadImageResult, String> {
+        // println!("TRACE: upload_thumbnail {}", thumbnail_file.display());
+
+        let multipart = Self::get_image_from_data(thumbnail_file)?;
+
+        let res = ureq::post(&format!(
+            "https://publish.roblox.com/v1/games/{}/thumbnail/image",
+            experience_id
+        ))
+        .set(
+            "Content-Type",
+            &format!("multipart/form-data; boundary={}", multipart.boundary()),
+        )
+        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
+        .send(multipart);
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<UploadImageResponse>()
+            .map_err(|e| format!("Failed to deserialize upload image response: {}", e))?;
+
+        Ok(UploadImageResult {
+            asset_id: model.target_id,
+        })
+    }
+
+    pub fn set_experience_thumbnail_order(
+        &mut self,
+        experience_id: u64,
+        new_thumbnail_order: &[u64],
+    ) -> Result<(), String> {
+        // println!(
+        //     "TRACE: set_experience_thumbnail_order {:?}",
+        //     new_thumbnail_order
+        // );
+
+        let res = ureq::post(&format!(
+            "https://develop.roblox.com/v1/universes/{}/thumbnails/order",
+            experience_id
+        ))
+        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
+        .send_json(json!({ "thumbnailIds": new_thumbnail_order }));
+
+        Self::handle_response(res)?;
+
+        Ok(())
+    }
+
+    pub fn delete_experience_thumbnail(
+        &mut self,
+        experience_id: u64,
+        thumbnail_id: u64,
+    ) -> Result<(), String> {
+        // println!("TRACE: delete_experience_thumbnail {}", thumbnail_id);
+
+        let res = ureq::delete(&format!(
+            "https://develop.roblox.com/v1/universes/{}/thumbnails/{}",
+            experience_id, thumbnail_id
         ))
         .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
         .send_string("");

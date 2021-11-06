@@ -1,9 +1,9 @@
 # Rocat 🚀
 
-Early development of a new tool for deploying projects to Roblox using the new [Open Cloud
-APIs](https://devforum.roblox.com/t/open-cloud-publishing-your-places-with-api-keys-is-now-live/1485135).
+An infrastructure-as-code and deployment tool for Roblox.
 
-⚠ Please note that this is an early release and the API is unstable ⚠
+⚠ Please note that this is an early release and the API is unstable. Releases follow pre-release
+semantic versioning (minor updates indicate breaking changes) ⚠
 
 ## Installation
 
@@ -41,76 +41,22 @@ If you are using the `templates` feature you will also need to provide a `ROBLOS
 the `ROBLOSECURITY` environment variable. You can get the cookie from your browser dev tools on
 roblox.com.
 
-### Manually save/publish a place to Roblox
-
-You can use the `save` and `publish` commands to manually save or publish a Roblox place file
-(`rbxl` or `rbxlx`) to a pre-existing place.
-
-```sh
-# Save
-rocat save place.rbxl <experience_id> <place_id>
-
-# Publish
-rocat publish place.rbxl <experience_id> <place_id>
-```
-
 ### Configure deployments
 
-You can configure reusable Roblox deployments by creating a YAML config file and using the `deploy`
-command.
-
-By default, Rocat will look for a `rocat.yml` file but you may specifiy an alternate file with the
-`--config` argument.
+Rocat configuration is typically defined in a `rocat.yml` file. Rocat will look for a configuration
+file in the provided directory.
 
 ```yml
 # rocat.yml
+
 placeFiles:
   start: start-place.rbxlx
-
-deployments:
-  - name: staging
-    branches: [dev, experiments/*]
-    deployMode: Save # optional; defaults to Publish
-    experienceId: 7067418676
-    placeIds:
-      start: 8468630367
-  - name: production
-    branches: [main]
-    tagCommit: true # optional; defaults to false
-    experienceId: 6428418832
-    placeIds:
-      start: 4927604916
-```
-
-With the above configuration, we are telling Rocat that when the `deploy` command is run on the
-`dev` branch, it should save the `start-place.rbxl` file to the experience/place specified in the
-`staging` environment, and when it is run on the `main` branch, it should publish the
-`start-place.rbxl` file to the experience/place specified in the `production` environment.
-
-You can perform the deployment by running the `deploy` command:
-
-```sh
-rocat deploy
-```
-
-If the current git branch does not match any of the provided configurations, the tool will return a
-success exit code but will not do anything.
-
-### Multi-file projects
-
-If your project consists of more than just a start place, you can simply add new keys to the
-`placeFiles` and `placeIds` fields:
-
-```yml
-# rocat.yml
-placeFiles:
-  start: start-place.rbxl
   world: world-place.rbxl
 
 deployments:
   - name: staging
-    branches: [dev, experiments/*]
-    deployMode: Save # optional; defaults to Publish
+    branches: [dev, dev/*]
+    deployMode: save # optional; defaults to Publish
     experienceId: 7067418676
     placeIds:
       start: 8468630367
@@ -122,34 +68,6 @@ deployments:
     placeIds:
       start: 4927604916
       world: 7618543001
-```
-
-When the `deploy` command is run with this configuration, the same deployments will be made as with
-the above single-file configuration, except that both the `start-place.rbxl` and `world-place.rbxl`
-files will be uploaded to their respective places.
-
-### Configuration templates
-
-You can additionally configure templates which will be applied to the experience and places:
-
-```yml
-# rocat.yml
-placeFiles:
-  start: start-place.rbxlx
-
-deployments:
-  - name: staging
-    branches: [dev, experiments/*]
-    deployMode: save # optional; defaults to Publish
-    experienceId: 7067418676
-    placeIds:
-      start: 8468630367
-  - name: production
-    branches: [main]
-    tagCommit: true # optional; defaults to false
-    experienceId: 6428418832
-    placeIds:
-      start: 4927604916
 
 templates:
   experience:
@@ -164,6 +82,11 @@ templates:
     avatarType: r15 # or `r6` or `playerChoice`
     avatarAnimationType: playerChoice # or `standard`
     avatarCollisionType: outerBox # or `innerBox`
+    icon: game-icon.png
+    thumbnails:
+      - game-thumbnail-1.png
+      - game-thumbnail-2.png
+      - game-thumbnail-3.png
   places:
     start:
       name: The Best Experience Ever
@@ -175,14 +98,32 @@ templates:
       allowCopying: false
 ```
 
-When this deployment is run, the experience will be configured on Roblox with the provided settings,
-and the start place will be configured on Roblox with the provided settings. This feature requires
-the `ROBLOSECURITY` authentication (see above for details).
+To deploy the above configuration with Rocat, run `rocat deploy` from the file's directory.
+
+If the current git branch does not match any of the provided configurations, the tool will return a
+success exit code but will not do anything.
+
+Rocat outputs a `.rocat-state.yml` file which is required by future runs of `rocat deploy` to ensure
+the appropriate changes are applied. See [workflows](#workflows) for more information on how to use
+this file.
+
+### Workflows
+
+Since Rocat requires the state file to be present, there are currently two recommended workflows:
+
+1. Manual: Include your `.rocat-state.yml` file in your git repo, and only deploy with Rocat by
+   manually running `rocat deploy`, then check in any changes to the file to your repo.
+2. Automated: Do not include your `.rocat-state.yml` file in your git repo, and never deploy with
+   Rocat by manually running `rocat deploy`. Instead, use a CI tool like GitHub Actions to deploy
+   with Rocat, and cache the `.rocat-state.yml` file between runs. TODO: create an example GH
+   Workflow.
 
 ### GitHub Actions
 
 Combined with the [Roblox/setup-forman](https://github.com/Roblox/setup-foreman) Action, it is easy
-to create a workflow to deploy your places using Rocat.
+to create a workflow to deploy your places using Rocat. Note that this example does not currently
+cache the `.rocat-state.yml` file and so it will not work as expected. See [workflows](#workflows)
+for more info.
 
 Here is an example for a fully-managed Rojo project:
 

@@ -1,59 +1,67 @@
-use crate::roblox_api::{
-    DeployMode, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
-    ExperienceConfigurationModel, ExperienceGenre, ExperiencePermissionsModel,
-    ExperiencePlayableDevice, PlaceConfigurationModel, RobloxApi, SocialSlotType,
+use crate::{
+    resource_manager::{resource_types, AssetId, RobloxResourceManager, SINGLETON_RESOURCE_ID},
+    resources::{InputRef, Resource, ResourceGraph, ResourceManager},
+    roblox_api::{
+        DeployMode, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
+        ExperienceConfigurationModel, ExperienceGenre, ExperiencePermissionsModel,
+        ExperiencePlayableDevice, PlaceConfigurationModel, SocialSlotType,
+    },
 };
-use crate::roblox_auth::RobloxAuth;
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::str;
+use sha2::{Digest, Sha256};
+use std::{
+    collections::HashMap,
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+    str,
+};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Config {
+pub struct Config {
     #[serde(default = "HashMap::new")]
-    place_files: HashMap<String, String>,
+    pub place_files: HashMap<String, String>,
 
     #[serde(default = "Vec::new")]
-    deployments: Vec<DeploymentConfig>,
+    pub deployments: Vec<DeploymentConfig>,
 
     #[serde(default)]
-    templates: TemplateConfig,
+    pub templates: TemplateConfig,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct DeploymentConfig {
-    name: Option<String>,
+pub struct DeploymentConfig {
+    pub name: String,
 
     #[serde(default = "Vec::new")]
-    branches: Vec<String>,
+    pub branches: Vec<String>,
 
-    deploy_mode: Option<DeployMode>,
+    #[serde(default)]
+    pub deploy_mode: DeployMode,
 
-    tag_commit: Option<bool>,
+    #[serde(default)]
+    pub tag_commit: bool,
 
-    experience_id: Option<u64>,
+    pub experience_id: u64,
 
-    place_ids: Option<HashMap<String, u64>>,
+    pub place_ids: HashMap<String, u64>,
 }
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-struct TemplateConfig {
-    experience: Option<ExperienceTemplateConfig>,
+pub struct TemplateConfig {
+    pub experience: Option<ExperienceTemplateConfig>,
 
     #[serde(default = "HashMap::new")]
-    places: HashMap<String, PlaceTemplateConfig>,
+    pub places: HashMap<String, PlaceTemplateConfig>,
 }
 
 //isFriendsOnly: true/false
 //setActive(true/false)
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum GenreConfig {
     All,
@@ -75,49 +83,49 @@ pub enum GenreConfig {
 
 #[derive(Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
-enum PlayabilityConfig {
+pub enum PlayabilityConfig {
     Private,
     Public,
     Friends,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-enum AvatarTypeConfig {
+pub enum AvatarTypeConfig {
     R6,
     R15,
     PlayerChoice,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ExperienceTemplateConfig {
     // basic info
-    genre: Option<GenreConfig>,
-    playable_devices: Option<Vec<ExperiencePlayableDevice>>,
-    // icon: Option<String>,   // TODO: call the upload icon api
-    // thumbnails: Option<Vec<String>>  // TODO: call the upload thumbnails api
+    pub genre: Option<GenreConfig>,
+    pub playable_devices: Option<Vec<ExperiencePlayableDevice>>,
+    pub icon: Option<String>,
+    pub thumbnails: Option<Vec<String>>,
 
     // permissions
-    playability: Option<PlayabilityConfig>,
+    pub playability: Option<PlayabilityConfig>,
 
     // monetization
     // badges: // TODO: create badges
-    paid_access_price: Option<u32>,
-    private_server_price: Option<u32>,
+    pub paid_access_price: Option<u32>,
+    pub private_server_price: Option<u32>,
     // developer products: // TODO: create developer products
 
     // security
-    enable_studio_access_to_apis: Option<bool>,
-    allow_third_party_sales: Option<bool>,
-    allow_third_party_teleports: Option<bool>,
+    pub enable_studio_access_to_apis: Option<bool>,
+    pub allow_third_party_sales: Option<bool>,
+    pub allow_third_party_teleports: Option<bool>,
 
     // localization: // TODO: localization
 
     // avatar
-    avatar_type: Option<AvatarTypeConfig>,
-    avatar_animation_type: Option<ExperienceAnimationType>,
-    avatar_collision_type: Option<ExperienceCollisionType>,
+    pub avatar_type: Option<AvatarTypeConfig>,
+    pub avatar_animation_type: Option<ExperienceAnimationType>,
+    pub avatar_collision_type: Option<ExperienceCollisionType>,
     // avatar_asset_overrides: Option<HashMap<String, u64>>,    // TODO: figure out api
     // avatar_scale_constraints: Option<HashMap<String, (f32, f32)>>,   // TODO: figure out api
 
@@ -194,26 +202,26 @@ impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-enum ServerFillConfig {
+pub enum ServerFillConfig {
     RobloxOptimized,
     Maximum,
     ReservedSlots(u32),
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaceTemplateConfig {
-    name: Option<String>,
-    description: Option<String>,
-    max_player_count: Option<u32>,
-    allow_copying: Option<bool>,
-    server_fill: Option<ServerFillConfig>,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub max_player_count: Option<u32>,
+    pub allow_copying: Option<bool>,
+    pub server_fill: Option<ServerFillConfig>,
 }
 
-impl From<&PlaceTemplateConfig> for PlaceConfigurationModel {
-    fn from(config: &PlaceTemplateConfig) -> Self {
+impl From<PlaceTemplateConfig> for PlaceConfigurationModel {
+    fn from(config: PlaceTemplateConfig) -> Self {
         PlaceConfigurationModel {
             name: config.name.clone(),
             description: config.description.clone(),
@@ -297,12 +305,7 @@ fn parse_project(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {
     ))
 }
 
-pub fn run(project: Option<&str>) -> Result<(), String> {
-    let (project_path, config_file) = parse_project(project)?;
-    println!("📃 Config file: {}", config_file.display());
-
-    let config = load_config_file(&config_file)?;
-
+fn get_current_branch() -> Result<String, String> {
     let output = run_command("git symbolic-ref --short HEAD");
     let result = match output {
         Ok(v) => v,
@@ -323,115 +326,245 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
         return Err("Unable to determine git branch. Are you in a git repository?".to_string());
     }
 
-    println!("🌿 Git branch: {}", current_branch);
+    Ok(current_branch.to_owned())
+}
 
-    let deployment = config
+fn get_state_file_path(project_path: &Path) -> PathBuf {
+    project_path.join(".rocat-state.yml")
+}
+
+pub fn get_hash(data: &[u8]) -> String {
+    let digest = Sha256::digest(data);
+    format!("{:x}", digest)
+}
+
+pub fn get_file_hash(file_path: &Path) -> Result<String, String> {
+    let buffer = fs::read(file_path).map_err(|e| {
+        format!(
+            "Failed to read file {} for hashing: {}",
+            file_path.display(),
+            e
+        )
+    })?;
+    Ok(get_hash(&buffer))
+}
+
+pub fn get_previous_graph(
+    project_path: &Path,
+    config: &Config,
+    deployment_config: &DeploymentConfig,
+) -> Result<ResourceGraph, String> {
+    let state_file_path = get_state_file_path(project_path);
+
+    if !state_file_path.exists() {
+        let mut resources: Vec<Resource> = Vec::new();
+
+        let mut experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
+            .add_output::<AssetId>("assetId", &deployment_config.experience_id.clone())?
+            .clone();
+        let experience_asset_id_ref = experience.get_input_ref("assetId");
+        if config.templates.experience.is_some() {
+            experience.add_value_stub_input("configuration");
+        }
+        resources.push(experience.clone());
+
+        for (name, id) in deployment_config.place_ids.iter() {
+            let place_file = config
+                .place_files
+                .get(name)
+                .ok_or(format!("No place file configured for place {}", name))?;
+            let place_file_resource = Resource::new(resource_types::PLACE_FILE, name)
+                .add_output("assetId", &id)?
+                .add_ref_input("experienceId", &experience_asset_id_ref)
+                .add_value_input("filePath", &place_file)?
+                .add_value_stub_input("fileHash")
+                .add_value_stub_input("version")
+                .add_value_stub_input("deployMode")
+                .clone();
+            let place_file_asset_id_ref = place_file_resource.get_input_ref("assetId");
+            resources.push(place_file_resource);
+            if config.templates.places.contains_key(name) {
+                resources.push(
+                    Resource::new(resource_types::PLACE_CONFIGURATION, name)
+                        .add_ref_input("experienceId", &experience_asset_id_ref)
+                        .add_ref_input("assetId", &place_file_asset_id_ref)
+                        .add_value_stub_input("configuration")
+                        .clone(),
+                );
+            }
+        }
+
+        return Ok(ResourceGraph::new(&resources));
+    }
+
+    let data = fs::read_to_string(&state_file_path).map_err(|e| {
+        format!(
+            "Unable to read state file: {}\n\t{}",
+            state_file_path.display(),
+            e
+        )
+    })?;
+
+    let resources = serde_yaml::from_str::<Vec<Resource>>(&data).map_err(|e| {
+        format!(
+            "Unable to parse state file {}\n\t{}",
+            state_file_path.display(),
+            e
+        )
+    })?;
+
+    Ok(ResourceGraph::new(&resources))
+}
+
+pub fn get_desired_graph(
+    project_path: &Path,
+    config: &Config,
+    deployment_config: &DeploymentConfig,
+) -> Result<ResourceGraph, String> {
+    let mut resources: Vec<Resource> = Vec::new();
+
+    let mut experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
+        .add_output::<AssetId>("assetId", &deployment_config.experience_id.clone())?
+        .clone();
+    let experience_asset_id_ref = experience.get_input_ref("assetId");
+    if let Some(experience_configuration) = &config.templates.experience {
+        experience.add_value_input::<ExperienceConfigurationModel>(
+            "configuration",
+            &experience_configuration.into(),
+        )?;
+        resources.push(
+            Resource::new(resource_types::EXPERIENCE_ACTIVATION, SINGLETON_RESOURCE_ID)
+                .add_value_input(
+                    "isActive",
+                    &!matches!(
+                        experience_configuration.playability,
+                        Some(PlayabilityConfig::Private)
+                    ),
+                )?
+                .add_ref_input("experienceId", &experience_asset_id_ref)
+                .clone(),
+        );
+    }
+    resources.push(experience.clone());
+
+    for (name, id) in deployment_config.place_ids.iter() {
+        let place_file = config
+            .place_files
+            .get(name)
+            .ok_or(format!("No place file configured for place {}", name))?;
+        let place_file_resource = Resource::new(resource_types::PLACE_FILE, name)
+            .add_output("assetId", &id)?
+            .add_ref_input("experienceId", &experience_asset_id_ref)
+            .add_value_input("filePath", &place_file)?
+            .add_value_input(
+                "fileHash",
+                &get_file_hash(project_path.join(place_file).as_path())?,
+            )?
+            .add_value_input("deployMode", &deployment_config.deploy_mode)?
+            .clone();
+        let place_file_asset_id_ref = place_file_resource.get_input_ref("assetId");
+        resources.push(place_file_resource);
+        if let Some(place_configuration) = config.templates.places.get(name) {
+            resources.push(
+                Resource::new(resource_types::PLACE_CONFIGURATION, name)
+                    .add_ref_input("experienceId", &experience_asset_id_ref)
+                    .add_ref_input("assetId", &place_file_asset_id_ref)
+                    .add_value_input::<PlaceConfigurationModel>(
+                        "configuration",
+                        &place_configuration.clone().into(),
+                    )?
+                    .clone(),
+            );
+        }
+    }
+
+    if let Some(experience_configuration) = &config.templates.experience {
+        if let Some(file_path) = &experience_configuration.icon {
+            resources.push(
+                Resource::new(resource_types::EXPERIENCE_ICON, file_path)
+                    .add_ref_input("experienceId", &experience_asset_id_ref)
+                    .add_value_input("filePath", file_path)?
+                    .add_value_input(
+                        "fileHash",
+                        &get_file_hash(project_path.join(file_path).as_path())?,
+                    )?
+                    .clone(),
+            );
+        }
+        if let Some(thumbnails) = &experience_configuration.thumbnails {
+            let mut thumbnail_asset_id_refs: Vec<InputRef> = Vec::new();
+            for file_path in thumbnails {
+                let thumbnail_resource =
+                    Resource::new(resource_types::EXPERIENCE_THUMBNAIL, file_path)
+                        .add_ref_input("experienceId", &experience_asset_id_ref)
+                        .add_value_input("filePath", file_path)?
+                        .add_value_input(
+                            "fileHash",
+                            &get_file_hash(project_path.join(file_path).as_path())?,
+                        )?
+                        .clone();
+                thumbnail_asset_id_refs.push(thumbnail_resource.get_input_ref("assetId"));
+                resources.push(thumbnail_resource);
+            }
+            resources.push(
+                Resource::new(
+                    resource_types::EXPERIENCE_THUMBNAIL_ORDER,
+                    SINGLETON_RESOURCE_ID,
+                )
+                .add_ref_input("experienceId", &experience_asset_id_ref)
+                .add_ref_input_list("assetIds", &thumbnail_asset_id_refs)
+                .clone(),
+            );
+        }
+    }
+
+    Ok(ResourceGraph::new(&resources))
+}
+
+fn save_state(project_path: &Path, resources: &[Resource]) -> Result<(), String> {
+    let state_file_path = get_state_file_path(project_path);
+
+    let data = serde_yaml::to_vec(&resources)
+        .map_err(|e| format!("Unable to serialize state\n\t{}", e))?;
+
+    fs::write(&state_file_path, data).map_err(|e| {
+        format!(
+            "Unable to write state file: {}\n\t{}",
+            state_file_path.display(),
+            e
+        )
+    })?;
+
+    Ok(())
+}
+
+pub fn run(project: Option<&str>) -> Result<(), String> {
+    let (project_path, config_file) = parse_project(project)?;
+
+    let config = load_config_file(&config_file)?;
+
+    let current_branch = get_current_branch()?;
+
+    let deployment_config = config
         .deployments
         .iter()
-        .find(|deployment| match_branch(current_branch, &deployment.branches));
+        .find(|deployment| match_branch(&current_branch, &deployment.branches));
 
-    let deployment = match deployment {
+    let deployment_config = match deployment_config {
         Some(v) => v,
         None => {
-            println!("✅ No deployment configuration found for branch; no deployment necessary.");
+            println!("No deployment configuration found for branch; no deployment necessary.");
             return Ok(());
         }
     };
 
-    let deployment_name = match &deployment.name {
-        Some(v) => v,
-        None => return Err("Deployment configuration does not contain a name.".to_string()),
-    };
-
-    let mode = match deployment.deploy_mode.unwrap_or(DeployMode::Publish) {
-        DeployMode::Publish => DeployMode::Publish,
-        DeployMode::Save => DeployMode::Save,
-    };
-
-    let should_tag = deployment.tag_commit.unwrap_or(false);
-
-    let experience_id = match deployment.experience_id {
-        Some(v) => v,
-        None => {
-            return Err(format!(
-                "No experience_id configuration found for branch {}",
-                current_branch
-            ))
-        }
-    };
-
-    let place_ids = match &deployment.place_ids {
-        Some(v) => v,
-        None => {
-            return Err(format!(
-                "No place_ids configuration found for branch {}.",
-                current_branch
-            ))
-        }
-    };
-
-    println!("🌎 Deployment configuration:");
-    println!("\tName: {}", deployment_name);
-    println!("\tDeploy mode: {}", mode);
-    println!(
-        "\tTag commit: {}",
-        match should_tag {
-            true => "Yes",
-            false => "No",
-        }
-    );
-    println!("\tExperience ID: {}", experience_id);
-    println!("\tPlace IDs:");
-    for (name, place_id) in place_ids.iter() {
-        println!("\t\t{}: {}", name, place_id);
-    }
-
-    let mut roblox_api = RobloxApi::new(RobloxAuth::new());
-
-    if let Some(experience_template) = &config.templates.experience {
-        println!("🔧 Configuring experience");
-        roblox_api.configure_experience(experience_id, &experience_template.into())?;
-        if let Some(playability) = experience_template.playability {
-            roblox_api.set_experience_active(
-                experience_id,
-                !matches!(playability, PlayabilityConfig::Private),
-            )?;
-        }
-    }
-
-    for (name, place_file) in config.place_files.iter() {
-        println!("🚀 Deploying place: {}", name);
-
-        let place_id = match place_ids.get(name) {
-            Some(v) => v,
-            None => return Err(format!("No place ID found for configured place {}", name)),
-        };
-
-        let place_template = config.templates.places.get(name);
-        if place_template.is_some() {
-            println!("\t🔧 Configuring place");
-            roblox_api.configure_place(*place_id, &place_template.unwrap().into())?;
-        }
-
-        let upload_result = roblox_api.upload_place(
-            &project_path.join(place_file),
-            experience_id,
-            *place_id,
-            mode,
-        )?;
-
-        if should_tag {
-            let tag = format!("{}-v{}", name, upload_result.place_version);
-            println!("\t🔖 Tagging commit with: {}", tag);
-
-            run_command(&format!("git tag {}", tag))
-                .map_err(|e| format!("Unable to tag the current commit\n\t{}", e))?;
-        }
-    }
-
-    if should_tag {
-        run_command("git push --tags").map_err(|e| format!("Unable to push the tags\n\t{}", e))?;
-    }
+    let mut resource_manager =
+        ResourceManager::new(Box::new(RobloxResourceManager::new(&project_path)));
+    let previous_graph = get_previous_graph(project_path.as_path(), &config, deployment_config)?;
+    let mut next_graph = get_desired_graph(project_path.as_path(), &config, deployment_config)?;
+    next_graph.resolve(&mut resource_manager, &previous_graph)?;
+    let resources = next_graph.get_resource_list();
+    save_state(&project_path, &resources)?;
 
     Ok(())
 }

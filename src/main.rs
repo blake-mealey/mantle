@@ -1,5 +1,7 @@
 mod cli;
 mod commands;
+mod resource_manager;
+mod resources;
 mod roblox_api;
 mod roblox_auth;
 mod state;

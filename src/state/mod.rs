@@ -229,7 +229,7 @@ fn get_asset_id(resource: &Resource) -> Option<AssetId> {
     }
 }
 
-fn get_hash(resource: &Resource) -> Option<String> {
+fn get_resource_hash(resource: &Resource) -> Option<String> {
     match resource {
         // TODO: hash configuration
         Resource::Experience(experience) => experience.get_hash(),
@@ -254,7 +254,9 @@ fn get_op_for_desired_resource(
     let op = match &previous_resource {
         None => ResourceOp::Create,
         Some(r) if matches!(get_asset_id(&r), None) => ResourceOp::Create,
-        Some(r) if get_hash(&r) != get_hash(desired_resource) => ResourceOp::Update,
+        Some(r) if get_resource_hash(&r) != get_resource_hash(desired_resource) => {
+            ResourceOp::Update
+        }
         _ => ResourceOp::Keep,
     };
     (op, previous_resource)

@@ -99,7 +99,7 @@ pub struct UploadImageResult {
     pub asset_id: u64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum ExperienceGenre {
     All,
     Adventure,
@@ -129,7 +129,7 @@ pub enum ExperiencePlayableDevice {
     Console,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum ExperienceAvatarType {
     MorphToR6,
     MorphToR15,
@@ -150,14 +150,14 @@ pub enum ExperienceCollisionType {
     InnerBox,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct ExperiencePermissionsModel {
     pub is_third_party_purchase_allowed: Option<bool>,
     pub is_third_party_teleport_allowed: Option<bool>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ExperienceConfigurationModel {
     pub genre: Option<ExperienceGenre>,
@@ -177,14 +177,14 @@ pub struct ExperienceConfigurationModel {
     pub universe_collision_type: Option<ExperienceCollisionType>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum SocialSlotType {
     Automatic,
     Empty,
     Custom,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaceConfigurationModel {
     pub name: Option<String>,

@@ -1,12 +1,14 @@
 use crate::{
+    resource_manager::{resource_types, AssetId, RobloxResourceManager, SINGLETON_RESOURCE_ID},
+    resources::{Resource, ResourceGraph, ResourceManager},
     roblox_api::{
         DeployMode, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
         ExperienceConfigurationModel, ExperienceGenre, ExperiencePermissionsModel,
         ExperiencePlayableDevice, PlaceConfigurationModel, SocialSlotType,
     },
-    state::{get_desired_state, get_next_state, get_previous_state, save_state},
 };
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
     fs,
@@ -28,7 +30,7 @@ pub struct Config {
     pub templates: TemplateConfig,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentConfig {
     pub name: String,
@@ -59,7 +61,7 @@ pub struct TemplateConfig {
 //isFriendsOnly: true/false
 //setActive(true/false)
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum GenreConfig {
     All,
@@ -87,7 +89,7 @@ pub enum PlayabilityConfig {
     Friends,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum AvatarTypeConfig {
     R6,
@@ -95,7 +97,7 @@ pub enum AvatarTypeConfig {
     PlayerChoice,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ExperienceTemplateConfig {
     // basic info
@@ -200,7 +202,7 @@ impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum ServerFillConfig {
     RobloxOptimized,
@@ -208,7 +210,7 @@ pub enum ServerFillConfig {
     ReservedSlots(u32),
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaceTemplateConfig {
     pub name: Option<String>,
@@ -218,8 +220,8 @@ pub struct PlaceTemplateConfig {
     pub server_fill: Option<ServerFillConfig>,
 }
 
-impl From<&PlaceTemplateConfig> for PlaceConfigurationModel {
-    fn from(config: &PlaceTemplateConfig) -> Self {
+impl From<PlaceTemplateConfig> for PlaceConfigurationModel {
+    fn from(config: PlaceTemplateConfig) -> Self {
         PlaceConfigurationModel {
             name: config.name.clone(),
             description: config.description.clone(),
@@ -327,6 +329,254 @@ fn get_current_branch() -> Result<String, String> {
     Ok(current_branch.to_owned())
 }
 
+fn get_state_file_path(project_path: &Path) -> PathBuf {
+    project_path.join(".rocat-state.yml")
+}
+
+pub fn get_hash(data: &[u8]) -> String {
+    let digest = Sha256::digest(data);
+    format!("{:x}", digest)
+}
+
+pub fn get_file_hash(file_path: &Path) -> Result<String, String> {
+    let buffer = fs::read(file_path).map_err(|e| {
+        format!(
+            "Failed to read file {} for hashing: {}",
+            file_path.display(),
+            e
+        )
+    })?;
+    Ok(get_hash(&buffer))
+}
+
+pub fn get_previous_graph(
+    project_path: &Path,
+    config: &Config,
+    deployment_config: &DeploymentConfig,
+) -> Result<ResourceGraph, String> {
+    let state_file_path = get_state_file_path(project_path);
+
+    if !state_file_path.exists() {
+        let mut resources: Vec<Resource> = Vec::new();
+
+        let mut experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
+            .add_output::<AssetId>("assetId", &deployment_config.experience_id.clone())?
+            .clone();
+        if let Some(experience_configuration) = &config.templates.experience {
+            experience.add_value_input::<ExperienceConfigurationModel>(
+                "configuration",
+                &experience_configuration.into(),
+            )?;
+        }
+        resources.push(experience.clone());
+
+        for (name, id) in deployment_config.place_ids.iter() {
+            // TODO: what about version??
+            let place_file = config
+                .place_files
+                .get(name)
+                .ok_or(format!("No place file configured for place {}", name))?;
+            resources.push(
+                Resource::new(resource_types::PLACE_FILE, name)
+                    .add_output("assetId", &id)?
+                    .add_ref_input(
+                        "experienceId",
+                        resource_types::EXPERIENCE,
+                        SINGLETON_RESOURCE_ID,
+                        "assetId",
+                    )
+                    .add_value_input("filePath", &place_file)?
+                    .add_value_input(
+                        "fileHash",
+                        &get_file_hash(project_path.join(place_file).as_path())?,
+                    )?
+                    .clone(),
+            );
+            if let Some(place_configuration) = config.templates.places.get(name) {
+                resources.push(
+                    Resource::new(resource_types::PLACE_CONFIGURATION, name)
+                        .add_ref_input(
+                            "experienceId",
+                            resource_types::EXPERIENCE,
+                            SINGLETON_RESOURCE_ID,
+                            "assetId",
+                        )
+                        .add_ref_input("assetId", resource_types::PLACE_FILE, name, "assetId")
+                        .add_value_input::<PlaceConfigurationModel>(
+                            "configuration",
+                            &place_configuration.clone().into(),
+                        )?
+                        .clone(),
+                );
+            }
+        }
+
+        return Ok(ResourceGraph::new(&resources));
+    }
+
+    let data = fs::read_to_string(&state_file_path).map_err(|e| {
+        format!(
+            "Unable to read state file: {}\n\t{}",
+            state_file_path.display(),
+            e
+        )
+    })?;
+
+    let resources = serde_yaml::from_str::<Vec<Resource>>(&data).map_err(|e| {
+        format!(
+            "Unable to parse state file {}\n\t{}",
+            state_file_path.display(),
+            e
+        )
+    })?;
+
+    Ok(ResourceGraph::new(&resources))
+}
+
+pub fn get_desired_graph(
+    project_path: &Path,
+    config: &Config,
+    deployment_config: &DeploymentConfig,
+) -> Result<ResourceGraph, String> {
+    let mut resources: Vec<Resource> = Vec::new();
+
+    let mut experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
+        .add_output::<AssetId>("assetId", &deployment_config.experience_id.clone())?
+        .clone();
+    if let Some(experience_configuration) = &config.templates.experience {
+        experience.add_value_input::<ExperienceConfigurationModel>(
+            "configuration",
+            &experience_configuration.into(),
+        )?;
+    }
+    resources.push(experience.clone());
+
+    for (name, id) in deployment_config.place_ids.iter() {
+        // TODO: what about version??
+        let place_file = config
+            .place_files
+            .get(name)
+            .ok_or(format!("No place file configured for place {}", name))?;
+        resources.push(
+            Resource::new(resource_types::PLACE_FILE, name)
+                .add_output("assetId", &id)?
+                .add_ref_input(
+                    "experienceId",
+                    resource_types::EXPERIENCE,
+                    SINGLETON_RESOURCE_ID,
+                    "assetId",
+                )
+                .add_value_input("filePath", &place_file)?
+                .add_value_input(
+                    "fileHash",
+                    &get_file_hash(project_path.join(place_file).as_path())?,
+                )?
+                .clone(),
+        );
+        if let Some(place_configuration) = config.templates.places.get(name) {
+            resources.push(
+                Resource::new(resource_types::PLACE_CONFIGURATION, name)
+                    .add_ref_input(
+                        "experienceId",
+                        resource_types::EXPERIENCE,
+                        SINGLETON_RESOURCE_ID,
+                        "assetId",
+                    )
+                    .add_ref_input("assetId", resource_types::PLACE_FILE, name, "assetId")
+                    .add_value_input::<PlaceConfigurationModel>(
+                        "configuration",
+                        &place_configuration.clone().into(),
+                    )?
+                    .clone(),
+            );
+        }
+    }
+
+    if let Some(experience_configuration) = &config.templates.experience {
+        if let Some(file_path) = &experience_configuration.icon {
+            resources.push(
+                Resource::new(resource_types::EXPERIENCE_ICON, file_path)
+                    .add_ref_input(
+                        "experienceId",
+                        resource_types::EXPERIENCE,
+                        SINGLETON_RESOURCE_ID,
+                        "assetId",
+                    )
+                    .add_value_input("filePath", file_path)?
+                    .add_value_input(
+                        "fileHash",
+                        &get_file_hash(project_path.join(file_path).as_path()),
+                    )?
+                    .clone(),
+            );
+        }
+        if let Some(thumbnails) = &experience_configuration.thumbnails {
+            for file_path in thumbnails {
+                resources.push(
+                    Resource::new(resource_types::EXPERIENCE_THUMBNAIL, file_path)
+                        .add_ref_input(
+                            "experienceId",
+                            resource_types::EXPERIENCE,
+                            SINGLETON_RESOURCE_ID,
+                            "assetId",
+                        )
+                        .add_value_input("filePath", file_path)?
+                        .add_value_input(
+                            "fileHash",
+                            &get_file_hash(project_path.join(file_path).as_path()),
+                        )?
+                        .clone(),
+                );
+            }
+            resources.push(
+                Resource::new(
+                    resource_types::EXPERIENCE_THUMBNAIL_ORDER,
+                    SINGLETON_RESOURCE_ID,
+                )
+                .add_ref_input(
+                    "experienceId",
+                    resource_types::EXPERIENCE,
+                    SINGLETON_RESOURCE_ID,
+                    "assetId",
+                )
+                .add_ref_input_list(
+                    "assetIds",
+                    &thumbnails
+                        .iter()
+                        .map(|file_path| {
+                            (
+                                resource_types::EXPERIENCE_THUMBNAIL,
+                                file_path.as_str(),
+                                "assetId",
+                            )
+                        })
+                        .collect(),
+                )
+                .clone(),
+            );
+        }
+    }
+
+    Ok(ResourceGraph::new(&resources))
+}
+
+fn save_state(project_path: &Path, resources: &Vec<Resource>) -> Result<(), String> {
+    let state_file_path = get_state_file_path(project_path);
+
+    let data =
+        serde_yaml::to_vec(resources).map_err(|e| format!("Unable to serialize state\n\t{}", e))?;
+
+    fs::write(&state_file_path, data).map_err(|e| {
+        format!(
+            "Unable to write state file: {}\n\t{}",
+            state_file_path.display(),
+            e
+        )
+    })?;
+
+    Ok(())
+}
+
 pub fn run(project: Option<&str>) -> Result<(), String> {
     let (project_path, config_file) = parse_project(project)?;
     println!("📃 Config file: {}", config_file.display());
@@ -365,15 +615,26 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
         println!("\t\t{}: {}", name, place_id);
     }
 
-    let previous_state = get_previous_state(&project_path, &deployment_config)?;
-    let desired_state = get_desired_state(&project_path, &config, &deployment_config)?;
-    let next_state = get_next_state(
+    let mut resource_manager = ResourceManager::new(Box::new(RobloxResourceManager::new(
         &project_path,
-        &previous_state,
-        &desired_state,
         &deployment_config,
-    )?;
-    save_state(&project_path, &next_state)?;
+    )));
+    let previous_graph =
+        get_previous_graph(project_path.clone().as_path(), &config, &deployment_config)?;
+    let mut next_graph = get_desired_graph(project_path.as_path(), &config, &deployment_config)?;
+    next_graph.resolve(&mut resource_manager, &previous_graph)?;
+    let resources = next_graph.get_resource_list();
+    save_state(&project_path, &resources)?;
+
+    // let previous_state = get_previous_state(&project_path, &deployment_config)?;
+    // let desired_state = get_desired_state(&project_path, &config, &deployment_config)?;
+    // let next_state = get_next_state(
+    //     &project_path,
+    //     &previous_state,
+    //     &desired_state,
+    //     &deployment_config,
+    // )?;
+    // save_state(&project_path, &next_state)?;
 
     Ok(())
 }

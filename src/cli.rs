@@ -62,6 +62,7 @@ fn get_app() -> App<'static, 'static> {
                         .takes_value(true),
                 ),
         )
+        .subcommand(SubCommand::with_name("test"))
 }
 
 pub fn run_with(args: Vec<String>) -> Result<(), String> {
@@ -81,6 +82,7 @@ pub fn run_with(args: Vec<String>) -> Result<(), String> {
         ("deploy", Some(deploy_matches)) => {
             commands::deploy::run(deploy_matches.value_of("PROJECT"))
         }
+        ("test", Some(_)) => commands::test::run(),
         _ => Err("Unreachable code reached!".to_string()),
     }
 }

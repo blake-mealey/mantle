@@ -505,7 +505,7 @@ pub fn get_desired_graph(
                     .add_value_input("filePath", file_path)?
                     .add_value_input(
                         "fileHash",
-                        &get_file_hash(project_path.join(file_path).as_path()),
+                        &get_file_hash(project_path.join(file_path).as_path())?,
                     )?
                     .clone(),
             );
@@ -523,7 +523,7 @@ pub fn get_desired_graph(
                         .add_value_input("filePath", file_path)?
                         .add_value_input(
                             "fileHash",
-                            &get_file_hash(project_path.join(file_path).as_path()),
+                            &get_file_hash(project_path.join(file_path).as_path())?,
                         )?
                         .clone(),
                 );
@@ -563,8 +563,8 @@ pub fn get_desired_graph(
 fn save_state(project_path: &Path, resources: &Vec<Resource>) -> Result<(), String> {
     let state_file_path = get_state_file_path(project_path);
 
-    let data =
-        serde_yaml::to_vec(resources).map_err(|e| format!("Unable to serialize state\n\t{}", e))?;
+    let data = serde_yaml::to_vec(&resources)
+        .map_err(|e| format!("Unable to serialize state\n\t{}", e))?;
 
     fs::write(&state_file_path, data).map_err(|e| {
         format!(

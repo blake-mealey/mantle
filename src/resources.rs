@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 pub struct Resource {
     pub resource_type: String,
     pub id: String,
-    pub inputs: HashMap<String, Input>,
-    pub outputs: Option<HashMap<String, OutputValue>>,
+    pub inputs: BTreeMap<String, Input>,
+    pub outputs: Option<BTreeMap<String, OutputValue>>,
 }
 
 pub struct ResourceDiff {
@@ -21,7 +21,7 @@ impl Resource {
         Resource {
             resource_type: resource_type.to_owned(),
             id: id.to_owned(),
-            inputs: HashMap::new(),
+            inputs: BTreeMap::new(),
             outputs: None,
         }
     }
@@ -83,7 +83,7 @@ impl Resource {
         T: serde::Serialize,
     {
         if self.outputs.is_none() {
-            self.outputs = Some(HashMap::new());
+            self.outputs = Some(BTreeMap::new());
         }
         let serialized_value = serde_yaml::to_value(output_value)
             .map_err(|e| format!("Failed to serialize output value:\n\t{}", e))?;
@@ -221,7 +221,9 @@ impl ResourceGraph {
     }
 
     pub fn get_resource_list(&self) -> Vec<Resource> {
-        self.resources.values().cloned().collect()
+        let mut resources: Vec<Resource> = self.resources.values().cloned().collect();
+        resources.sort_by(|a, b| a.get_ref().cmp(&b.get_ref()));
+        resources
     }
 
     pub fn get_resource_from_ref(&self, resource_ref: &ResourceRef) -> Option<Resource> {

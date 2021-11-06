@@ -113,7 +113,11 @@ impl ResourceManagerBackend for RobloxResourceManager {
         resource_type: &str,
         resource_inputs: serde_yaml::Value,
     ) -> Result<Option<serde_yaml::Value>, String> {
-        println!("CREATE: {} {:?}", resource_type, resource_inputs);
+        println!(
+            "CREATE: {} {}",
+            resource_type,
+            serde_yaml::to_string(&resource_inputs).map_err(|_| "".to_owned())?
+        );
         match resource_type {
             resource_types::EXPERIENCE_ICON => {
                 let inputs = serde_yaml::from_value::<ExperienceIconInputs>(resource_inputs)

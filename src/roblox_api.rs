@@ -28,7 +28,7 @@ impl RequestExt for ureq::Request {
     }
 }
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Serialize, Deserialize, Copy, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum DeployMode {
     Publish,

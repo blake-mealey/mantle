@@ -379,6 +379,7 @@ pub fn get_previous_graph(
                 .add_value_input("filePath", &place_file)?
                 .add_value_stub_input("fileHash")
                 .add_value_stub_input("version")
+                .add_value_stub_input("deployMode")
                 .clone();
             let place_file_asset_id_ref = place_file_resource.get_input_ref("assetId");
             resources.push(place_file_resource);
@@ -459,6 +460,7 @@ pub fn get_desired_graph(
                 "fileHash",
                 &get_file_hash(project_path.join(place_file).as_path())?,
             )?
+            .add_value_input("deployMode", &deployment_config.deploy_mode)?
             .clone();
         let place_file_asset_id_ref = place_file_resource.get_input_ref("assetId");
         resources.push(place_file_resource);
@@ -574,10 +576,8 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
         println!("\t\t{}: {}", name, place_id);
     }
 
-    let mut resource_manager = ResourceManager::new(Box::new(RobloxResourceManager::new(
-        &project_path,
-        &deployment_config,
-    )));
+    let mut resource_manager =
+        ResourceManager::new(Box::new(RobloxResourceManager::new(&project_path)));
     let previous_graph =
         get_previous_graph(project_path.clone().as_path(), &config, &deployment_config)?;
     let mut next_graph = get_desired_graph(project_path.as_path(), &config, &deployment_config)?;

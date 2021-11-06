@@ -131,6 +131,8 @@
 - resourceType: place_file
   id: start
   inputs:
+    deployMode:
+      value: publish
     experienceId:
       ref:
         - experience

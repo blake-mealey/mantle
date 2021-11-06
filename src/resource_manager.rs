@@ -3,11 +3,10 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    commands::deploy::DeploymentConfig,
     resources::ResourceManagerBackend,
     roblox_api::{
-        ExperienceConfigurationModel, PlaceConfigurationModel, RobloxApi, UploadImageResult,
-        UploadPlaceResult,
+        DeployMode, ExperienceConfigurationModel, PlaceConfigurationModel, RobloxApi,
+        UploadImageResult, UploadPlaceResult,
     },
     roblox_auth::RobloxAuth,
 };
@@ -83,6 +82,7 @@ struct PlaceFileInputs {
     experience_id: AssetId,
     file_path: String,
     file_hash: String,
+    deploy_mode: DeployMode,
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -103,15 +103,13 @@ struct PlaceConfigurationInputs {
 pub struct RobloxResourceManager {
     roblox_api: RobloxApi,
     project_path: PathBuf,
-    deployment_config: DeploymentConfig,
 }
 
 impl RobloxResourceManager {
-    pub fn new(project_path: &Path, deployment_config: &DeploymentConfig) -> Self {
+    pub fn new(project_path: &Path) -> Self {
         Self {
             roblox_api: RobloxApi::new(RobloxAuth::new()),
             project_path: project_path.to_path_buf(),
-            deployment_config: deployment_config.clone(),
         }
     }
 }
@@ -226,7 +224,7 @@ impl ResourceManagerBackend for RobloxResourceManager {
                     self.project_path.join(inputs.file_path).as_path(),
                     inputs.experience_id,
                     outputs.asset_id,
-                    self.deployment_config.deploy_mode,
+                    inputs.deploy_mode,
                 )?;
 
                 Ok(Some(

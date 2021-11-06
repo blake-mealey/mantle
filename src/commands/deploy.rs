@@ -362,6 +362,7 @@ pub fn get_previous_graph(
         let mut experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
             .add_output::<AssetId>("assetId", &deployment_config.experience_id.clone())?
             .clone();
+        let experience_asset_id_ref = experience.get_input_ref("assetId");
         if let Some(_) = &config.templates.experience {
             experience.add_value_stub_input("configuration");
         }
@@ -375,12 +376,7 @@ pub fn get_previous_graph(
             resources.push(
                 Resource::new(resource_types::PLACE_FILE, name)
                     .add_output("assetId", &id)?
-                    .add_ref_input(
-                        "experienceId",
-                        resource_types::EXPERIENCE,
-                        SINGLETON_RESOURCE_ID,
-                        "assetId",
-                    )
+                    .add_ref_input("experienceId", &experience_asset_id_ref)
                     .add_value_input("filePath", &place_file)?
                     .add_value_stub_input("fileHash")
                     .add_value_stub_input("version")
@@ -389,13 +385,8 @@ pub fn get_previous_graph(
             if let Some(_) = config.templates.places.get(name) {
                 resources.push(
                     Resource::new(resource_types::PLACE_CONFIGURATION, name)
-                        .add_ref_input(
-                            "experienceId",
-                            resource_types::EXPERIENCE,
-                            SINGLETON_RESOURCE_ID,
-                            "assetId",
-                        )
-                        .add_ref_input("assetId", resource_types::PLACE_FILE, name, "assetId")
+                        .add_ref_input("experienceId", &experience_asset_id_ref)
+                        .add_raw_ref_input("assetId", resource_types::PLACE_FILE, name, "assetId")
                         .add_value_stub_input("configuration")
                         .clone(),
                 );
@@ -434,6 +425,7 @@ pub fn get_desired_graph(
     let mut experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
         .add_output::<AssetId>("assetId", &deployment_config.experience_id.clone())?
         .clone();
+    let experience_asset_id_ref = experience.get_input_ref("assetId");
     if let Some(experience_configuration) = &config.templates.experience {
         experience.add_value_input::<ExperienceConfigurationModel>(
             "configuration",
@@ -448,12 +440,7 @@ pub fn get_desired_graph(
                         _ => true,
                     },
                 )?
-                .add_ref_input(
-                    "experienceId",
-                    resource_types::EXPERIENCE,
-                    SINGLETON_RESOURCE_ID,
-                    "assetId",
-                )
+                .add_ref_input("experienceId", &experience_asset_id_ref)
                 .clone(),
         );
     }
@@ -467,12 +454,7 @@ pub fn get_desired_graph(
         resources.push(
             Resource::new(resource_types::PLACE_FILE, name)
                 .add_output("assetId", &id)?
-                .add_ref_input(
-                    "experienceId",
-                    resource_types::EXPERIENCE,
-                    SINGLETON_RESOURCE_ID,
-                    "assetId",
-                )
+                .add_ref_input("experienceId", &experience_asset_id_ref)
                 .add_value_input("filePath", &place_file)?
                 .add_value_input(
                     "fileHash",
@@ -483,13 +465,8 @@ pub fn get_desired_graph(
         if let Some(place_configuration) = config.templates.places.get(name) {
             resources.push(
                 Resource::new(resource_types::PLACE_CONFIGURATION, name)
-                    .add_ref_input(
-                        "experienceId",
-                        resource_types::EXPERIENCE,
-                        SINGLETON_RESOURCE_ID,
-                        "assetId",
-                    )
-                    .add_ref_input("assetId", resource_types::PLACE_FILE, name, "assetId")
+                    .add_ref_input("experienceId", &experience_asset_id_ref)
+                    .add_raw_ref_input("assetId", resource_types::PLACE_FILE, name, "assetId")
                     .add_value_input::<PlaceConfigurationModel>(
                         "configuration",
                         &place_configuration.clone().into(),
@@ -503,12 +480,7 @@ pub fn get_desired_graph(
         if let Some(file_path) = &experience_configuration.icon {
             resources.push(
                 Resource::new(resource_types::EXPERIENCE_ICON, file_path)
-                    .add_ref_input(
-                        "experienceId",
-                        resource_types::EXPERIENCE,
-                        SINGLETON_RESOURCE_ID,
-                        "assetId",
-                    )
+                    .add_ref_input("experienceId", &experience_asset_id_ref)
                     .add_value_input("filePath", file_path)?
                     .add_value_input(
                         "fileHash",
@@ -521,12 +493,7 @@ pub fn get_desired_graph(
             for file_path in thumbnails {
                 resources.push(
                     Resource::new(resource_types::EXPERIENCE_THUMBNAIL, file_path)
-                        .add_ref_input(
-                            "experienceId",
-                            resource_types::EXPERIENCE,
-                            SINGLETON_RESOURCE_ID,
-                            "assetId",
-                        )
+                        .add_ref_input("experienceId", &experience_asset_id_ref)
                         .add_value_input("filePath", file_path)?
                         .add_value_input(
                             "fileHash",
@@ -540,12 +507,7 @@ pub fn get_desired_graph(
                     resource_types::EXPERIENCE_THUMBNAIL_ORDER,
                     SINGLETON_RESOURCE_ID,
                 )
-                .add_ref_input(
-                    "experienceId",
-                    resource_types::EXPERIENCE,
-                    SINGLETON_RESOURCE_ID,
-                    "assetId",
-                )
+                .add_ref_input("experienceId", &experience_asset_id_ref)
                 .add_ref_input_list(
                     "assetIds",
                     &thumbnails

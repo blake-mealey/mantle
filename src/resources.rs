@@ -43,7 +43,13 @@ impl Resource {
         Ok(self)
     }
 
-    pub fn add_ref_input(
+    pub fn add_ref_input(&mut self, name: &str, input_ref: &InputRef) -> &mut Self {
+        self.inputs
+            .insert(name.to_owned(), Input::Ref(input_ref.clone()));
+        self
+    }
+
+    pub fn add_raw_ref_input(
         &mut self,
         name: &str,
         input_ref_type: &str,
@@ -102,6 +108,14 @@ impl Resource {
 
     pub fn get_ref(&self) -> ResourceRef {
         (self.resource_type.clone(), self.id.clone())
+    }
+
+    pub fn get_input_ref(&self, input_ref_output: &str) -> InputRef {
+        (
+            self.resource_type.clone(),
+            self.id.clone(),
+            input_ref_output.to_owned(),
+        )
     }
 
     fn get_output_from_input_ref(&self, input_ref: &InputRef) -> Result<OutputValue, String> {

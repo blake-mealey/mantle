@@ -6,7 +6,7 @@ use crate::{
     commands::deploy::DeploymentConfig,
     resources::ResourceManagerBackend,
     roblox_api::{
-        self, ExperienceConfigurationModel, PlaceConfigurationModel, RobloxApi, UploadImageResult,
+        ExperienceConfigurationModel, PlaceConfigurationModel, RobloxApi, UploadImageResult,
         UploadPlaceResult,
     },
     roblox_auth::RobloxAuth,

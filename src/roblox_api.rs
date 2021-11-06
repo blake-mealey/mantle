@@ -484,7 +484,7 @@ impl RobloxApi {
     pub fn set_experience_thumbnail_order(
         &mut self,
         experience_id: u64,
-        new_thumbnail_order: &Vec<u64>,
+        new_thumbnail_order: &[u64],
     ) -> Result<(), String> {
         // println!(
         //     "TRACE: set_experience_thumbnail_order {:?}",

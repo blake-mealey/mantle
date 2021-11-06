@@ -199,20 +199,14 @@ impl ResourceManagerBackend for RobloxResourceManager {
 
                 Ok(None)
             }
-            resource_types::EXPERIENCE_ACTIVATION => {
-                self.create(resource_type, resource_inputs.clone())
-            }
-            resource_types::EXPERIENCE_ICON => self.create(resource_type, resource_inputs.clone()),
+            resource_types::EXPERIENCE_ACTIVATION => self.create(resource_type, resource_inputs),
+            resource_types::EXPERIENCE_ICON => self.create(resource_type, resource_inputs),
             resource_types::EXPERIENCE_THUMBNAIL => {
-                self.delete(
-                    resource_type,
-                    resource_inputs.clone(),
-                    resource_outputs.clone(),
-                )?;
-                self.create(resource_type, resource_inputs.clone())
+                self.delete(resource_type, resource_inputs.clone(), resource_outputs)?;
+                self.create(resource_type, resource_inputs)
             }
             resource_types::EXPERIENCE_THUMBNAIL_ORDER => {
-                self.create(resource_type, resource_inputs.clone())
+                self.create(resource_type, resource_inputs)
             }
             resource_types::PLACE_FILE => {
                 let inputs = serde_yaml::from_value::<PlaceFileInputs>(resource_inputs)

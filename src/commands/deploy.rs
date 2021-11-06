@@ -363,7 +363,7 @@ pub fn get_previous_graph(
             .add_output::<AssetId>("assetId", &deployment_config.experience_id.clone())?
             .clone();
         let experience_asset_id_ref = experience.get_input_ref("assetId");
-        if let Some(_) = &config.templates.experience {
+        if config.templates.experience.is_some() {
             experience.add_value_stub_input("configuration");
         }
         resources.push(experience.clone());
@@ -383,7 +383,7 @@ pub fn get_previous_graph(
                 .clone();
             let place_file_asset_id_ref = place_file_resource.get_input_ref("assetId");
             resources.push(place_file_resource);
-            if let Some(_) = config.templates.places.get(name) {
+            if config.templates.places.contains_key(name) {
                 resources.push(
                     Resource::new(resource_types::PLACE_CONFIGURATION, name)
                         .add_ref_input("experienceId", &experience_asset_id_ref)
@@ -436,10 +436,10 @@ pub fn get_desired_graph(
             Resource::new(resource_types::EXPERIENCE_ACTIVATION, SINGLETON_RESOURCE_ID)
                 .add_value_input(
                     "isActive",
-                    &match experience_configuration.playability {
-                        Some(PlayabilityConfig::Private) => false,
-                        _ => true,
-                    },
+                    &!matches!(
+                        experience_configuration.playability,
+                        Some(PlayabilityConfig::Private)
+                    ),
                 )?
                 .add_ref_input("experienceId", &experience_asset_id_ref)
                 .clone(),
@@ -521,7 +521,7 @@ pub fn get_desired_graph(
     Ok(ResourceGraph::new(&resources))
 }
 
-fn save_state(project_path: &Path, resources: &Vec<Resource>) -> Result<(), String> {
+fn save_state(project_path: &Path, resources: &[Resource]) -> Result<(), String> {
     let state_file_path = get_state_file_path(project_path);
 
     let data = serde_yaml::to_vec(&resources)
@@ -560,9 +560,8 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
 
     let mut resource_manager =
         ResourceManager::new(Box::new(RobloxResourceManager::new(&project_path)));
-    let previous_graph =
-        get_previous_graph(project_path.clone().as_path(), &config, &deployment_config)?;
-    let mut next_graph = get_desired_graph(project_path.as_path(), &config, &deployment_config)?;
+    let previous_graph = get_previous_graph(project_path.as_path(), &config, deployment_config)?;
+    let mut next_graph = get_desired_graph(project_path.as_path(), &config, deployment_config)?;
     next_graph.resolve(&mut resource_manager, &previous_graph)?;
     let resources = next_graph.get_resource_list();
     save_state(&project_path, &resources)?;

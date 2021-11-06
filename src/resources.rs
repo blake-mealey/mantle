@@ -50,9 +50,9 @@ impl Resource {
         self
     }
 
-    pub fn add_ref_input_list(&mut self, name: &str, input_ref_list: &Vec<InputRef>) -> &mut Self {
+    pub fn add_ref_input_list(&mut self, name: &str, input_ref_list: &[InputRef]) -> &mut Self {
         self.inputs
-            .insert(name.to_owned(), Input::RefList(input_ref_list.clone()));
+            .insert(name.to_owned(), Input::RefList(input_ref_list.to_owned()));
         self
     }
 
@@ -114,15 +114,13 @@ pub enum Input {
 pub type ResourceRef = (String, String);
 
 pub fn resource_ref_from_input_ref(input_ref: &InputRef) -> ResourceRef {
-    match input_ref {
-        (input_ref_type, input_ref_id, _) => (input_ref_type.clone(), input_ref_id.clone()),
-    }
+    let (input_ref_type, input_ref_id, _) = input_ref;
+    (input_ref_type.clone(), input_ref_id.clone())
 }
 
 pub fn output_name_from_input_ref(input_ref: &InputRef) -> String {
-    match input_ref {
-        (_, _, input_ref_output) => input_ref_output.clone(),
-    }
+    let (_, _, input_ref_output) = input_ref;
+    input_ref_output.clone()
 }
 pub trait ResourceManagerBackend {
     fn create(
@@ -191,7 +189,7 @@ pub struct ResourceGraph {
 }
 
 impl ResourceGraph {
-    pub fn new(resources: &Vec<Resource>) -> Self {
+    pub fn new(resources: &[Resource]) -> Self {
         let mut graph = ResourceGraph {
             resources: HashMap::new(),
         };
@@ -208,14 +206,12 @@ impl ResourceGraph {
 
     pub fn get_resource_list(&self) -> Vec<Resource> {
         let mut resources: Vec<Resource> = self.resources.values().cloned().collect();
-        resources.sort_by(|a, b| a.get_ref().cmp(&b.get_ref()));
+        resources.sort_by_key(|a| a.get_ref());
         resources
     }
 
     pub fn get_resource_from_ref(&self, resource_ref: &ResourceRef) -> Option<Resource> {
-        self.resources
-            .get(resource_ref)
-            .map(|resource| resource.clone())
+        self.resources.get(resource_ref).cloned()
     }
 
     fn get_resource_from_input_ref(&self, input_ref: &InputRef) -> Option<Resource> {
@@ -278,15 +274,15 @@ impl ResourceGraph {
         for diff in &changeset.diffs {
             let diff_lines: Vec<Difference> = match diff {
                 Difference::Same(diff) => diff
-                    .split("\n")
+                    .split('\n')
                     .map(|line| Difference::Same(line.to_owned()))
                     .collect(),
                 Difference::Add(diff) => diff
-                    .split("\n")
+                    .split('\n')
                     .map(|line| Difference::Add(line.to_owned()))
                     .collect(),
                 Difference::Rem(diff) => diff
-                    .split("\n")
+                    .split('\n')
                     .map(|line| Difference::Rem(line.to_owned()))
                     .collect(),
             };
@@ -310,7 +306,7 @@ impl ResourceGraph {
         );
     }
 
-    fn log_create(&self, resource: &Resource, new_inputs_hash: &String) {
+    fn log_create(&self, resource: &Resource, new_inputs_hash: &str) {
         let changeset = Changeset::new("", new_inputs_hash.replace("---", "").trim(), "\n");
         self.log_diff(
             format!(
@@ -322,12 +318,7 @@ impl ResourceGraph {
         );
     }
 
-    fn log_update(
-        &self,
-        resource: &Resource,
-        previous_inputs_hash: &String,
-        new_inputs_hash: &String,
-    ) {
+    fn log_update(&self, resource: &Resource, previous_inputs_hash: &str, new_inputs_hash: &str) {
         let changeset = Changeset::new(
             previous_inputs_hash.replace("---", "").trim(),
             new_inputs_hash.replace("---", "").trim(),
@@ -343,7 +334,7 @@ impl ResourceGraph {
         );
     }
 
-    fn log_delete(&self, resource: &Resource, previous_inputs_hash: &String) {
+    fn log_delete(&self, resource: &Resource, previous_inputs_hash: &str) {
         let changeset = Changeset::new(previous_inputs_hash.replace("---", "").trim(), "", "\n");
         self.log_diff(
             format!(
@@ -362,7 +353,7 @@ impl ResourceGraph {
                 .map_err(|e| format!("Failed to serialize outputs:\n\t{}", e))?;
             let outputs_hash = outputs_hash.replace("---", "");
             let outputs_hash = outputs_hash.trim();
-            let changeset = Changeset::new(&outputs_hash, &outputs_hash, "\n");
+            let changeset = Changeset::new(outputs_hash, outputs_hash, "\n");
             self.log_diff("  ╰─ Succeeded with outputs:".to_owned(), &changeset, false);
         } else {
             println!("  ╰─ Succeeded!");
@@ -427,7 +418,7 @@ impl ResourceGraph {
             } in resource_diffs.iter()
             {
                 // println!("Resolving resource {:?}", resource.get_ref());
-                let resolved_inputs = self.resolve_inputs(&resource)?;
+                let resolved_inputs = self.resolve_inputs(resource)?;
                 match resolved_inputs {
                     None => {
                         next_resource_diffs.push(ResourceDiff {
@@ -447,7 +438,7 @@ impl ResourceGraph {
                                     })?,
                                 ))
                             }
-                            Some(previous_hash) if previous_hash.to_owned() != inputs_hash => {
+                            Some(previous_hash) if *previous_hash != inputs_hash => {
                                 self.log_update(resource, previous_hash, &inputs_hash);
                                 let outputs = resource.outputs.clone().unwrap_or_default();
                                 Some(resource_manager.update(
@@ -493,31 +484,26 @@ impl ResourceGraph {
         }
 
         for (resource_ref, resource) in previous_graph.resources.iter() {
-            let resolved_inputs = previous_graph
-                .resolve_inputs(&resource)?
-                .unwrap_or_default();
-            match self.get_resource_from_ref(resource_ref) {
-                None => {
-                    self.log_delete(resource, &previous_graph.get_inputs_hash(&resolved_inputs)?);
-                    let outputs = resource.outputs.clone().unwrap_or_default();
-                    let result = resource_manager.delete(
-                        &resource.resource_type,
-                        serde_yaml::to_value(resolved_inputs)
-                            .map_err(|e| format!("Failed to serialize inputs: {}", e))?,
-                        serde_yaml::to_value(outputs)
-                            .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
-                    );
-                    if let Err(error) = result {
-                        self.log_error(error);
-                        return Err(format!(
-                            "Failed to delete resource {} {}",
-                            resource.resource_type, resource.id
-                        ));
-                    } else {
-                        self.log_success(&None)?;
-                    }
+            let resolved_inputs = previous_graph.resolve_inputs(resource)?.unwrap_or_default();
+            if self.get_resource_from_ref(resource_ref).is_none() {
+                self.log_delete(resource, &previous_graph.get_inputs_hash(&resolved_inputs)?);
+                let outputs = resource.outputs.clone().unwrap_or_default();
+                let result = resource_manager.delete(
+                    &resource.resource_type,
+                    serde_yaml::to_value(resolved_inputs)
+                        .map_err(|e| format!("Failed to serialize inputs: {}", e))?,
+                    serde_yaml::to_value(outputs)
+                        .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                );
+                if let Err(error) = result {
+                    self.log_error(error);
+                    return Err(format!(
+                        "Failed to delete resource {} {}",
+                        resource.resource_type, resource.id
+                    ));
+                } else {
+                    self.log_success(&None)?;
                 }
-                _ => {}
             }
         }
 

@@ -4,7 +4,6 @@ mod resource_manager;
 mod resources;
 mod roblox_api;
 mod roblox_auth;
-mod state;
 
 fn main() {
     let result = cli::run();

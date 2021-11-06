@@ -1,7 +1,6 @@
 use multipart::client::lazy::{Multipart, PreparedFields};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sha2::{Digest, Sha256};
 use std::{clone::Clone, default, ffi::OsStr, fmt, fs, path::Path};
 
 use crate::roblox_auth::RobloxAuth;

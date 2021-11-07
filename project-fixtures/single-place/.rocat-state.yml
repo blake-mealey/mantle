@@ -1,147 +1,149 @@
 ---
-- resourceType: experience
-  id: singleton
-  inputs:
-    configuration:
-      value:
-        genre: Pirate
-        playableDevices:
-          - computer
-        isFriendsOnly: true
-        allowPrivateServers: ~
-        privateServerPrice: ~
-        isForSale: ~
-        price: ~
-        studioAccessToApisAllowed: true
-        permissions: ~
-        universeAvatarType: MorphToR15
-        universeAnimationType: playerChoice
-        universeCollisionType: outerBox
-  outputs:
-    assetId: 3028808377
-- resourceType: experience_activation
-  id: singleton
-  inputs:
-    experienceId:
-      ref:
-        - experience
-        - singleton
-        - assetId
-    isActive:
-      value: true
-  outputs: ~
-- resourceType: experience_icon
-  id: game-icon.png
-  inputs:
-    experienceId:
-      ref:
-        - experience
-        - singleton
-        - assetId
-    fileHash:
-      value: 787f02689d554fd858b6db2e912179524d348a74ba23cffcc9415815e2a27b33
-    filePath:
-      value: game-icon.png
-  outputs:
-    assetId: 34487854
-- resourceType: experience_thumbnail
-  id: game-thumbnail-1.png
-  inputs:
-    experienceId:
-      ref:
-        - experience
-        - singleton
-        - assetId
-    fileHash:
-      value: c1811300860fcd79a178142a4f4f7aa73198afa3b64a1b3ae19fc50235e7fa75
-    filePath:
-      value: game-thumbnail-1.png
-  outputs:
-    assetId: 50501388
-- resourceType: experience_thumbnail
-  id: game-thumbnail-2.png
-  inputs:
-    experienceId:
-      ref:
-        - experience
-        - singleton
-        - assetId
-    fileHash:
-      value: d36757cf3312ca2683eb597bed3359367861cd3e4f1c71668fef24f86edb3a12
-    filePath:
-      value: game-thumbnail-2.png
-  outputs:
-    assetId: 50501386
-- resourceType: experience_thumbnail
-  id: game-thumbnail-3.png
-  inputs:
-    experienceId:
-      ref:
-        - experience
-        - singleton
-        - assetId
-    fileHash:
-      value: 66c276e730608cac1c95be4dabd9e12303b477fe6091772b3e998067ed6e3da0
-    filePath:
-      value: game-thumbnail-3.png
-  outputs:
-    assetId: 50501387
-- resourceType: experience_thumbnail_order
-  id: singleton
-  inputs:
-    assetIds:
-      refList:
-        - - experience_thumbnail
-          - game-thumbnail-1.png
-          - assetId
-        - - experience_thumbnail
-          - game-thumbnail-2.png
-          - assetId
-        - - experience_thumbnail
-          - game-thumbnail-3.png
-          - assetId
-    experienceId:
-      ref:
-        - experience
-        - singleton
-        - assetId
-  outputs: ~
-- resourceType: place_configuration
-  id: start
-  inputs:
-    assetId:
-      ref:
-        - place_file
-        - start
-        - assetId
-    configuration:
-      value:
-        name: Start name
-        description: Start description
-        maxPlayerCount: 20
-        allowCopying: false
-        socialSlotType: Custom
-        customSocialSlotCount: 10
-    experienceId:
-      ref:
-        - experience
-        - singleton
-        - assetId
-  outputs: ~
-- resourceType: place_file
-  id: start
-  inputs:
-    deployMode:
-      value: publish
-    experienceId:
-      ref:
-        - experience
-        - singleton
-        - assetId
-    fileHash:
-      value: 4d3f78c80cbcf5ba8f104555f2bbd9c8f7485d3970de9fbbba5d2c7bc1219ffc
-    filePath:
-      value: start.rbxlx
-  outputs:
-    assetId: 7818935418
-    version: 16
+deployments:
+  staging:
+    - resourceType: experience
+      id: singleton
+      inputs:
+        configuration:
+          value:
+            genre: Pirate
+            playableDevices:
+              - computer
+            isFriendsOnly: true
+            allowPrivateServers: ~
+            privateServerPrice: ~
+            isForSale: ~
+            price: ~
+            studioAccessToApisAllowed: true
+            permissions: ~
+            universeAvatarType: MorphToR15
+            universeAnimationType: playerChoice
+            universeCollisionType: outerBox
+      outputs:
+        assetId: 3028808377
+    - resourceType: experience_activation
+      id: singleton
+      inputs:
+        experienceId:
+          ref:
+            - experience
+            - singleton
+            - assetId
+        isActive:
+          value: true
+      outputs: ~
+    - resourceType: experience_icon
+      id: game-icon.png
+      inputs:
+        experienceId:
+          ref:
+            - experience
+            - singleton
+            - assetId
+        fileHash:
+          value: 787f02689d554fd858b6db2e912179524d348a74ba23cffcc9415815e2a27b33
+        filePath:
+          value: game-icon.png
+      outputs:
+        assetId: 34487854
+    - resourceType: experience_thumbnail
+      id: game-thumbnail-1.png
+      inputs:
+        experienceId:
+          ref:
+            - experience
+            - singleton
+            - assetId
+        fileHash:
+          value: c1811300860fcd79a178142a4f4f7aa73198afa3b64a1b3ae19fc50235e7fa75
+        filePath:
+          value: game-thumbnail-1.png
+      outputs:
+        assetId: 50501388
+    - resourceType: experience_thumbnail
+      id: game-thumbnail-2.png
+      inputs:
+        experienceId:
+          ref:
+            - experience
+            - singleton
+            - assetId
+        fileHash:
+          value: d36757cf3312ca2683eb597bed3359367861cd3e4f1c71668fef24f86edb3a12
+        filePath:
+          value: game-thumbnail-2.png
+      outputs:
+        assetId: 50501386
+    - resourceType: experience_thumbnail
+      id: game-thumbnail-3.png
+      inputs:
+        experienceId:
+          ref:
+            - experience
+            - singleton
+            - assetId
+        fileHash:
+          value: 66c276e730608cac1c95be4dabd9e12303b477fe6091772b3e998067ed6e3da0
+        filePath:
+          value: game-thumbnail-3.png
+      outputs:
+        assetId: 50501387
+    - resourceType: experience_thumbnail_order
+      id: singleton
+      inputs:
+        assetIds:
+          refList:
+            - - experience_thumbnail
+              - game-thumbnail-1.png
+              - assetId
+            - - experience_thumbnail
+              - game-thumbnail-2.png
+              - assetId
+            - - experience_thumbnail
+              - game-thumbnail-3.png
+              - assetId
+        experienceId:
+          ref:
+            - experience
+            - singleton
+            - assetId
+      outputs: ~
+    - resourceType: place_configuration
+      id: start
+      inputs:
+        assetId:
+          ref:
+            - place_file
+            - start
+            - assetId
+        configuration:
+          value:
+            name: Start name
+            description: Start description
+            maxPlayerCount: 20
+            allowCopying: false
+            socialSlotType: Custom
+            customSocialSlotCount: 10
+        experienceId:
+          ref:
+            - experience
+            - singleton
+            - assetId
+      outputs: ~
+    - resourceType: place_file
+      id: start
+      inputs:
+        deployMode:
+          value: publish
+        experienceId:
+          ref:
+            - experience
+            - singleton
+            - assetId
+        fileHash:
+          value: 4d3f78c80cbcf5ba8f104555f2bbd9c8f7485d3970de9fbbba5d2c7bc1219ffc
+        filePath:
+          value: start.rbxlx
+      outputs:
+        assetId: 7818935418
+        version: 16

@@ -237,7 +237,7 @@ fn log_create(resource: &Resource, new_inputs_hash: &str) {
     let changeset = Changeset::new("", new_inputs_hash.replace("---", "").trim(), "\n");
     log_diff(
         format!(
-            "\x1b[92m+\x1b[0m Creating {} {}:\n  ╷",
+            "\n\x1b[92m+\x1b[0m Creating {} {}:\n  ╷",
             resource.resource_type, resource.id
         ),
         &changeset,
@@ -253,7 +253,7 @@ fn log_update(resource: &Resource, previous_inputs_hash: &str, new_inputs_hash: 
     );
     log_diff(
         format!(
-            "\x1b[93m~\x1b[0m Updating {} {}:\n  ╷",
+            "\n\x1b[93m~\x1b[0m Updating {} {}:\n  ╷",
             resource.resource_type, resource.id,
         ),
         &changeset,
@@ -265,7 +265,7 @@ fn log_delete(resource: &Resource, previous_inputs_hash: &str) {
     let changeset = Changeset::new(previous_inputs_hash.replace("---", "").trim(), "", "\n");
     log_diff(
         format!(
-            "\x1b[91m-\x1b[0m Deleting {} {}:\n  ╷",
+            "\n\x1b[91m-\x1b[0m Deleting {} {}:\n  ╷",
             resource.resource_type, resource.id
         ),
         &changeset,
@@ -285,14 +285,12 @@ fn log_success(outputs: &Option<serde_yaml::Value>) -> Result<(), String> {
     } else {
         println!("  ╰─ Succeeded!");
     }
-    println!();
     Ok(())
 }
 
 fn log_error(error: String) {
     println!("  │");
     println!("  ╰─ Failed: \x1b[91m{}\x1b[0m", error);
-    println!();
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -476,6 +474,7 @@ impl ResourceGraph {
         let resource_order = self.get_topological_order()?;
 
         let mut had_failures = false;
+        let mut made_changes = false;
 
         for resource_ref in resource_order {
             let ResourceDiff {
@@ -491,6 +490,7 @@ impl ResourceGraph {
                 let outputs = match previous_hash {
                     None => {
                         // This resource is new
+                        made_changes = true;
                         log_create(&resource, &inputs_hash);
                         Some(
                             resource_manager.create(
@@ -502,6 +502,7 @@ impl ResourceGraph {
                     }
                     Some(previous_hash) if previous_hash != inputs_hash => {
                         // This resource has changed
+                        made_changes = true;
                         log_update(&resource, &previous_hash, &inputs_hash);
                         let outputs = resource.outputs.clone().unwrap_or_default();
                         Some(
@@ -573,6 +574,7 @@ impl ResourceGraph {
             let resolved_inputs = previous_graph.resolve_inputs(resource)?.unwrap_or_default();
             let outputs = resource.outputs.clone().unwrap_or_default();
 
+            made_changes = true;
             log_delete(resource, &previous_graph.get_inputs_hash(&resolved_inputs)?);
             let result = resource_manager.delete(
                 &resource.resource_type,
@@ -592,6 +594,11 @@ impl ResourceGraph {
             } else {
                 log_success(&None)?;
             }
+        }
+
+        if !made_changes {
+            println!("  ╷");
+            println!("  ╰─ Succeeded: no changes required.");
         }
 
         match had_failures {

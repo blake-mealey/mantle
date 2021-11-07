@@ -583,7 +583,7 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
     let mut next_graph = get_desired_graph(project_path.as_path(), &config, deployment_config)?;
 
     // Evaluate the resource graph
-    println!("Evaluating resource graph:\n");
+    println!("Evaluating resource graph:");
     let result = next_graph.evaluate(&previous_graph, &mut resource_manager);
 
     // Save the results to the state file

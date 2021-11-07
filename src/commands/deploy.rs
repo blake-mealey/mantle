@@ -7,7 +7,7 @@ use crate::{
         ExperiencePlayableDevice, PlaceConfigurationModel, SocialSlotType,
     },
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
@@ -333,12 +333,12 @@ fn get_state_file_path(project_path: &Path) -> PathBuf {
     project_path.join(".rocat-state.yml")
 }
 
-pub fn get_hash(data: &[u8]) -> String {
+fn get_hash(data: &[u8]) -> String {
     let digest = Sha256::digest(data);
     format!("{:x}", digest)
 }
 
-pub fn get_file_hash(file_path: &Path) -> Result<String, String> {
+fn get_file_hash(file_path: &Path) -> Result<String, String> {
     let buffer = fs::read(file_path).map_err(|e| {
         format!(
             "Failed to read file {} for hashing: {}",
@@ -349,14 +349,40 @@ pub fn get_file_hash(file_path: &Path) -> Result<String, String> {
     Ok(get_hash(&buffer))
 }
 
-pub fn get_previous_graph(
+#[derive(Serialize, Deserialize, Clone)]
+struct ResourceState {
+    deployments: HashMap<String, Vec<Resource>>,
+}
+
+fn get_previous_state(
     project_path: &Path,
     config: &Config,
     deployment_config: &DeploymentConfig,
-) -> Result<ResourceGraph, String> {
+) -> Result<ResourceState, String> {
     let state_file_path = get_state_file_path(project_path);
+    let mut state = if state_file_path.exists() {
+        let data = fs::read_to_string(&state_file_path).map_err(|e| {
+            format!(
+                "Unable to read state file: {}\n\t{}",
+                state_file_path.display(),
+                e
+            )
+        })?;
 
-    if !state_file_path.exists() {
+        serde_yaml::from_str::<ResourceState>(&data).map_err(|e| {
+            format!(
+                "Unable to parse state file {}\n\t{}",
+                state_file_path.display(),
+                e
+            )
+        })?
+    } else {
+        ResourceState {
+            deployments: HashMap::new(),
+        }
+    };
+
+    if state.deployments.get(&deployment_config.name).is_none() {
         let mut resources: Vec<Resource> = Vec::new();
 
         let mut experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
@@ -394,29 +420,15 @@ pub fn get_previous_graph(
             }
         }
 
-        return Ok(ResourceGraph::new(&resources));
+        state
+            .deployments
+            .insert(deployment_config.name.clone(), resources);
     }
 
-    let data = fs::read_to_string(&state_file_path).map_err(|e| {
-        format!(
-            "Unable to read state file: {}\n\t{}",
-            state_file_path.display(),
-            e
-        )
-    })?;
-
-    let resources = serde_yaml::from_str::<Vec<Resource>>(&data).map_err(|e| {
-        format!(
-            "Unable to parse state file {}\n\t{}",
-            state_file_path.display(),
-            e
-        )
-    })?;
-
-    Ok(ResourceGraph::new(&resources))
+    Ok(state)
 }
 
-pub fn get_desired_graph(
+fn get_desired_graph(
     project_path: &Path,
     config: &Config,
     deployment_config: &DeploymentConfig,
@@ -521,11 +533,11 @@ pub fn get_desired_graph(
     Ok(ResourceGraph::new(&resources))
 }
 
-fn save_state(project_path: &Path, resources: &[Resource]) -> Result<(), String> {
+fn save_state(project_path: &Path, state: &ResourceState) -> Result<(), String> {
     let state_file_path = get_state_file_path(project_path);
 
-    let data = serde_yaml::to_vec(&resources)
-        .map_err(|e| format!("Unable to serialize state\n\t{}", e))?;
+    let data =
+        serde_yaml::to_vec(&state).map_err(|e| format!("Unable to serialize state\n\t{}", e))?;
 
     fs::write(&state_file_path, data).map_err(|e| {
         format!(
@@ -562,8 +574,12 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
     let mut resource_manager =
         ResourceManager::new(Box::new(RobloxResourceManager::new(&project_path)));
 
+    // Get previous state
+    let mut state = get_previous_state(project_path.as_path(), &config, deployment_config)?;
+
     // Get our resource graphs
-    let previous_graph = get_previous_graph(project_path.as_path(), &config, deployment_config)?;
+    let previous_graph =
+        ResourceGraph::new(state.deployments.get(&deployment_config.name).unwrap());
     let mut next_graph = get_desired_graph(project_path.as_path(), &config, deployment_config)?;
 
     // Evaluate the resource graph
@@ -571,8 +587,11 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
     let result = next_graph.evaluate(&previous_graph, &mut resource_manager);
 
     // Save the results to the state file
-    let resources = next_graph.get_resource_list();
-    save_state(&project_path, &resources)?;
+    state.deployments.insert(
+        deployment_config.name.clone(),
+        next_graph.get_resource_list(),
+    );
+    save_state(&project_path, &state)?;
 
     // If there were errors, return them
     result?;

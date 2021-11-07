@@ -1,12 +1,15 @@
 mod cli;
 mod commands;
+mod config;
 mod resource_manager;
 mod resources;
 mod roblox_api;
 mod roblox_auth;
+mod state;
 
-fn main() {
-    let result = cli::run();
+#[tokio::main]
+async fn main() {
+    let result = cli::run().await;
 
     if let Err(e) = &result {
         println!("\n❌ {}", e);

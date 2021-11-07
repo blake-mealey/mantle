@@ -104,9 +104,7 @@ impl Resource {
             .values()
             .filter_map(|input| match input {
                 Input::Ref(ref input_ref) => Some(vec![input_ref]),
-                Input::RefList(ref input_ref_list) => {
-                    Some(input_ref_list.iter().map(|input_ref| input_ref).collect())
-                }
+                Input::RefList(ref input_ref_list) => Some(input_ref_list.iter().collect()),
                 _ => None,
             })
             .flatten()
@@ -449,7 +447,7 @@ impl ResourceGraph {
         match &previous_graph.get_resource_from_ref(resource_ref) {
             Some(previous_resource) => {
                 let previous_inputs = previous_graph
-                    .resolve_inputs(&previous_resource)?
+                    .resolve_inputs(previous_resource)?
                     .ok_or("Previous graph should be complete.")?;
                 Ok(ResourceDiff {
                     previous_hash: Some(previous_graph.get_inputs_hash(&previous_inputs)?),
@@ -458,14 +456,14 @@ impl ResourceGraph {
                         id: resource.id.clone(),
                         inputs: resource.inputs.clone(),
                         outputs: previous_resource.outputs.clone(),
-                        resource_type: resource.resource_type.clone(),
+                        resource_type: resource.resource_type,
                     },
                 })
             }
             None => Ok(ResourceDiff {
                 previous_hash: None,
                 previous_resource: None,
-                resource: resource.clone(),
+                resource,
             }),
         }
     }

@@ -14,6 +14,7 @@ pub struct Resource {
 
 pub struct ResourceDiff {
     pub previous_hash: Option<String>,
+    pub previous_resource: Option<Resource>,
     pub resource: Resource,
 }
 
@@ -96,6 +97,21 @@ impl Resource {
                 self.resource_type, self.id
             ));
         }
+    }
+
+    fn get_dependency_refs(&self) -> Vec<ResourceRef> {
+        self.inputs
+            .values()
+            .filter_map(|input| match input {
+                Input::Ref(ref input_ref) => Some(vec![input_ref]),
+                Input::RefList(ref input_ref_list) => {
+                    Some(input_ref_list.iter().map(|input_ref| input_ref).collect())
+                }
+                _ => None,
+            })
+            .flatten()
+            .map(resource_ref_from_input_ref)
+            .collect()
     }
 }
 
@@ -182,6 +198,105 @@ impl ResourceManager {
     }
 }
 
+fn log_diff(message: String, changeset: &Changeset, add_pipes: bool) {
+    let mut lines: Vec<Difference> = Vec::new();
+    for diff in &changeset.diffs {
+        let diff_lines: Vec<Difference> = match diff {
+            Difference::Same(diff) => diff
+                .split('\n')
+                .map(|line| Difference::Same(line.to_owned()))
+                .collect(),
+            Difference::Add(diff) => diff
+                .split('\n')
+                .map(|line| Difference::Add(line.to_owned()))
+                .collect(),
+            Difference::Rem(diff) => diff
+                .split('\n')
+                .map(|line| Difference::Rem(line.to_owned()))
+                .collect(),
+        };
+        lines.extend(diff_lines);
+    }
+    let prefix = if add_pipes { "│" } else { " " };
+    print!(
+        "{}\n{}",
+        message,
+        lines
+            .iter()
+            .map(|d| match d {
+                Difference::Same(x) => format!("  {}    \x1b[90m{}\x1b[0m\n", prefix, x),
+                Difference::Add(x) =>
+                    format!("  {}  \x1b[92m+\x1b[0m \x1b[92m{}\x1b[0m\n", prefix, x),
+                Difference::Rem(x) =>
+                    format!("  {}  \x1b[91m-\x1b[0m \x1b[91m{}\x1b[0m\n", prefix, x),
+            })
+            .collect::<Vec<String>>()
+            .join("")
+    );
+}
+
+fn log_create(resource: &Resource, new_inputs_hash: &str) {
+    let changeset = Changeset::new("", new_inputs_hash.replace("---", "").trim(), "\n");
+    log_diff(
+        format!(
+            "\x1b[92m+\x1b[0m Creating {} {}:\n  ╷",
+            resource.resource_type, resource.id
+        ),
+        &changeset,
+        true,
+    );
+}
+
+fn log_update(resource: &Resource, previous_inputs_hash: &str, new_inputs_hash: &str) {
+    let changeset = Changeset::new(
+        previous_inputs_hash.replace("---", "").trim(),
+        new_inputs_hash.replace("---", "").trim(),
+        "\n",
+    );
+    log_diff(
+        format!(
+            "\x1b[93m~\x1b[0m Updating {} {}:\n  ╷",
+            resource.resource_type, resource.id,
+        ),
+        &changeset,
+        true,
+    );
+}
+
+fn log_delete(resource: &Resource, previous_inputs_hash: &str) {
+    let changeset = Changeset::new(previous_inputs_hash.replace("---", "").trim(), "", "\n");
+    log_diff(
+        format!(
+            "\x1b[91m-\x1b[0m Deleting {} {}:\n  ╷",
+            resource.resource_type, resource.id
+        ),
+        &changeset,
+        true,
+    );
+}
+
+fn log_success(outputs: &Option<serde_yaml::Value>) -> Result<(), String> {
+    println!("  │");
+    if let Some(outputs) = outputs {
+        let outputs_hash = serde_yaml::to_string(outputs)
+            .map_err(|e| format!("Failed to serialize outputs:\n\t{}", e))?;
+        let outputs_hash = outputs_hash.replace("---", "");
+        let outputs_hash = outputs_hash.trim();
+        let changeset = Changeset::new(outputs_hash, outputs_hash, "\n");
+        log_diff("  ╰─ Succeeded with outputs:".to_owned(), &changeset, false);
+    } else {
+        println!("  ╰─ Succeeded!");
+    }
+    println!();
+    Ok(())
+}
+
+fn log_error(error: String) {
+    println!("  │");
+    println!("  ╰─ Failed: \x1b[91m{}\x1b[0m", error);
+    println!();
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ResourceGraph {
@@ -229,28 +344,42 @@ impl ResourceGraph {
                     resolved_inputs.insert(name.clone(), value.clone());
                 }
                 Input::Ref(value_ref) => {
-                    let referenced_resource = self
-                        .get_resource_from_input_ref(value_ref)
-                        .ok_or(format!("Reference not found: {:?}", value_ref))?;
-                    if referenced_resource.outputs.is_none() {
+                    let referenced_resource = self.get_resource_from_input_ref(value_ref);
+                    let output = match referenced_resource {
+                        None => None,
+                        Some(Resource {
+                            outputs: None,
+                            resource_type: _,
+                            id: _,
+                            inputs: _,
+                        }) => None,
+                        Some(resource) => Some(resource.get_output_from_input_ref(value_ref)?),
+                    };
+                    if let Some(output) = output {
+                        resolved_inputs.insert(name.clone(), output);
+                    } else {
                         return Ok(None);
                     }
-                    resolved_inputs.insert(
-                        name.clone(),
-                        referenced_resource.get_output_from_input_ref(value_ref)?,
-                    );
                 }
                 Input::RefList(ref_list) => {
                     let mut resolved_values = Vec::new();
                     for value_ref in ref_list {
-                        let referenced_resource = self
-                            .get_resource_from_input_ref(value_ref)
-                            .ok_or(format!("Reference not found: {:?}", value_ref))?;
-                        if referenced_resource.outputs.is_none() {
+                        let referenced_resource = self.get_resource_from_input_ref(value_ref);
+                        let output = match referenced_resource {
+                            None => None,
+                            Some(Resource {
+                                outputs: None,
+                                resource_type: _,
+                                id: _,
+                                inputs: _,
+                            }) => None,
+                            Some(resource) => Some(resource.get_output_from_input_ref(value_ref)?),
+                        };
+                        if let Some(output) = output {
+                            resolved_values.push(output);
+                        } else {
                             return Ok(None);
                         }
-                        resolved_values
-                            .push(referenced_resource.get_output_from_input_ref(value_ref)?);
                     }
                     resolved_inputs.insert(
                         name.clone(),
@@ -269,244 +398,210 @@ impl ResourceGraph {
         serde_yaml::to_string(&inputs).map_err(|e| format!("Failed to compute input hash\n\t{}", e))
     }
 
-    fn log_diff(&self, message: String, changeset: &Changeset, add_pipes: bool) {
-        let mut lines: Vec<Difference> = Vec::new();
-        for diff in &changeset.diffs {
-            let diff_lines: Vec<Difference> = match diff {
-                Difference::Same(diff) => diff
-                    .split('\n')
-                    .map(|line| Difference::Same(line.to_owned()))
-                    .collect(),
-                Difference::Add(diff) => diff
-                    .split('\n')
-                    .map(|line| Difference::Add(line.to_owned()))
-                    .collect(),
-                Difference::Rem(diff) => diff
-                    .split('\n')
-                    .map(|line| Difference::Rem(line.to_owned()))
-                    .collect(),
-            };
-            lines.extend(diff_lines);
+    fn get_dependency_graph(&self) -> HashMap<ResourceRef, Vec<ResourceRef>> {
+        let mut dependency_graph = HashMap::new();
+        for resource in self.resources.values() {
+            dependency_graph.insert(resource.get_ref(), resource.get_dependency_refs());
         }
-        let prefix = if add_pipes { "│" } else { " " };
-        print!(
-            "{}\n{}",
-            message,
-            lines
-                .iter()
-                .map(|d| match d {
-                    Difference::Same(x) => format!("  {}    \x1b[90m{}\x1b[0m\n", prefix, x),
-                    Difference::Add(x) =>
-                        format!("  {}  \x1b[92m+\x1b[0m \x1b[92m{}\x1b[0m\n", prefix, x),
-                    Difference::Rem(x) =>
-                        format!("  {}  \x1b[91m-\x1b[0m \x1b[91m{}\x1b[0m\n", prefix, x),
-                })
-                .collect::<Vec<String>>()
-                .join("")
-        );
+        dependency_graph
     }
 
-    fn log_create(&self, resource: &Resource, new_inputs_hash: &str) {
-        let changeset = Changeset::new("", new_inputs_hash.replace("---", "").trim(), "\n");
-        self.log_diff(
-            format!(
-                "\x1b[92m+\x1b[0m Creating {} {}:\n  ╷",
-                resource.resource_type, resource.id
-            ),
-            &changeset,
-            true,
-        );
-    }
+    fn get_topological_order(&self) -> Result<Vec<ResourceRef>, String> {
+        let mut dependency_graph = self.get_dependency_graph();
 
-    fn log_update(&self, resource: &Resource, previous_inputs_hash: &str, new_inputs_hash: &str) {
-        let changeset = Changeset::new(
-            previous_inputs_hash.replace("---", "").trim(),
-            new_inputs_hash.replace("---", "").trim(),
-            "\n",
-        );
-        self.log_diff(
-            format!(
-                "\x1b[93m~\x1b[0m Updating {} {}:\n  ╷",
-                resource.resource_type, resource.id,
-            ),
-            &changeset,
-            true,
-        );
-    }
+        let mut start_nodes: Vec<ResourceRef> = dependency_graph
+            .iter()
+            .filter_map(|(node, deps)| {
+                if deps.is_empty() {
+                    Some(node.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
 
-    fn log_delete(&self, resource: &Resource, previous_inputs_hash: &str) {
-        let changeset = Changeset::new(previous_inputs_hash.replace("---", "").trim(), "", "\n");
-        self.log_diff(
-            format!(
-                "\x1b[91m-\x1b[0m Deleting {} {}:\n  ╷",
-                resource.resource_type, resource.id
-            ),
-            &changeset,
-            true,
-        );
-    }
-
-    fn log_success(&self, outputs: &Option<serde_yaml::Value>) -> Result<(), String> {
-        println!("  │");
-        if let Some(outputs) = outputs {
-            let outputs_hash = serde_yaml::to_string(outputs)
-                .map_err(|e| format!("Failed to serialize outputs:\n\t{}", e))?;
-            let outputs_hash = outputs_hash.replace("---", "");
-            let outputs_hash = outputs_hash.trim();
-            let changeset = Changeset::new(outputs_hash, outputs_hash, "\n");
-            self.log_diff("  ╰─ Succeeded with outputs:".to_owned(), &changeset, false);
-        } else {
-            println!("  ╰─ Succeeded!");
+        let mut ordered: Vec<ResourceRef> = Vec::new();
+        while let Some(start_node) = start_nodes.pop() {
+            ordered.push(start_node.clone());
+            for (node, deps) in dependency_graph.iter_mut() {
+                if deps.contains(&start_node) {
+                    deps.retain(|dep| dep != &start_node);
+                    if deps.is_empty() {
+                        start_nodes.push(node.clone());
+                    }
+                }
+            }
         }
-        println!();
-        Ok(())
+
+        let has_cycles = dependency_graph.iter().any(|(_, deps)| !deps.is_empty());
+        match has_cycles {
+            true => Err("Cannot evaluate resource graph because it has cycles".to_owned()),
+            false => Ok(ordered),
+        }
     }
 
-    fn log_error(&self, error: String) {
-        println!("  │");
-        println!("  ╰─ Failed: \x1b[91m{}\x1b[0m", error);
-    }
-
-    fn get_resource_diffs(
+    fn get_resource_diff(
         &self,
         previous_graph: &ResourceGraph,
-    ) -> Result<Vec<ResourceDiff>, String> {
-        let mut resource_diffs: Vec<ResourceDiff> = Vec::new();
-        for (resource_ref, resource) in &self.resources {
-            match previous_graph.get_resource_from_ref(resource_ref) {
-                Some(previous_resource) => {
-                    let previous_inputs = previous_graph
-                        .resolve_inputs(&previous_resource)?
-                        .ok_or("Previous graph should be complete.")?;
-                    resource_diffs.push(ResourceDiff {
-                        previous_hash: Some(previous_graph.get_inputs_hash(&previous_inputs)?),
-                        resource: Resource {
-                            id: resource.id.clone(),
-                            inputs: resource.inputs.clone(),
-                            outputs: previous_resource.outputs.clone(),
-                            resource_type: resource.resource_type.clone(),
-                        },
-                    });
-                }
-                None => {
-                    resource_diffs.push(ResourceDiff {
-                        previous_hash: None,
-                        resource: resource.clone(),
-                    });
-                }
-            };
+        resource_ref: &ResourceRef,
+    ) -> Result<ResourceDiff, String> {
+        let resource = self.get_resource_from_ref(resource_ref).unwrap();
+        match &previous_graph.get_resource_from_ref(resource_ref) {
+            Some(previous_resource) => {
+                let previous_inputs = previous_graph
+                    .resolve_inputs(&previous_resource)?
+                    .ok_or("Previous graph should be complete.")?;
+                Ok(ResourceDiff {
+                    previous_hash: Some(previous_graph.get_inputs_hash(&previous_inputs)?),
+                    previous_resource: Some(previous_resource.clone()),
+                    resource: Resource {
+                        id: resource.id.clone(),
+                        inputs: resource.inputs.clone(),
+                        outputs: previous_resource.outputs.clone(),
+                        resource_type: resource.resource_type.clone(),
+                    },
+                })
+            }
+            None => Ok(ResourceDiff {
+                previous_hash: None,
+                previous_resource: None,
+                resource: resource.clone(),
+            }),
         }
-        Ok(resource_diffs)
     }
 
-    pub fn resolve(
+    pub fn evaluate(
         &mut self,
-        resource_manager: &mut ResourceManager,
         previous_graph: &ResourceGraph,
+        resource_manager: &mut ResourceManager,
     ) -> Result<(), String> {
-        // TODO: Something more elegant than this loop (i.e. build dependency graph)
-        // TODO: Catch circular dependencies (currently inifinte loops)
-        // TODO: Print planned changes before actually applying them (for a dry run option)
-        // TODO: Return Ok even if changes fail so that the state can be updated for requests that did succeed
-        let mut resource_diffs = self.get_resource_diffs(previous_graph)?;
-        while !resource_diffs.is_empty() {
-            let mut next_resource_diffs: Vec<ResourceDiff> = Vec::new();
+        let resource_order = self.get_topological_order()?;
 
-            for ResourceDiff {
+        let mut had_failures = false;
+
+        for resource_ref in resource_order {
+            let ResourceDiff {
                 resource,
+                previous_resource,
                 previous_hash,
-            } in resource_diffs.iter()
-            {
-                // println!("Resolving resource {:?}", resource.get_ref());
-                let resolved_inputs = self.resolve_inputs(resource)?;
-                match resolved_inputs {
-                    None => {
-                        next_resource_diffs.push(ResourceDiff {
-                            resource: resource.clone(),
-                            previous_hash: previous_hash.clone(),
-                        });
-                    }
-                    Some(inputs) => {
-                        let inputs_hash = self.get_inputs_hash(&inputs)?;
-                        let outputs = match previous_hash {
-                            None => {
-                                self.log_create(resource, &inputs_hash);
-                                Some(resource_manager.create(
-                                    &resource.resource_type,
-                                    serde_yaml::to_value(&inputs).map_err(|e| {
-                                        format!("Failed to serialize inputs: {}", e)
-                                    })?,
-                                ))
-                            }
-                            Some(previous_hash) if *previous_hash != inputs_hash => {
-                                self.log_update(resource, previous_hash, &inputs_hash);
-                                let outputs = resource.outputs.clone().unwrap_or_default();
-                                Some(resource_manager.update(
-                                    &resource.resource_type,
-                                    serde_yaml::to_value(inputs).map_err(|e| {
-                                        format!("Failed to serialize inputs: {}", e)
-                                    })?,
-                                    serde_yaml::to_value(outputs).map_err(|e| {
-                                        format!("Failed to serialize inputs: {}", e)
-                                    })?,
-                                ))
-                            }
-                            _ => None,
-                        };
-                        let mut new_resource = resource.clone();
-                        if let Some(outputs) = outputs {
-                            if let Ok(outputs) = outputs {
-                                self.log_success(&outputs)?;
-                                if let Some(outputs) = outputs {
-                                    let outputs = serde_yaml::from_value::<
-                                        BTreeMap<String, OutputValue>,
-                                    >(outputs)
-                                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
-                                    for (key, value) in outputs {
-                                        new_resource.add_output(&key, &value)?;
-                                    }
-                                }
-                            } else {
-                                self.log_error(outputs.unwrap_err());
-                                return Err(format!(
-                                    "Failed to create or update resource {} {}",
-                                    resource.resource_type, resource.id
-                                ));
-                            }
-                        }
-                        self.resources.insert(new_resource.get_ref(), new_resource);
-                    }
-                };
-            }
+            } = self.get_resource_diff(previous_graph, &resource_ref)?;
 
-            resource_diffs.clear();
-            resource_diffs.extend(next_resource_diffs);
+            let resolved_inputs = self.resolve_inputs(&resource)?;
+            if let Some(inputs) = resolved_inputs {
+                // We can proceed to evaluate this resource
+                let inputs_hash = self.get_inputs_hash(&inputs)?;
+                let outputs = match previous_hash {
+                    None => {
+                        // This resource is new
+                        log_create(&resource, &inputs_hash);
+                        Some(
+                            resource_manager.create(
+                                &resource.resource_type,
+                                serde_yaml::to_value(&inputs)
+                                    .map_err(|e| format!("Failed to serialize inputs: {}", e))?,
+                            ),
+                        )
+                    }
+                    Some(previous_hash) if previous_hash != inputs_hash => {
+                        // This resource has changed
+                        log_update(&resource, &previous_hash, &inputs_hash);
+                        let outputs = resource.outputs.clone().unwrap_or_default();
+                        Some(
+                            resource_manager.update(
+                                &resource.resource_type,
+                                serde_yaml::to_value(inputs)
+                                    .map_err(|e| format!("Failed to serialize inputs: {}", e))?,
+                                serde_yaml::to_value(outputs)
+                                    .map_err(|e| format!("Failed to serialize inputs: {}", e))?,
+                            ),
+                        )
+                    }
+                    _ => None,
+                };
+
+                if let Some(outputs) = outputs {
+                    // We attempted to create or update the resource
+                    if let Ok(outputs) = outputs {
+                        // We successfully created or updated the resource
+                        log_success(&outputs)?;
+                        if let Some(outputs) = outputs {
+                            // Apply the outputs to the resource
+                            let mut resource_with_outputs = resource.clone();
+                            let outputs =
+                                serde_yaml::from_value::<BTreeMap<String, OutputValue>>(outputs)
+                                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+                            // TODO: how to handle deserialization errors?
+                            for (key, value) in outputs {
+                                resource_with_outputs.add_output(&key, &value)?;
+                            }
+                            self.resources.insert(resource_ref, resource_with_outputs);
+                        }
+                    } else {
+                        // An error occurred while creating or updating the resource. If the
+                        // resource existed previously, we will copy the old version into this
+                        // graph. Otherwise, we will remove this resource from the graph.
+                        log_error(outputs.unwrap_err());
+                        had_failures = true;
+                        if let Some(previous_resource) = previous_resource {
+                            self.resources.insert(resource_ref, previous_resource);
+                        } else {
+                            self.resources.remove(&resource_ref);
+                        }
+                    }
+                } else {
+                    // There was no need to create or update the resource. We will update the graph
+                    // with the resource diff (which may include outputs copied from the previous
+                    // resoure).
+                    self.resources.insert(resource_ref, resource.clone());
+                }
+            } else {
+                // A dependency of this resource failed to evaluate. If the resource existed
+                // previously, we will copy the old version into this graph. Otherwise, we will
+                // remove this resource from the graph.
+                if let Some(previous_resource) = previous_resource {
+                    self.resources.insert(resource_ref, previous_resource);
+                } else {
+                    self.resources.remove(&resource_ref);
+                }
+            }
         }
 
         for (resource_ref, resource) in previous_graph.resources.iter() {
+            // If the resource is still in the graph, there is no need to delete the resource
+            if self.get_resource_from_ref(resource_ref).is_some() {
+                continue;
+            }
+
             let resolved_inputs = previous_graph.resolve_inputs(resource)?.unwrap_or_default();
-            if self.get_resource_from_ref(resource_ref).is_none() {
-                self.log_delete(resource, &previous_graph.get_inputs_hash(&resolved_inputs)?);
-                let outputs = resource.outputs.clone().unwrap_or_default();
-                let result = resource_manager.delete(
-                    &resource.resource_type,
-                    serde_yaml::to_value(resolved_inputs)
-                        .map_err(|e| format!("Failed to serialize inputs: {}", e))?,
-                    serde_yaml::to_value(outputs)
-                        .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
-                );
-                if let Err(error) = result {
-                    self.log_error(error);
-                    return Err(format!(
-                        "Failed to delete resource {} {}",
-                        resource.resource_type, resource.id
-                    ));
-                } else {
-                    self.log_success(&None)?;
-                }
+            let outputs = resource.outputs.clone().unwrap_or_default();
+
+            log_delete(resource, &previous_graph.get_inputs_hash(&resolved_inputs)?);
+            let result = resource_manager.delete(
+                &resource.resource_type,
+                serde_yaml::to_value(resolved_inputs)
+                    .map_err(|e| format!("Failed to serialize inputs: {}", e))?,
+                serde_yaml::to_value(outputs)
+                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+            );
+
+            if let Err(error) = result {
+                // An error occurred while deleting the resource. We will copy the old version into
+                // the graph.
+                log_error(error);
+                had_failures = true;
+                self.resources
+                    .insert(resource_ref.clone(), resource.clone());
+            } else {
+                log_success(&None)?;
             }
         }
 
-        Ok(())
+        match had_failures {
+            true => Err(
+                "Failures occurred while evaluating resource graph. See above for more details."
+                    .to_owned(),
+            ),
+            false => Ok(()),
+        }
     }
 }

@@ -33,6 +33,6 @@ templates:
     start:
       name: Start name
       description: Start description
-      maxPlayerCount: 50
+      maxPlayerCount: 20
       serverFill: { reservedSlots: 10 }
       allowCopying: false

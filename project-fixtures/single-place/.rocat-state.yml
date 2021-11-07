@@ -57,7 +57,7 @@
     filePath:
       value: game-thumbnail-1.png
   outputs:
-    assetId: 50476156
+    assetId: 50501388
 - resourceType: experience_thumbnail
   id: game-thumbnail-2.png
   inputs:
@@ -71,7 +71,7 @@
     filePath:
       value: game-thumbnail-2.png
   outputs:
-    assetId: 50476158
+    assetId: 50501386
 - resourceType: experience_thumbnail
   id: game-thumbnail-3.png
   inputs:
@@ -85,7 +85,7 @@
     filePath:
       value: game-thumbnail-3.png
   outputs:
-    assetId: 50476181
+    assetId: 50501387
 - resourceType: experience_thumbnail_order
   id: singleton
   inputs:
@@ -118,7 +118,7 @@
       value:
         name: Start name
         description: Start description
-        maxPlayerCount: 50
+        maxPlayerCount: 20
         allowCopying: false
         socialSlotType: Custom
         customSocialSlotCount: 10

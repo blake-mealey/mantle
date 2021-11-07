@@ -29,4 +29,4 @@ jobs:
       - name: Run linters
         run: |
           cargo fmt -- --check
-          cargo clippy
+          cargo clippy -- -D warnings

@@ -558,13 +558,24 @@ pub fn run(project: Option<&str>) -> Result<(), String> {
         }
     };
 
+    // Get our resource manager
     let mut resource_manager =
         ResourceManager::new(Box::new(RobloxResourceManager::new(&project_path)));
+
+    // Get our resource graphs
     let previous_graph = get_previous_graph(project_path.as_path(), &config, deployment_config)?;
     let mut next_graph = get_desired_graph(project_path.as_path(), &config, deployment_config)?;
-    next_graph.resolve(&mut resource_manager, &previous_graph)?;
+
+    // Evaluate the resource graph
+    println!("Evaluating resource graph:\n");
+    let result = next_graph.evaluate(&previous_graph, &mut resource_manager);
+
+    // Save the results to the state file
     let resources = next_graph.get_resource_list();
     save_state(&project_path, &resources)?;
+
+    // If there were errors, return them
+    result?;
 
     Ok(())
 }

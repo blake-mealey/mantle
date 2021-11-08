@@ -103,26 +103,44 @@ To deploy the above configuration with Rocat, run `rocat deploy` from the file's
 If the current git branch does not match any of the provided configurations, the tool will return a
 success exit code but will not do anything.
 
-Rocat outputs a `.rocat-state.yml` file which is required by future runs of `rocat deploy` to ensure
-the appropriate changes are applied. See [workflows](#workflows) for more information on how to use
-this file.
+### State management
 
-### Workflows
+By default, Rocat will manage state via a local `.rocat-state.yml` file. You can change this with
+the `state` field in the configuration file:
+
+```yml
+# rocat.yml
+
+state:
+  remote:
+    region: [us-west-2]
+    bucket: rocat-states
+    key: project-name
+```
+
+With this configuration, Rocat will load and save the state file to the provided AWS S3 object. You
+can read this
+[guide](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html) on how to
+create an S3 bucket.
+
+In order to use this feature, you must also provide two additional environment variables:
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. You can read this
+[guide](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) on how to access
+these credentials.
 
 Since Rocat requires the state file to be present, there are currently two recommended workflows:
 
-1. Manual: Include your `.rocat-state.yml` file in your git repo, and only deploy with Rocat by
-   manually running `rocat deploy`, then check in any changes to the file to your repo.
-2. Automated: Do not include your `.rocat-state.yml` file in your git repo, and never deploy with
-   Rocat by manually running `rocat deploy`. Instead, use a CI tool like GitHub Actions to deploy
-   with Rocat, and cache the `.rocat-state.yml` file between runs. TODO: create an example GH
-   Workflow.
+1. Use the default local state management and include `.rocat-state.yml` in your source control.
+   Since you need to commit all changes to this file, it is recommended to not use CI and to run the
+   tool manually when you want to deploy.
+2. Use the remote state management. Since the state file is available from both local and CI
+   environments, you can deploy from both whenever you want.
 
 ### GitHub Actions
 
 Combined with the [Roblox/setup-forman](https://github.com/Roblox/setup-foreman) Action, it is easy
-to create a workflow to deploy your places using Rocat. Note that this example does not currently
-cache the `.rocat-state.yml` file and so it will not work as expected. See [workflows](#workflows)
+to create a workflow to deploy your places using Rocat. Note that for this example to work properly
+you should be using the remote state management workflow. See [state management](#state-management)
 for more info.
 
 Here is an example for a fully-managed Rojo project:

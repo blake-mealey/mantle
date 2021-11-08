@@ -10,9 +10,6 @@ use std::{collections::HashMap, default, fmt, fs, path::Path, str};
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    #[serde(default = "HashMap::new")]
-    pub place_files: HashMap<String, String>,
-
     #[serde(default = "Vec::new")]
     pub deployments: Vec<DeploymentConfig>,
 
@@ -234,6 +231,7 @@ pub enum ServerFillConfig {
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaceTemplateConfig {
+    pub file: String,
     pub name: Option<String>,
     pub description: Option<String>,
     pub max_player_count: Option<u32>,

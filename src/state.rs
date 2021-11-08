@@ -120,9 +120,11 @@ fn get_default_resources(
 
     for (name, id) in deployment_config.place_ids.iter() {
         let place_file = config
-            .place_files
+            .templates
+            .places
             .get(name)
-            .ok_or(format!("No place file configured for place {}", name))?;
+            .map(|p| p.file.clone())
+            .ok_or(format!("No place file configured for place: {}", name))?;
         let place_file_resource = Resource::new(resource_types::PLACE_FILE, name)
             .add_output("assetId", &id)?
             .add_ref_input("experienceId", &experience_asset_id_ref)
@@ -211,9 +213,11 @@ pub fn get_desired_graph(
 
     for (name, id) in deployment_config.place_ids.iter() {
         let place_file = config
-            .place_files
+            .templates
+            .places
             .get(name)
-            .ok_or(format!("No place file configured for place {}", name))?;
+            .map(|p| p.file.clone())
+            .ok_or(format!("No place file configured for place: {}", name))?;
         let place_file_resource = Resource::new(resource_types::PLACE_FILE, name)
             .add_output("assetId", &id)?
             .add_ref_input("experienceId", &experience_asset_id_ref)

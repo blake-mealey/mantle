@@ -170,8 +170,11 @@ jobs:
         run: rocat deploy
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          ROBLOSECURITY: ${{ secrets.ROBLOSECURITY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 ```
 
-Note that you will need to add your Roblox API key as a secret to your GitHub repository. You can
-learn how to do this using [their
+Note that you will need to add your secrets to your GitHub repository. You can learn how to do this
+using [their
 docs](https://docs.github.com/en/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-a-repository).

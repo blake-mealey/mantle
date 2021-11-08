@@ -42,7 +42,7 @@ fn get_file_hash(file_path: &Path) -> Result<String, String> {
 }
 
 fn parse_state(file_name: &str, data: &str) -> Result<ResourceState, String> {
-    serde_yaml::from_str::<ResourceState>(&data)
+    serde_yaml::from_str::<ResourceState>(data)
         .map_err(|e| format!("Unable to parse state file {}\n\t{}", file_name, e))
 }
 
@@ -287,10 +287,7 @@ pub fn get_desired_graph(
     Ok(ResourceGraph::new(&resources))
 }
 
-pub async fn save_state_to_remote(
-    config: &RemoteStateConfig,
-    data: &Vec<u8>,
-) -> Result<(), String> {
+pub async fn save_state_to_remote(config: &RemoteStateConfig, data: &[u8]) -> Result<(), String> {
     println!("\nSaving state to remote object: {}", config);
 
     let client = S3Client::new(config.region.clone());
@@ -298,7 +295,7 @@ pub async fn save_state_to_remote(
         .put_object(rusoto_s3::PutObjectRequest {
             bucket: config.bucket.clone(),
             key: format!("{}.rocat-state.yml", config.key),
-            body: Some(rusoto_core::ByteStream::from(data.clone())),
+            body: Some(rusoto_core::ByteStream::from(data.to_vec())),
             ..Default::default()
         })
         .await;
@@ -307,7 +304,7 @@ pub async fn save_state_to_remote(
         .map_err(|e| format!("Failed to save state to remote: {}", e))
 }
 
-pub fn save_state_to_file(project_path: &Path, data: &Vec<u8>) -> Result<(), String> {
+pub fn save_state_to_file(project_path: &Path, data: &[u8]) -> Result<(), String> {
     let state_file_path = get_state_file_path(project_path);
 
     println!("\nSaving state to local file. It is recommended you commit this file to your source control: {}", state_file_path.display());

@@ -20,17 +20,17 @@ fn get_app() -> App<'static, 'static> {
         )
 }
 
-pub fn run_with(args: Vec<String>) -> Result<(), String> {
+pub async fn run_with(args: Vec<String>) -> Result<(), String> {
     let app = get_app();
     let matches = app.get_matches_from(args);
     match matches.subcommand() {
         ("deploy", Some(deploy_matches)) => {
-            commands::deploy::run(deploy_matches.value_of("PROJECT"))
+            commands::deploy::run(deploy_matches.value_of("PROJECT")).await
         }
         _ => Err("Unreachable code reached!".to_string()),
     }
 }
 
-pub fn run() -> Result<(), String> {
-    run_with(env::args().collect())
+pub async fn run() -> Result<(), String> {
+    run_with(env::args().collect()).await
 }

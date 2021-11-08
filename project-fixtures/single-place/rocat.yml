@@ -36,3 +36,9 @@ templates:
       maxPlayerCount: 20
       serverFill: { reservedSlots: 10 }
       allowCopying: false
+
+state:
+  remote:
+    region: [us-west-2]
+    bucket: rocat-states
+    key: project-fixtures/single-place

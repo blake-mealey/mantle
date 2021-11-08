@@ -26,3 +26,9 @@ templates:
       name: Rocat Test Start Place
     world:
       name: Rocat Test World Place
+
+state:
+  remote:
+    region: [us-west-2]
+    bucket: rocat-states
+    key: project-fixtures/multi-places

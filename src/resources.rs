@@ -466,13 +466,12 @@ impl ResourceGraph {
         }
     }
 
-    pub fn evaluate(
+    fn internal_evaluate(
         &mut self,
+        resource_order: Vec<ResourceRef>,
         previous_graph: &ResourceGraph,
         resource_manager: &mut ResourceManager,
-    ) -> Result<(), String> {
-        let resource_order = self.get_topological_order()?;
-
+    ) -> Result<(bool, bool), String> {
         let mut had_failures = false;
         let mut made_changes = false;
 
@@ -596,7 +595,30 @@ impl ResourceGraph {
             }
         }
 
-        if !made_changes {
+        Ok((had_failures, made_changes))
+    }
+
+    pub fn evaluate(
+        &mut self,
+        previous_graph: &ResourceGraph,
+        resource_manager: &mut ResourceManager,
+    ) -> Result<(), String> {
+        println!("Evaluating resource graph:");
+
+        let resource_order = self.get_topological_order();
+
+        let (had_failures, made_changes) = match resource_order {
+            Ok(resource_order) => {
+                self.internal_evaluate(resource_order, previous_graph, resource_manager)?
+            }
+            Err(error) => {
+                println!("  ╷");
+                println!("  ╰─ Failed: \x1b[91m{}\x1b[0m", error);
+                (true, false)
+            }
+        };
+
+        if !had_failures && !made_changes {
             println!("  ╷");
             println!("  ╰─ Succeeded: no changes required.");
         }

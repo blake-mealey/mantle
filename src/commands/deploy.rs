@@ -4,10 +4,6 @@ use std::{
     str,
 };
 
-use rusoto_core::Region;
-use rusoto_s3::{S3Client, S3};
-use tokio::io::AsyncReadExt;
-
 use crate::{
     config::load_config_file,
     resource_manager::RobloxResourceManager,
@@ -80,49 +76,6 @@ fn parse_project(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {
 }
 
 pub async fn run(project: Option<&str>) -> Result<(), String> {
-    let client = S3Client::new(Region::UsWest2);
-    let object_res = client
-        .get_object(rusoto_s3::GetObjectRequest {
-            bucket: "rocat-states".to_owned(),
-            expected_bucket_owner: None,
-            if_match: None,
-            if_modified_since: None,
-            if_none_match: None,
-            if_unmodified_since: None,
-            key: "test.rocat-state.yml".to_owned(),
-            part_number: None,
-            range: None,
-            request_payer: None,
-            response_cache_control: None,
-            response_content_disposition: None,
-            response_content_encoding: None,
-            response_content_language: None,
-            response_content_type: None,
-            response_expires: None,
-            sse_customer_algorithm: None,
-            sse_customer_key: None,
-            sse_customer_key_md5: None,
-            version_id: None,
-        })
-        .await;
-    println!("{:?}", object_res);
-    if let Err(rusoto_core::RusotoError::Service(rusoto_s3::GetObjectError::NoSuchKey(_))) =
-        object_res
-    {
-        println!("No state file found");
-    }
-    if let Ok(object) = object_res {
-        if let Some(stream) = object.body {
-            let mut buffer = String::new();
-            stream
-                .into_async_read()
-                .read_to_string(&mut buffer)
-                .await
-                .map_err(|_| "".to_owned())?;
-            println!("{}", buffer);
-        }
-    }
-
     let (project_path, config_file) = parse_project(project)?;
 
     let config = load_config_file(&config_file)?;
@@ -147,7 +100,7 @@ pub async fn run(project: Option<&str>) -> Result<(), String> {
         ResourceManager::new(Box::new(RobloxResourceManager::new(&project_path)));
 
     // Get previous state
-    let mut state = get_previous_state(project_path.as_path(), &config, deployment_config)?;
+    let mut state = get_previous_state(project_path.as_path(), &config, deployment_config).await?;
 
     // Get our resource graphs
     let previous_graph =
@@ -155,7 +108,6 @@ pub async fn run(project: Option<&str>) -> Result<(), String> {
     let mut next_graph = get_desired_graph(project_path.as_path(), &config, deployment_config)?;
 
     // Evaluate the resource graph
-    println!("Evaluating resource graph:");
     let result = next_graph.evaluate(&previous_graph, &mut resource_manager);
 
     // Save the results to the state file
@@ -163,7 +115,7 @@ pub async fn run(project: Option<&str>) -> Result<(), String> {
         deployment_config.name.clone(),
         next_graph.get_resource_list(),
     );
-    save_state(&project_path, &state)?;
+    save_state(&project_path, &config.state, &state).await?;
 
     // If there were errors, return them
     result?;

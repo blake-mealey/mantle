@@ -3,8 +3,9 @@ use crate::roblox_api::{
     ExperienceConfigurationModel, ExperienceGenre, ExperiencePermissionsModel,
     ExperiencePlayableDevice, PlaceConfigurationModel, SocialSlotType,
 };
+use rusoto_core::Region;
 use serde::Deserialize;
-use std::{collections::HashMap, fs, path::Path, str};
+use std::{collections::HashMap, default, fmt, fs, path::Path, str};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -17,6 +18,40 @@ pub struct Config {
 
     #[serde(default)]
     pub templates: TemplateConfig,
+
+    #[serde(default)]
+    pub state: StateConfig,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub enum StateConfig {
+    Local,
+    Remote(RemoteStateConfig),
+}
+impl default::Default for StateConfig {
+    fn default() -> Self {
+        StateConfig::Local
+    }
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteStateConfig {
+    pub bucket: String,
+    pub key: String,
+    pub region: Region,
+}
+impl fmt::Display for RemoteStateConfig {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}/{}/{}.rocat-state.yml",
+            self.region.name(),
+            self.bucket,
+            self.key
+        )
+    }
 }
 
 #[derive(Deserialize, Clone)]

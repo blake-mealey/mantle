@@ -1,6 +1,3 @@
-placeFiles:
-  start: start.rbxlx
-
 deployments:
   - name: staging
     branches: [dev, dev/*]
@@ -31,6 +28,7 @@ templates:
       - game-thumbnail-3.png
   places:
     start:
+      file: start.rbxlx
       name: Start name
       description: Start description
       maxPlayerCount: 20

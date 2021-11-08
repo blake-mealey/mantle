@@ -49,10 +49,6 @@ file in the provided directory.
 ```yml
 # rocat.yml
 
-placeFiles:
-  start: start-place.rbxlx
-  world: world-place.rbxl
-
 deployments:
   - name: staging
     branches: [dev, dev/*]
@@ -89,6 +85,7 @@ templates:
       - game-thumbnail-3.png
   places:
     start:
+      file: start-place.rbxlx
       name: The Best Experience Ever
       description: |
         The best multi-line
@@ -96,6 +93,8 @@ templates:
       maxPlayerCount: 25
       serverFill: { reservedSlots: 10 } # or robloxOptimized or maximum
       allowCopying: false
+    world:
+      file: world-place.rbxl
 ```
 
 To deploy the above configuration with Rocat, run `rocat deploy` from the file's directory.

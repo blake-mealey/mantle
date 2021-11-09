@@ -25,7 +25,6 @@ where
         })
         .collect::<Vec<_>>()
         .join("\n")
-        .to_owned()
 }
 
 fn with_prefix<S1, S2>(text: S1, prefix: S2) -> String
@@ -37,10 +36,7 @@ where
 }
 
 fn get_line_prefix() -> String {
-    format!(
-        "{}",
-        "  │  ".repeat(ACTION_COUNT.load(Ordering::SeqCst).into())
-    )
+    "  │  ".repeat(ACTION_COUNT.load(Ordering::SeqCst).into())
 }
 
 pub fn log<S>(message: S)

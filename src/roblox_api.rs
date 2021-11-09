@@ -227,7 +227,10 @@ impl RobloxApi {
                 Ok(v) => get_message_from_error(v),
                 Err(_) => None,
             },
-            "text/html" => None,
+            "text/html" => {
+                // println!("{}", response.into_string().unwrap());
+                None
+            }
             _ => response.into_string().ok(),
         }
     }
@@ -402,6 +405,7 @@ impl RobloxApi {
     }
 
     fn get_image_from_data(
+        file_field_name: String,
         image_file: &Path,
         text_fields: Option<HashMap<String, String>>,
     ) -> Result<PreparedFields, String> {
@@ -416,7 +420,7 @@ impl RobloxApi {
         let mime = Some(mime_guess::from_path(image_file).first_or_octet_stream());
 
         let mut multipart = Multipart::new();
-        multipart.add_stream("request.files", stream, file_name, mime);
+        multipart.add_stream(file_field_name, stream, file_name, mime);
 
         if let Some(fields) = text_fields {
             for (name, text) in fields {
@@ -436,7 +440,7 @@ impl RobloxApi {
     ) -> Result<UploadImageResult, String> {
         // println!("TRACE: upload_icon {}", icon_file.display());
 
-        let multipart = Self::get_image_from_data(icon_file, None)?;
+        let multipart = Self::get_image_from_data("request.files".to_owned(), icon_file, None)?;
 
         let res = ureq::post(&format!(
             "https://publish.roblox.com/v1/games/{}/icon",
@@ -466,7 +470,8 @@ impl RobloxApi {
     ) -> Result<UploadImageResult, String> {
         // println!("TRACE: upload_thumbnail {}", thumbnail_file.display());
 
-        let multipart = Self::get_image_from_data(thumbnail_file, None)?;
+        let multipart =
+            Self::get_image_from_data("request.files".to_owned(), thumbnail_file, None)?;
 
         let res = ureq::post(&format!(
             "https://publish.roblox.com/v1/games/{}/thumbnail/image",
@@ -646,15 +651,15 @@ impl RobloxApi {
 
     pub fn upload_asset(&mut self, asset_file: &Path) -> Result<(), String> {
         let mut fields: HashMap<String, String> = HashMap::new();
-        fields.insert("name".to_owned(), "the name".to_owned());
-        fields.insert("assetTypeId".to_owned(), "1".to_owned());
+        fields.insert("name".to_owned(), "A cool decal.".to_owned());
+        fields.insert("assetTypeId".to_owned(), (13 as u32).to_string().to_owned());
         fields.insert("groupId".to_owned(), "".to_owned());
         fields.insert(
             "__RequestVerificationToken".to_owned(),
             self.roblox_auth
                 .get_verification_token("https://www.roblox.com/build/upload".to_owned())?,
         );
-        let multipart = Self::get_image_from_data(asset_file, Some(fields))?;
+        let multipart = Self::get_image_from_data("file".to_owned(), asset_file, Some(fields))?;
 
         let res = ureq::post(&format!("https://www.roblox.com/build/upload"))
             .set(

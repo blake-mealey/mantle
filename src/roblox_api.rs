@@ -1,32 +1,12 @@
 use multipart::client::lazy::{Multipart, PreparedFields};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{clone::Clone, default, ffi::OsStr, fmt, fs, path::Path};
+use std::{clone::Clone, collections::HashMap, default, ffi::OsStr, fmt, fs, path::Path};
 
-use crate::roblox_auth::RobloxAuth;
-
-enum AuthType {
-    ApiKey,
-    CookieWithCsrfToken,
-}
-
-trait RequestExt {
-    fn set_auth(self, auth_type: AuthType, auth: &mut RobloxAuth) -> Result<ureq::Request, String>;
-}
-
-impl RequestExt for ureq::Request {
-    fn set_auth(self, auth_type: AuthType, auth: &mut RobloxAuth) -> Result<ureq::Request, String> {
-        match auth_type {
-            AuthType::ApiKey => Ok(self.set("x-api-key", &auth.get_api_key()?)),
-            AuthType::CookieWithCsrfToken => Ok(self
-                .set(
-                    "cookie",
-                    &format!(".ROBLOSECURITY={}", auth.get_roblosecurity()?),
-                )
-                .set("x-csrf-token", &auth.get_csrf_token()?)),
-        }
-    }
-}
+use crate::{
+    resource_manager::AssetId,
+    roblox_auth::{AuthType, RequestExt, RobloxAuth},
+};
 
 #[derive(Serialize, Deserialize, Copy, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -80,6 +60,27 @@ struct PlaceManagementResponse {
 #[serde(rename_all = "camelCase")]
 struct UploadImageResponse {
     target_id: u64,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateDeveloperProductResponse {
+    pub id: AssetId,
+    pub shop_id: AssetId,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct ListDeveloperProductsResponse {
+    pub developer_products: Vec<GetDeveloperProductResponse>,
+    pub final_page: bool,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "PascalCase")]
+pub struct GetDeveloperProductResponse {
+    pub product_id: AssetId,
+    pub developer_product_id: AssetId,
 }
 
 pub static INVALID_API_KEY_HELP: &str = "\
@@ -204,8 +205,6 @@ impl RobloxApi {
     }
 
     fn get_roblox_api_error_message(response: ureq::Response) -> Option<String> {
-        let is_json = response.content_type() == "application/json";
-
         fn get_message_from_error(error: RobloxApiErrorModel) -> Option<String> {
             if let Some(message) = error.message {
                 Some(message)
@@ -223,13 +222,13 @@ impl RobloxApi {
             }
         }
 
-        if is_json {
-            match response.into_json::<RobloxApiErrorModel>() {
+        match response.content_type() {
+            "application/json" => match response.into_json::<RobloxApiErrorModel>() {
                 Ok(v) => get_message_from_error(v),
                 Err(_) => None,
-            }
-        } else {
-            response.into_string().ok()
+            },
+            "text/html" => None,
+            _ => response.into_string().ok(),
         }
     }
 
@@ -349,7 +348,7 @@ impl RobloxApi {
                 experience_id
             ),
         )
-        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
         .send_json(json_data);
 
         Self::handle_response(res)?;
@@ -373,7 +372,7 @@ impl RobloxApi {
             "PATCH",
             &format!("https://develop.roblox.com/v2/places/{}", place_id),
         )
-        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
         .set("Content-Type", "application/json")
         .send_json(json_data);
 
@@ -394,7 +393,7 @@ impl RobloxApi {
             "https://develop.roblox.com/v1/universes/{}/{}",
             experience_id, endpoint
         ))
-        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
         .send_string("");
 
         Self::handle_response(res)?;
@@ -402,7 +401,10 @@ impl RobloxApi {
         Ok(())
     }
 
-    fn get_image_from_data(image_file: &Path) -> Result<PreparedFields, String> {
+    fn get_image_from_data(
+        image_file: &Path,
+        text_fields: Option<HashMap<String, String>>,
+    ) -> Result<PreparedFields, String> {
         let stream = fs::File::open(image_file)
             .map_err(|e| format!("Failed to open image file {}: {}", image_file.display(), e))?;
         let file_name = Some(
@@ -416,6 +418,12 @@ impl RobloxApi {
         let mut multipart = Multipart::new();
         multipart.add_stream("request.files", stream, file_name, mime);
 
+        if let Some(fields) = text_fields {
+            for (name, text) in fields {
+                multipart.add_text(name, text);
+            }
+        }
+
         multipart
             .prepare()
             .map_err(|e| format!("Failed to load image file {}: {}", image_file.display(), e))
@@ -428,7 +436,7 @@ impl RobloxApi {
     ) -> Result<UploadImageResult, String> {
         // println!("TRACE: upload_icon {}", icon_file.display());
 
-        let multipart = Self::get_image_from_data(icon_file)?;
+        let multipart = Self::get_image_from_data(icon_file, None)?;
 
         let res = ureq::post(&format!(
             "https://publish.roblox.com/v1/games/{}/icon",
@@ -438,7 +446,7 @@ impl RobloxApi {
             "Content-Type",
             &format!("multipart/form-data; boundary={}", multipart.boundary()),
         )
-        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
         .send(multipart);
 
         let response = Self::handle_response(res)?;
@@ -458,7 +466,7 @@ impl RobloxApi {
     ) -> Result<UploadImageResult, String> {
         // println!("TRACE: upload_thumbnail {}", thumbnail_file.display());
 
-        let multipart = Self::get_image_from_data(thumbnail_file)?;
+        let multipart = Self::get_image_from_data(thumbnail_file, None)?;
 
         let res = ureq::post(&format!(
             "https://publish.roblox.com/v1/games/{}/thumbnail/image",
@@ -468,7 +476,7 @@ impl RobloxApi {
             "Content-Type",
             &format!("multipart/form-data; boundary={}", multipart.boundary()),
         )
-        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
         .send(multipart);
 
         let response = Self::handle_response(res)?;
@@ -495,7 +503,7 @@ impl RobloxApi {
             "https://develop.roblox.com/v1/universes/{}/thumbnails/order",
             experience_id
         ))
-        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
         .send_json(json!({ "thumbnailIds": new_thumbnail_order }));
 
         Self::handle_response(res)?;
@@ -514,11 +522,161 @@ impl RobloxApi {
             "https://develop.roblox.com/v1/universes/{}/thumbnails/{}",
             experience_id, thumbnail_id
         ))
-        .set_auth(AuthType::CookieWithCsrfToken, &mut self.roblox_auth)?
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
         .send_string("");
 
         Self::handle_response(res)?;
 
         Ok(())
+    }
+
+    pub fn create_experience_developer_product(
+        &mut self,
+        experience_id: AssetId,
+        name: String,
+        price: u32,
+        description: String,
+        icon_asset_id: Option<AssetId>,
+    ) -> Result<CreateDeveloperProductResponse, String> {
+        let mut req = ureq::post(&format!(
+            "https://develop.roblox.com/v1/universes/{}/developerproducts",
+            experience_id
+        ))
+        .query("name", &name)
+        .query("priceInRobux", &price.to_string())
+        .query("description", &description);
+        if let Some(icon_asset_id) = icon_asset_id {
+            req = req.query("iconAssetId", &icon_asset_id.to_string());
+        }
+        let res = req
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_string("");
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<CreateDeveloperProductResponse>()
+            .map_err(|e| {
+                format!(
+                    "Failed to deserialize create experience developer product response: {}",
+                    e
+                )
+            })?;
+
+        Ok(model)
+    }
+
+    pub fn list_experience_developer_products(
+        &mut self,
+        experience_id: AssetId,
+        page: u32,
+    ) -> Result<ListDeveloperProductsResponse, String> {
+        let res = ureq::get(&format!("https://api.roblox.com/developerproducts/list"))
+            .query("universeId", &experience_id.to_string())
+            .query("page", &page.to_string())
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_string("");
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<ListDeveloperProductsResponse>()
+            .map_err(|e| {
+                format!(
+                    "Failed to deserialize create experience developer product response: {}",
+                    e
+                )
+            })?;
+
+        Ok(model)
+    }
+
+    pub fn find_experience_developer_product_by_id(
+        &mut self,
+        experience_id: AssetId,
+        developer_product_id: AssetId,
+    ) -> Result<GetDeveloperProductResponse, String> {
+        let mut page: u32 = 1;
+        loop {
+            let res = self.list_experience_developer_products(experience_id, page)?;
+
+            let product = res
+                .developer_products
+                .iter()
+                .find(|p| p.developer_product_id == developer_product_id);
+
+            if let Some(product) = product {
+                return Ok(product.clone());
+            }
+
+            if res.final_page {
+                return Err(format!(
+                    "Failed to find developer product with id {}",
+                    developer_product_id
+                ));
+            }
+
+            page += 1;
+        }
+    }
+
+    pub fn update_experience_developer_product(
+        &mut self,
+        experience_id: AssetId,
+        developer_product_id: AssetId,
+        name: String,
+        price: u32,
+        description: String,
+        icon_asset_id: Option<AssetId>,
+    ) -> Result<(), String> {
+        let res = ureq::post(&format!(
+            "https://develop.roblox.com/v1/universes/{}/developerproducts/{}/update",
+            experience_id, developer_product_id
+        ))
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .send_json(json!({
+            "name": name,
+            "priceInRobux": price,
+            "description": description,
+            "iconAssetId": icon_asset_id
+        }));
+
+        Self::handle_response(res)?;
+
+        Ok(())
+    }
+
+    pub fn upload_asset(&mut self, asset_file: &Path) -> Result<(), String> {
+        let mut fields: HashMap<String, String> = HashMap::new();
+        fields.insert("name".to_owned(), "the name".to_owned());
+        fields.insert("assetTypeId".to_owned(), "1".to_owned());
+        fields.insert("groupId".to_owned(), "".to_owned());
+        fields.insert(
+            "__RequestVerificationToken".to_owned(),
+            self.roblox_auth
+                .get_verification_token("https://www.roblox.com/build/upload".to_owned())?,
+        );
+        let multipart = Self::get_image_from_data(asset_file, Some(fields))?;
+
+        let res = ureq::post(&format!("https://www.roblox.com/build/upload"))
+            .set(
+                "Content-Type",
+                &format!("multipart/form-data; boundary={}", multipart.boundary()),
+            )
+            .set_auth(
+                AuthType::CookieAndCsrfTokenAndVerificationToken,
+                &mut self.roblox_auth,
+            )?
+            .send(multipart);
+
+        let response = Self::handle_response(res)?;
+        println!("{:?}", response.into_string());
+        // let model = response
+        //     .into_json::<UploadImageResponse>()
+        //     .map_err(|e| format!("Failed to deserialize upload image response: {}", e))?;
+
+        // Ok(UploadImageResult {
+        //     asset_id: model.target_id,
+        // })
+        // Ok(())
+        Err("unimplemented".to_owned())
     }
 }

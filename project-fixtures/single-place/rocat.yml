@@ -26,6 +26,12 @@ templates:
       - game-thumbnail-1.png
       - game-thumbnail-2.png
       - game-thumbnail-3.png
+    developerProducts:
+      myFirstProduct:
+        name: My first product
+        description: With an amazing description
+        price: 50
+        icon: game-pass-1.png
   places:
     start:
       file: start.rbxlx

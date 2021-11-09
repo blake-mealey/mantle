@@ -1,12 +1,14 @@
 use std::path::{Path, PathBuf};
 
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     resources::ResourceManagerBackend,
     roblox_api::{
-        DeployMode, ExperienceConfigurationModel, PlaceConfigurationModel, RobloxApi,
-        UploadImageResult, UploadPlaceResult,
+        CreateDeveloperProductResponse, DeployMode, ExperienceConfigurationModel,
+        GetDeveloperProductResponse, PlaceConfigurationModel, RobloxApi, UploadImageResult,
+        UploadPlaceResult,
     },
     roblox_auth::RobloxAuth,
 };
@@ -19,8 +21,10 @@ pub mod resource_types {
     pub const EXPERIENCE_ICON: &str = "experience_icon";
     pub const EXPERIENCE_THUMBNAIL: &str = "experience_thumbnail";
     pub const EXPERIENCE_THUMBNAIL_ORDER: &str = "experience_thumbnail_order";
+    pub const EXPERIENCE_DEVELOPER_PRODUCT: &str = "experience_developer_product";
     pub const PLACE_FILE: &str = "place_file";
     pub const PLACE_CONFIGURATION: &str = "place_configuration";
+    pub const ASSET: &str = "asset";
 }
 
 pub const SINGLETON_RESOURCE_ID: &str = "singleton";
@@ -78,6 +82,23 @@ struct ExperienceThumbnailOrderInputs {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+struct ExperienceDeveloperProductInputs {
+    experience_id: AssetId,
+    name: String,
+    price: u32,
+    description: String,
+    icon_asset_id: Option<AssetId>,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ExperienceDeveloperProductOutputs {
+    asset_id: AssetId,
+    product_id: AssetId,
+    shop_id: AssetId,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 struct PlaceFileInputs {
     experience_id: AssetId,
     file_path: String,
@@ -98,6 +119,18 @@ struct PlaceConfigurationInputs {
     experience_id: AssetId,
     asset_id: AssetId,
     configuration: PlaceConfigurationModel,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct AssetInputs {
+    file_path: String,
+    file_hash: String,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct AssetOutputs {
+    asset_id: AssetId,
 }
 
 pub struct RobloxResourceManager {
@@ -173,6 +206,45 @@ impl ResourceManagerBackend for RobloxResourceManager {
 
                 Ok(None)
             }
+            resource_types::EXPERIENCE_DEVELOPER_PRODUCT => {
+                let inputs =
+                    serde_yaml::from_value::<ExperienceDeveloperProductInputs>(resource_inputs)
+                        .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                let CreateDeveloperProductResponse { id, shop_id } =
+                    self.roblox_api.create_experience_developer_product(
+                        inputs.experience_id,
+                        inputs.name,
+                        inputs.price,
+                        inputs.description,
+                        inputs.icon_asset_id,
+                    )?;
+
+                let GetDeveloperProductResponse {
+                    product_id,
+                    developer_product_id: _,
+                } = self
+                    .roblox_api
+                    .find_experience_developer_product_by_id(inputs.experience_id, id)?;
+
+                Ok(Some(
+                    serde_yaml::to_value(ExperienceDeveloperProductOutputs {
+                        asset_id: product_id,
+                        product_id: id,
+                        shop_id,
+                    })
+                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
+            }
+            resource_types::ASSET => {
+                let inputs = serde_yaml::from_value::<AssetInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                self.roblox_api
+                    .upload_asset(self.project_path.join(inputs.file_path).as_path())?;
+
+                Ok(None)
+            }
             _ => panic!(
                 "Create not implemented for resource type: {}",
                 resource_type
@@ -238,6 +310,27 @@ impl ResourceManagerBackend for RobloxResourceManager {
 
                 Ok(None)
             }
+            resource_types::EXPERIENCE_DEVELOPER_PRODUCT => {
+                let inputs =
+                    serde_yaml::from_value::<ExperienceDeveloperProductInputs>(resource_inputs)
+                        .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let outputs = serde_yaml::from_value::<ExperienceDeveloperProductOutputs>(
+                    resource_outputs.clone(),
+                )
+                .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                self.roblox_api.update_experience_developer_product(
+                    inputs.experience_id,
+                    outputs.asset_id,
+                    inputs.name,
+                    inputs.price,
+                    inputs.description,
+                    inputs.icon_asset_id,
+                )?;
+
+                Ok(Some(resource_outputs.clone()))
+            }
+            resource_types::ASSET => self.create(resource_type, resource_inputs),
             _ => panic!(
                 "Update not implemented for resource type: {}",
                 resource_type
@@ -268,6 +361,29 @@ impl ResourceManagerBackend for RobloxResourceManager {
                     .delete_experience_thumbnail(inputs.experience_id, outputs.asset_id)
             }
             resource_types::EXPERIENCE_THUMBNAIL_ORDER => Ok(()),
+            resource_types::EXPERIENCE_DEVELOPER_PRODUCT => {
+                let inputs =
+                    serde_yaml::from_value::<ExperienceDeveloperProductInputs>(resource_inputs)
+                        .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let outputs = serde_yaml::from_value::<ExperienceDeveloperProductOutputs>(
+                    resource_outputs.clone(),
+                )
+                .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                let utc = Utc::now();
+                self.roblox_api.update_experience_developer_product(
+                    inputs.experience_id,
+                    outputs.asset_id,
+                    format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
+                    inputs.price,
+                    format!(
+                        "Name: {}\nDescription:\n{}",
+                        inputs.name, inputs.description
+                    ),
+                    inputs.icon_asset_id,
+                )
+            }
+            resource_types::ASSET => Ok(()),
             _ => panic!(
                 "Delete not implemented for resource type: {}",
                 resource_type

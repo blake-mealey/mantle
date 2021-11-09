@@ -4,11 +4,14 @@ use std::{
     str,
 };
 
+use yansi::Paint;
+
 use crate::{
-    config::load_config_file,
+    config::{load_config_file, Config, DeploymentConfig},
+    logger,
     resource_manager::RobloxResourceManager,
-    resources::{ResourceGraph, ResourceManager},
-    state::{get_desired_graph, get_previous_state, save_state},
+    resources::{EvaluateResults, ResourceGraph, ResourceManager},
+    state::{get_desired_graph, get_previous_state, save_state, ResourceState},
 };
 
 fn run_command(command: &str) -> std::io::Result<std::process::Output> {
@@ -62,23 +65,30 @@ fn parse_project(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {
     } else if project_path.is_file() {
         (project_path.parent().unwrap().into(), project_path)
     } else {
-        return Err(format!("Unable to parse project path: {}", project));
+        return Err(format!("Unable to load project path: {}", project));
     };
 
     if config_file.exists() {
         return Ok((project_dir, config_file));
     }
 
-    Err(format!(
-        "Config file does not exist: {}",
-        config_file.display()
-    ))
+    Err(format!("Config file {} not found", config_file.display()))
 }
 
-pub async fn run(project: Option<&str>) -> Result<(), String> {
+struct Project {
+    project_path: PathBuf,
+    next_graph: ResourceGraph,
+    previous_graph: ResourceGraph,
+    state: ResourceState,
+    deployment_config: DeploymentConfig,
+    config: Config,
+}
+
+async fn load_project(project: Option<&str>) -> Result<Option<Project>, String> {
     let (project_path, config_file) = parse_project(project)?;
 
     let config = load_config_file(&config_file)?;
+    logger::log(format!("Loaded config file {}", config_file.display()));
 
     let current_branch = get_current_branch()?;
 
@@ -90,35 +100,102 @@ pub async fn run(project: Option<&str>) -> Result<(), String> {
     let deployment_config = match deployment_config {
         Some(v) => v,
         None => {
-            println!("No deployment configuration found for branch; no deployment necessary.");
-            return Ok(());
+            logger::log(format!(
+                "No deployment configuration found for branch '{}'",
+                current_branch
+            ));
+            return Ok(None);
         }
     };
-
-    // Get our resource manager
-    let mut resource_manager =
-        ResourceManager::new(Box::new(RobloxResourceManager::new(&project_path)));
+    logger::log(format!(
+        "Found deployment configuration '{}' for branch '{}'",
+        deployment_config.name, current_branch
+    ));
 
     // Get previous state
-    let mut state = get_previous_state(project_path.as_path(), &config, deployment_config).await?;
+    let state = get_previous_state(project_path.as_path(), &config, deployment_config).await?;
 
     // Get our resource graphs
     let previous_graph =
         ResourceGraph::new(state.deployments.get(&deployment_config.name).unwrap());
-    let mut next_graph = get_desired_graph(project_path.as_path(), &config, deployment_config)?;
+    let next_graph = get_desired_graph(project_path.as_path(), &config, deployment_config)?;
 
-    // Evaluate the resource graph
-    let result = next_graph.evaluate(&previous_graph, &mut resource_manager);
+    Ok(Some(Project {
+        project_path,
+        next_graph,
+        previous_graph,
+        state,
+        deployment_config: deployment_config.clone(),
+        config,
+    }))
+}
 
-    // Save the results to the state file
+pub async fn run(project: Option<&str>) -> i32 {
+    logger::start_action("Loading project:");
+    let Project {
+        project_path,
+        config,
+        deployment_config,
+        mut next_graph,
+        previous_graph,
+        mut state,
+    } = match load_project(project).await {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            logger::end_action("No deployment necessary");
+            return 0;
+        }
+        Err(e) => {
+            logger::end_action(Paint::red(e));
+            return 1;
+        }
+    };
+    logger::end_action("Succeeded");
+
+    let mut resource_manager =
+        ResourceManager::new(Box::new(RobloxResourceManager::new(&project_path)));
+
+    logger::start_action("Deploying resources:");
+    let exit_code = match next_graph.evaluate(&previous_graph, &mut resource_manager) {
+        Ok(results) => {
+            match results {
+                EvaluateResults {
+                    created_count: 0,
+                    updated_count: 0,
+                    deleted_count: 0,
+                    ..
+                } => logger::end_action("No changes required"),
+                EvaluateResults {
+                    created_count,
+                    updated_count,
+                    deleted_count,
+                    noop_count,
+                } => logger::end_action(format!(
+                    "Succeeded with {} create(s), {} update(s), {} delete(s), {} noop(s)",
+                    created_count, updated_count, deleted_count, noop_count
+                )),
+            };
+            0
+        }
+        Err(e) => {
+            logger::end_action(Paint::red(e));
+            1
+        }
+    };
+
+    logger::start_action("Saving state:");
     state.deployments.insert(
         deployment_config.name.clone(),
         next_graph.get_resource_list(),
     );
-    save_state(&project_path, &config.state, &state).await?;
+    match save_state(&project_path, &config.state, &state).await {
+        Ok(_) => {}
+        Err(e) => {
+            logger::end_action(Paint::red(e));
+            return 1;
+        }
+    };
+    logger::end_action("Succeeded");
 
-    // If there were errors, return them
-    result?;
-
-    Ok(())
+    exit_code
 }

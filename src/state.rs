@@ -11,6 +11,7 @@ use tokio::io::AsyncReadExt;
 
 use crate::{
     config::{Config, DeploymentConfig, PlayabilityConfig, RemoteStateConfig, StateConfig},
+    logger,
     resource_manager::{resource_types, AssetId, SINGLETON_RESOURCE_ID},
     resources::{InputRef, Resource, ResourceGraph},
     roblox_api::{ExperienceConfigurationModel, PlaceConfigurationModel},
@@ -48,10 +49,10 @@ fn parse_state(file_name: &str, data: &str) -> Result<ResourceState, String> {
 
 fn get_state_from_file(project_path: &Path) -> Result<Option<ResourceState>, String> {
     let state_file_path = get_state_file_path(project_path);
-    println!(
-        "Loading previous state from local file: {}\n",
+    logger::log(format!(
+        "Loading previous state from local file: {}",
         state_file_path.display()
-    );
+    ));
 
     if state_file_path.exists() {
         let data = fs::read_to_string(&state_file_path).map_err(|e| {
@@ -74,7 +75,10 @@ fn get_state_from_file(project_path: &Path) -> Result<Option<ResourceState>, Str
 async fn get_state_from_remote(
     config: &RemoteStateConfig,
 ) -> Result<Option<ResourceState>, String> {
-    println!("Loading previous state from remote object: {}\n", config);
+    logger::log(format!(
+        "Loading previous state from remote object: {}",
+        config
+    ));
 
     let client = S3Client::new(config.region.clone());
     let object_res = client
@@ -167,10 +171,10 @@ pub async fn get_previous_state(
     };
 
     if state.deployments.get(&deployment_config.name).is_none() {
-        println!(
-            "No previous state for deployment {}.",
+        logger::log(format!(
+            "No previous state for deployment {}",
             deployment_config.name
-        );
+        ));
         state.deployments.insert(
             deployment_config.name.clone(),
             get_default_resources(config, deployment_config)?,
@@ -288,7 +292,7 @@ pub fn get_desired_graph(
 }
 
 pub async fn save_state_to_remote(config: &RemoteStateConfig, data: &[u8]) -> Result<(), String> {
-    println!("\nSaving state to remote object: {}", config);
+    logger::log(format!("Saving to remote object: {}", config));
 
     let client = S3Client::new(config.region.clone());
     let res = client
@@ -307,7 +311,10 @@ pub async fn save_state_to_remote(config: &RemoteStateConfig, data: &[u8]) -> Re
 pub fn save_state_to_file(project_path: &Path, data: &[u8]) -> Result<(), String> {
     let state_file_path = get_state_file_path(project_path);
 
-    println!("\nSaving state to local file. It is recommended you commit this file to your source control: {}", state_file_path.display());
+    logger::log(format!(
+        "Saving to local file: {}. It is recommended you commit this file to your source control",
+        state_file_path.display()
+    ));
 
     fs::write(&state_file_path, data).map_err(|e| {
         format!(

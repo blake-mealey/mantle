@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use difference::{Changeset, Difference};
+use difference::Changeset;
 use serde::{Deserialize, Serialize};
 use yansi::Paint;
 
@@ -199,14 +199,29 @@ impl ResourceManager {
     }
 }
 
+fn format_inputs_hash(inputs_hash: &str) -> &str {
+    // We remove first 4 characters to remove "---\n", and we trim the end to remove "\n"
+    if inputs_hash.is_empty() {
+        ""
+    } else {
+        inputs_hash[4..].trim_end()
+    }
+}
+
 fn get_changeset(previous_inputs_hash: &str, new_inputs_hash: &str) -> Changeset {
-    // We take off the first 4 characters to remove "---\n", and we trim the end to remvoe the final
-    // newline
     Changeset::new(
-        previous_inputs_hash[4..].trim_end(),
-        new_inputs_hash[4..].trim_end(),
+        format_inputs_hash(new_inputs_hash),
+        format_inputs_hash(previous_inputs_hash),
         "\n",
     )
+}
+
+#[derive(Default, Clone)]
+pub struct EvaluateResults {
+    pub created_count: u32,
+    pub updated_count: u32,
+    pub deleted_count: u32,
+    pub noop_count: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -387,9 +402,9 @@ impl ResourceGraph {
         resource_order: Vec<ResourceRef>,
         previous_graph: &ResourceGraph,
         resource_manager: &mut ResourceManager,
-    ) -> Result<(bool, bool), String> {
-        let mut had_failures = false;
-        let mut made_changes = false;
+    ) -> Result<EvaluateResults, String> {
+        let mut results: EvaluateResults = Default::default();
+        let mut failures_count = 0;
 
         for resource_ref in resource_order {
             let ResourceDiff {
@@ -405,7 +420,7 @@ impl ResourceGraph {
                 let outputs = match previous_hash {
                     None => {
                         // This resource is new
-                        made_changes = true;
+                        results.created_count += 1;
                         logger::start_action(format!(
                             "{} Creating: {} {}",
                             Paint::green("+"),
@@ -423,7 +438,7 @@ impl ResourceGraph {
                     }
                     Some(previous_hash) if previous_hash != inputs_hash => {
                         // This resource has changed
-                        made_changes = true;
+                        results.updated_count += 1;
                         logger::start_action(format!(
                             "{} Updating: {} {}",
                             Paint::yellow("~"),
@@ -442,7 +457,10 @@ impl ResourceGraph {
                             ),
                         )
                     }
-                    _ => None,
+                    _ => {
+                        results.noop_count += 1;
+                        None
+                    }
                 };
 
                 if let Some(outputs) = outputs {
@@ -454,8 +472,11 @@ impl ResourceGraph {
                             // Apply the outputs to the resource
                             logger::end_action_with_results(
                                 "Succeeded with outputs:",
-                                serde_yaml::to_string(&outputs)
-                                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                                format_inputs_hash(
+                                    &serde_yaml::to_string(&outputs).map_err(|e| {
+                                        format!("Failed to serialize outputs: {}", e)
+                                    })?,
+                                ),
                             );
                             let mut resource_with_outputs = resource.clone();
                             let outputs =
@@ -475,7 +496,7 @@ impl ResourceGraph {
                         // graph. Otherwise, we will remove this resource from the graph.
                         // TODO: this may need work for formatting
                         logger::end_action(format!("Failed: {}", Paint::red(outputs.unwrap_err())));
-                        had_failures = true;
+                        failures_count += 1;
                         if let Some(previous_resource) = previous_resource {
                             self.resources.insert(resource_ref, previous_resource);
                         } else {
@@ -509,7 +530,7 @@ impl ResourceGraph {
             let resolved_inputs = previous_graph.resolve_inputs(resource)?.unwrap_or_default();
             let outputs = resource.outputs.clone().unwrap_or_default();
 
-            made_changes = true;
+            results.deleted_count += 1;
             logger::start_action(format!(
                 "{} Deleting: {} {}",
                 Paint::red("-"),
@@ -533,7 +554,7 @@ impl ResourceGraph {
                 // the graph.
                 // TODO: this may need work for formatting
                 logger::end_action(format!("Failed: {}", Paint::red(error)));
-                had_failures = true;
+                failures_count += 1;
                 self.resources
                     .insert(resource_ref.clone(), resource.clone());
             } else {
@@ -541,40 +562,22 @@ impl ResourceGraph {
             }
         }
 
-        Ok((had_failures, made_changes))
+        if failures_count > 0 {
+            Err(format!(
+                "Failed {} updates while evaluating the resource graph. See above for more details",
+                failures_count
+            ))
+        } else {
+            Ok(results)
+        }
     }
 
     pub fn evaluate(
         &mut self,
         previous_graph: &ResourceGraph,
         resource_manager: &mut ResourceManager,
-    ) -> Result<(), String> {
-        logger::start_action("Evaluating resource graph:");
-
-        let resource_order = self.get_topological_order();
-
-        let (had_failures, made_changes) = match resource_order {
-            Ok(resource_order) => {
-                self.internal_evaluate(resource_order, previous_graph, resource_manager)?
-            }
-            Err(error) => {
-                // TODO: this may need work on formatting
-                logger::end_action(format!("Failed: {}", Paint::red(error)));
-                (true, false)
-            }
-        };
-
-        match (had_failures, made_changes) {
-            (false, false) => logger::end_action("Succeeded: no changes required"),
-            (false, true) => logger::end_action("Succeeded"),
-            (true, _) => logger::end_action(
-                "Failures occurred while evaluating the resource graph. See above for more details",
-            ),
-        };
-
-        match had_failures {
-            true => Err("".to_owned()),
-            false => Ok(()),
-        }
+    ) -> Result<EvaluateResults, String> {
+        let resource_order = self.get_topological_order()?;
+        self.internal_evaluate(resource_order, previous_graph, resource_manager)
     }
 }

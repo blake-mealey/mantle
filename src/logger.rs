@@ -16,7 +16,6 @@ pub mod logger {
         S2: Display,
     {
         text.to_string()
-            // .trim_end()
             .split('\n')
             .map(|line| {
                 format!(
@@ -50,8 +49,18 @@ pub mod logger {
         S: Display,
     {
         let line_prefix = get_line_prefix();
-        // println!("{:?}", with_prefix(&message, &line_prefix));
         println!("{}", with_prefix(&message, &line_prefix));
+    }
+
+    pub fn log_error<S>(message: S)
+    where
+        S: Display,
+    {
+        let line_prefix = get_line_prefix();
+        println!(
+            "{}",
+            with_prefix_and_style(&message, &line_prefix, Style::new(Color::Red))
+        );
     }
 
     pub fn start_action<S>(title: S)
@@ -63,9 +72,10 @@ pub mod logger {
         ACTION_COUNT.fetch_add(1, Ordering::SeqCst);
     }
 
-    pub fn end_action<S>(message: S)
+    fn end_action_internal<S1, S2>(message: S1, results: Option<S2>)
     where
-        S: Display,
+        S1: Display,
+        S2: Display,
     {
         if ACTION_COUNT.load(Ordering::SeqCst) == 0 {
             panic!("Attempted to end an action that was not started.");
@@ -74,6 +84,21 @@ pub mod logger {
         log("");
         ACTION_COUNT.fetch_sub(1, Ordering::SeqCst);
         log(&format!("  ╰─ {}", message));
+        if let Some(results) = results {
+            log(&with_prefix_and_style(
+                results,
+                "       ",
+                Style::default().dimmed(),
+            ));
+        }
+        log("");
+    }
+
+    pub fn end_action<S>(message: S)
+    where
+        S: Display,
+    {
+        end_action_internal(message, None::<String>);
     }
 
     pub fn end_action_with_results<S1, S2>(message: S1, results: S2)
@@ -81,12 +106,7 @@ pub mod logger {
         S1: Display,
         S2: Display,
     {
-        end_action(message);
-        log(&with_prefix_and_style(
-            results,
-            "       ",
-            Style::default().dimmed(),
-        ));
+        end_action_internal(message, Some(results));
     }
 
     pub fn log_changeset(changeset: Changeset) {

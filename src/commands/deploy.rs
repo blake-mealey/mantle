@@ -4,11 +4,13 @@ use std::{
     str,
 };
 
+use yansi::Paint;
+
 use crate::{
     config::load_config_file,
     logger::logger,
     resource_manager::RobloxResourceManager,
-    resources::{ResourceGraph, ResourceManager},
+    resources::{EvaluateResults, ResourceGraph, ResourceManager},
     state::{get_desired_graph, get_previous_state, save_state},
 };
 
@@ -76,12 +78,30 @@ fn parse_project(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {
     ))
 }
 
-pub async fn run(project: Option<&str>) -> Result<(), String> {
-    let (project_path, config_file) = parse_project(project)?;
+pub async fn run(project: Option<&str>) -> i32 {
+    let (project_path, config_file) = match parse_project(project) {
+        Ok(v) => v,
+        Err(e) => {
+            logger::log_error(e);
+            return 1;
+        }
+    };
 
-    let config = load_config_file(&config_file)?;
+    let config = match load_config_file(&config_file) {
+        Ok(v) => v,
+        Err(e) => {
+            logger::log_error(e);
+            return 1;
+        }
+    };
 
-    let current_branch = get_current_branch()?;
+    let current_branch = match get_current_branch() {
+        Ok(v) => v,
+        Err(e) => {
+            logger::log_error(e);
+            return 1;
+        }
+    };
 
     let deployment_config = config
         .deployments
@@ -91,8 +111,8 @@ pub async fn run(project: Option<&str>) -> Result<(), String> {
     let deployment_config = match deployment_config {
         Some(v) => v,
         None => {
-            println!("No deployment configuration found for branch; no deployment necessary.");
-            return Ok(());
+            logger::log("No deployment configuration found for branch; no deployment necessary.");
+            return 0;
         }
     };
 
@@ -101,25 +121,69 @@ pub async fn run(project: Option<&str>) -> Result<(), String> {
         ResourceManager::new(Box::new(RobloxResourceManager::new(&project_path)));
 
     // Get previous state
-    let mut state = get_previous_state(project_path.as_path(), &config, deployment_config).await?;
+    let mut state =
+        match get_previous_state(project_path.as_path(), &config, deployment_config).await {
+            Ok(v) => v,
+            Err(e) => {
+                logger::log_error(e);
+                return 1;
+            }
+        };
 
     // Get our resource graphs
     let previous_graph =
         ResourceGraph::new(state.deployments.get(&deployment_config.name).unwrap());
-    let mut next_graph = get_desired_graph(project_path.as_path(), &config, deployment_config)?;
+    let mut next_graph = match get_desired_graph(project_path.as_path(), &config, deployment_config)
+    {
+        Ok(v) => v,
+        Err(e) => {
+            logger::log_error(e);
+            return 1;
+        }
+    };
 
     // Evaluate the resource graph
-    let result = next_graph.evaluate(&previous_graph, &mut resource_manager);
+    logger::start_action("Evaluating resource graph:");
+    let exit_code = match next_graph.evaluate(&previous_graph, &mut resource_manager) {
+        Ok(results) => {
+            match results {
+                EvaluateResults {
+                    created_count: 0,
+                    updated_count: 0,
+                    deleted_count: 0,
+                    ..
+                } => logger::end_action("Succeeded with no changes required"),
+                EvaluateResults {
+                    created_count,
+                    updated_count,
+                    deleted_count,
+                    noop_count,
+                } => logger::end_action(format!(
+                    "Succeeded with {} create(s), {} update(s), {} delete(s), {} noop(s)",
+                    created_count, updated_count, deleted_count, noop_count
+                )),
+            };
+            0
+        }
+        Err(e) => {
+            logger::end_action(Paint::red(e));
+            1
+        }
+    };
 
     // Save the results to the state file
     state.deployments.insert(
         deployment_config.name.clone(),
         next_graph.get_resource_list(),
     );
-    save_state(&project_path, &config.state, &state).await?;
+    match save_state(&project_path, &config.state, &state).await {
+        Ok(_) => {}
+        Err(e) => {
+            logger::log_error(e);
+            return 1;
+        }
+    };
 
     // If there were errors, return them
-    result?;
-
-    Ok(())
+    exit_code
 }

@@ -8,7 +8,7 @@ use yansi::Paint;
 
 use crate::{
     config::{load_config_file, Config, DeploymentConfig},
-    logger::logger,
+    logger,
     resource_manager::RobloxResourceManager,
     resources::{EvaluateResults, ResourceGraph, ResourceManager},
     state::{get_desired_graph, get_previous_state, save_state, ResourceState},

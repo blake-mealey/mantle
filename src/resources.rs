@@ -4,7 +4,7 @@ use difference::Changeset;
 use serde::{Deserialize, Serialize};
 use yansi::Paint;
 
-use crate::logger::logger;
+use crate::logger;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

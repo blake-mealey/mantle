@@ -11,7 +11,7 @@ use tokio::io::AsyncReadExt;
 
 use crate::{
     config::{Config, DeploymentConfig, PlayabilityConfig, RemoteStateConfig, StateConfig},
-    logger::logger,
+    logger,
     resource_manager::{resource_types, AssetId, SINGLETON_RESOURCE_ID},
     resources::{InputRef, Resource, ResourceGraph},
     roblox_api::{ExperienceConfigurationModel, PlaceConfigurationModel},

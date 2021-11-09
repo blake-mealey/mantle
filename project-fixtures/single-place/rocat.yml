@@ -23,7 +23,7 @@ templates:
     avatarCollisionType: outerBox
     icon: game-icon.png
     thumbnails:
-      # - game-thumbnail-1.png
+      - game-thumbnail-1.png
       - game-thumbnail-2.png
       - game-thumbnail-3.png
   places:

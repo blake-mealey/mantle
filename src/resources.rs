@@ -210,8 +210,8 @@ fn format_inputs_hash(inputs_hash: &str) -> &str {
 
 fn get_changeset(previous_inputs_hash: &str, new_inputs_hash: &str) -> Changeset {
     Changeset::new(
-        format_inputs_hash(new_inputs_hash),
         format_inputs_hash(previous_inputs_hash),
+        format_inputs_hash(new_inputs_hash),
         "\n",
     )
 }

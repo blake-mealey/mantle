@@ -7,11 +7,11 @@ use std::{
 use yansi::Paint;
 
 use crate::{
-    config::load_config_file,
+    config::{load_config_file, Config, DeploymentConfig},
     logger::logger,
     resource_manager::RobloxResourceManager,
     resources::{EvaluateResults, ResourceGraph, ResourceManager},
-    state::{get_desired_graph, get_previous_state, save_state},
+    state::{get_desired_graph, get_previous_state, save_state, ResourceState},
 };
 
 fn run_command(command: &str) -> std::io::Result<std::process::Output> {
@@ -65,43 +65,32 @@ fn parse_project(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {
     } else if project_path.is_file() {
         (project_path.parent().unwrap().into(), project_path)
     } else {
-        return Err(format!("Unable to parse project path: {}", project));
+        return Err(format!("Unable to load project path: {}", project));
     };
 
     if config_file.exists() {
         return Ok((project_dir, config_file));
     }
 
-    Err(format!(
-        "Config file does not exist: {}",
-        config_file.display()
-    ))
+    Err(format!("Config file {} not found", config_file.display()))
 }
 
-pub async fn run(project: Option<&str>) -> i32 {
-    let (project_path, config_file) = match parse_project(project) {
-        Ok(v) => v,
-        Err(e) => {
-            logger::log_error(e);
-            return 1;
-        }
-    };
+struct Project {
+    project_path: PathBuf,
+    next_graph: ResourceGraph,
+    previous_graph: ResourceGraph,
+    state: ResourceState,
+    deployment_config: DeploymentConfig,
+    config: Config,
+}
 
-    let config = match load_config_file(&config_file) {
-        Ok(v) => v,
-        Err(e) => {
-            logger::log_error(e);
-            return 1;
-        }
-    };
+async fn load_project(project: Option<&str>) -> Result<Option<Project>, String> {
+    let (project_path, config_file) = parse_project(project)?;
 
-    let current_branch = match get_current_branch() {
-        Ok(v) => v,
-        Err(e) => {
-            logger::log_error(e);
-            return 1;
-        }
-    };
+    let config = load_config_file(&config_file)?;
+    logger::log(format!("Loaded config file {}", config_file.display()));
+
+    let current_branch = get_current_branch()?;
 
     let deployment_config = config
         .deployments
@@ -111,39 +100,62 @@ pub async fn run(project: Option<&str>) -> i32 {
     let deployment_config = match deployment_config {
         Some(v) => v,
         None => {
-            logger::log("No deployment configuration found for branch; no deployment necessary.");
-            return 0;
+            logger::log(format!(
+                "No deployment configuration found for branch '{}'",
+                current_branch
+            ));
+            return Ok(None);
         }
     };
-
-    // Get our resource manager
-    let mut resource_manager =
-        ResourceManager::new(Box::new(RobloxResourceManager::new(&project_path)));
+    logger::log(format!(
+        "Found deployment configuration '{}' for branch '{}'",
+        deployment_config.name, current_branch
+    ));
 
     // Get previous state
-    let mut state =
-        match get_previous_state(project_path.as_path(), &config, deployment_config).await {
-            Ok(v) => v,
-            Err(e) => {
-                logger::log_error(e);
-                return 1;
-            }
-        };
+    let state = get_previous_state(project_path.as_path(), &config, deployment_config).await?;
 
     // Get our resource graphs
     let previous_graph =
         ResourceGraph::new(state.deployments.get(&deployment_config.name).unwrap());
-    let mut next_graph = match get_desired_graph(project_path.as_path(), &config, deployment_config)
-    {
-        Ok(v) => v,
+    let next_graph = get_desired_graph(project_path.as_path(), &config, deployment_config)?;
+
+    Ok(Some(Project {
+        project_path,
+        next_graph,
+        previous_graph,
+        state,
+        deployment_config: deployment_config.clone(),
+        config,
+    }))
+}
+
+pub async fn run(project: Option<&str>) -> i32 {
+    logger::start_action("Loading project:");
+    let Project {
+        project_path,
+        config,
+        deployment_config,
+        mut next_graph,
+        previous_graph,
+        mut state,
+    } = match load_project(project).await {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            logger::end_action("No deployment necessary");
+            return 0;
+        }
         Err(e) => {
-            logger::log_error(e);
+            logger::end_action(Paint::red(e));
             return 1;
         }
     };
+    logger::end_action("Succeeded");
 
-    // Evaluate the resource graph
-    logger::start_action("Evaluating resource graph:");
+    let mut resource_manager =
+        ResourceManager::new(Box::new(RobloxResourceManager::new(&project_path)));
+
+    logger::start_action("Deploying resources:");
     let exit_code = match next_graph.evaluate(&previous_graph, &mut resource_manager) {
         Ok(results) => {
             match results {
@@ -152,7 +164,7 @@ pub async fn run(project: Option<&str>) -> i32 {
                     updated_count: 0,
                     deleted_count: 0,
                     ..
-                } => logger::end_action("Succeeded with no changes required"),
+                } => logger::end_action("No changes required"),
                 EvaluateResults {
                     created_count,
                     updated_count,
@@ -171,7 +183,7 @@ pub async fn run(project: Option<&str>) -> i32 {
         }
     };
 
-    // Save the results to the state file
+    logger::start_action("Saving state:");
     state.deployments.insert(
         deployment_config.name.clone(),
         next_graph.get_resource_list(),
@@ -179,11 +191,11 @@ pub async fn run(project: Option<&str>) -> i32 {
     match save_state(&project_path, &config.state, &state).await {
         Ok(_) => {}
         Err(e) => {
-            logger::log_error(e);
+            logger::end_action(Paint::red(e));
             return 1;
         }
     };
+    logger::end_action("Succeeded");
 
-    // If there were errors, return them
     exit_code
 }

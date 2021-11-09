@@ -6,6 +6,7 @@ use std::{
 
 use crate::{
     config::load_config_file,
+    logger::logger,
     resource_manager::RobloxResourceManager,
     resources::{ResourceGraph, ResourceManager},
     state::{get_desired_graph, get_previous_state, save_state},

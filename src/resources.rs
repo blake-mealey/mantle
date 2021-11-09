@@ -2,6 +2,9 @@ use std::collections::{BTreeMap, HashMap};
 
 use difference::{Changeset, Difference};
 use serde::{Deserialize, Serialize};
+use yansi::Paint;
+
+use crate::logger::logger;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -196,101 +199,14 @@ impl ResourceManager {
     }
 }
 
-fn log_diff(message: String, changeset: &Changeset, add_pipes: bool) {
-    let mut lines: Vec<Difference> = Vec::new();
-    for diff in &changeset.diffs {
-        let diff_lines: Vec<Difference> = match diff {
-            Difference::Same(diff) => diff
-                .split('\n')
-                .map(|line| Difference::Same(line.to_owned()))
-                .collect(),
-            Difference::Add(diff) => diff
-                .split('\n')
-                .map(|line| Difference::Add(line.to_owned()))
-                .collect(),
-            Difference::Rem(diff) => diff
-                .split('\n')
-                .map(|line| Difference::Rem(line.to_owned()))
-                .collect(),
-        };
-        lines.extend(diff_lines);
-    }
-    let prefix = if add_pipes { "│" } else { " " };
-    print!(
-        "{}\n{}",
-        message,
-        lines
-            .iter()
-            .map(|d| match d {
-                Difference::Same(x) => format!("  {}    \x1b[90m{}\x1b[0m\n", prefix, x),
-                Difference::Add(x) =>
-                    format!("  {}  \x1b[92m+\x1b[0m \x1b[92m{}\x1b[0m\n", prefix, x),
-                Difference::Rem(x) =>
-                    format!("  {}  \x1b[91m-\x1b[0m \x1b[91m{}\x1b[0m\n", prefix, x),
-            })
-            .collect::<Vec<String>>()
-            .join("")
-    );
-}
-
-fn log_create(resource: &Resource, new_inputs_hash: &str) {
-    let changeset = Changeset::new("", new_inputs_hash.replace("---", "").trim(), "\n");
-    log_diff(
-        format!(
-            "\n\x1b[92m+\x1b[0m Creating {} {}:\n  ╷",
-            resource.resource_type, resource.id
-        ),
-        &changeset,
-        true,
-    );
-}
-
-fn log_update(resource: &Resource, previous_inputs_hash: &str, new_inputs_hash: &str) {
-    let changeset = Changeset::new(
-        previous_inputs_hash.replace("---", "").trim(),
-        new_inputs_hash.replace("---", "").trim(),
+fn get_changeset(previous_inputs_hash: &str, new_inputs_hash: &str) -> Changeset {
+    // We take off the first 4 characters to remove "---\n", and we trim the end to remvoe the final
+    // newline
+    Changeset::new(
+        previous_inputs_hash[4..].trim_end(),
+        new_inputs_hash[4..].trim_end(),
         "\n",
-    );
-    log_diff(
-        format!(
-            "\n\x1b[93m~\x1b[0m Updating {} {}:\n  ╷",
-            resource.resource_type, resource.id,
-        ),
-        &changeset,
-        true,
-    );
-}
-
-fn log_delete(resource: &Resource, previous_inputs_hash: &str) {
-    let changeset = Changeset::new(previous_inputs_hash.replace("---", "").trim(), "", "\n");
-    log_diff(
-        format!(
-            "\n\x1b[91m-\x1b[0m Deleting {} {}:\n  ╷",
-            resource.resource_type, resource.id
-        ),
-        &changeset,
-        true,
-    );
-}
-
-fn log_success(outputs: &Option<serde_yaml::Value>) -> Result<(), String> {
-    println!("  │");
-    if let Some(outputs) = outputs {
-        let outputs_hash = serde_yaml::to_string(outputs)
-            .map_err(|e| format!("Failed to serialize outputs:\n\t{}", e))?;
-        let outputs_hash = outputs_hash.replace("---", "");
-        let outputs_hash = outputs_hash.trim();
-        let changeset = Changeset::new(outputs_hash, outputs_hash, "\n");
-        log_diff("  ╰─ Succeeded with outputs:".to_owned(), &changeset, false);
-    } else {
-        println!("  ╰─ Succeeded!");
-    }
-    Ok(())
-}
-
-fn log_error(error: String) {
-    println!("  │");
-    println!("  ╰─ Failed: \x1b[91m{}\x1b[0m", error);
+    )
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -490,7 +406,13 @@ impl ResourceGraph {
                     None => {
                         // This resource is new
                         made_changes = true;
-                        log_create(&resource, &inputs_hash);
+                        logger::start_action(format!(
+                            "{} Creating: {} {}",
+                            Paint::green("+"),
+                            resource.resource_type,
+                            resource.id
+                        ));
+                        logger::log_changeset(get_changeset("", &inputs_hash));
                         Some(
                             resource_manager.create(
                                 &resource.resource_type,
@@ -502,7 +424,13 @@ impl ResourceGraph {
                     Some(previous_hash) if previous_hash != inputs_hash => {
                         // This resource has changed
                         made_changes = true;
-                        log_update(&resource, &previous_hash, &inputs_hash);
+                        logger::start_action(format!(
+                            "{} Updating: {} {}",
+                            Paint::yellow("~"),
+                            resource.resource_type,
+                            resource.id
+                        ));
+                        logger::log_changeset(get_changeset(&previous_hash, &inputs_hash));
                         let outputs = resource.outputs.clone().unwrap_or_default();
                         Some(
                             resource_manager.update(
@@ -521,9 +449,14 @@ impl ResourceGraph {
                     // We attempted to create or update the resource
                     if let Ok(outputs) = outputs {
                         // We successfully created or updated the resource
-                        log_success(&outputs)?;
+
                         if let Some(outputs) = outputs {
                             // Apply the outputs to the resource
+                            logger::end_action_with_results(
+                                "Succeeded with outputs:",
+                                serde_yaml::to_string(&outputs)
+                                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                            );
                             let mut resource_with_outputs = resource.clone();
                             let outputs =
                                 serde_yaml::from_value::<BTreeMap<String, OutputValue>>(outputs)
@@ -533,12 +466,15 @@ impl ResourceGraph {
                                 resource_with_outputs.add_output(&key, &value)?;
                             }
                             self.resources.insert(resource_ref, resource_with_outputs);
+                        } else {
+                            logger::end_action("Succeeded");
                         }
                     } else {
                         // An error occurred while creating or updating the resource. If the
                         // resource existed previously, we will copy the old version into this
                         // graph. Otherwise, we will remove this resource from the graph.
-                        log_error(outputs.unwrap_err());
+                        // TODO: this may need work for formatting
+                        logger::end_action(format!("Failed: {}", Paint::red(outputs.unwrap_err())));
                         had_failures = true;
                         if let Some(previous_resource) = previous_resource {
                             self.resources.insert(resource_ref, previous_resource);
@@ -574,7 +510,16 @@ impl ResourceGraph {
             let outputs = resource.outputs.clone().unwrap_or_default();
 
             made_changes = true;
-            log_delete(resource, &previous_graph.get_inputs_hash(&resolved_inputs)?);
+            logger::start_action(format!(
+                "{} Deleting: {} {}",
+                Paint::red("-"),
+                resource.resource_type,
+                resource.id
+            ));
+            logger::log_changeset(get_changeset(
+                &previous_graph.get_inputs_hash(&resolved_inputs)?,
+                "",
+            ));
             let result = resource_manager.delete(
                 &resource.resource_type,
                 serde_yaml::to_value(resolved_inputs)
@@ -586,12 +531,13 @@ impl ResourceGraph {
             if let Err(error) = result {
                 // An error occurred while deleting the resource. We will copy the old version into
                 // the graph.
-                log_error(error);
+                // TODO: this may need work for formatting
+                logger::end_action(format!("Failed: {}", Paint::red(error)));
                 had_failures = true;
                 self.resources
                     .insert(resource_ref.clone(), resource.clone());
             } else {
-                log_success(&None)?;
+                logger::end_action("Succeeded");
             }
         }
 
@@ -603,7 +549,7 @@ impl ResourceGraph {
         previous_graph: &ResourceGraph,
         resource_manager: &mut ResourceManager,
     ) -> Result<(), String> {
-        println!("Evaluating resource graph:");
+        logger::start_action("Evaluating resource graph:");
 
         let resource_order = self.get_topological_order();
 
@@ -612,22 +558,22 @@ impl ResourceGraph {
                 self.internal_evaluate(resource_order, previous_graph, resource_manager)?
             }
             Err(error) => {
-                println!("  ╷");
-                println!("  ╰─ Failed: \x1b[91m{}\x1b[0m", error);
+                // TODO: this may need work on formatting
+                logger::end_action(format!("Failed: {}", Paint::red(error)));
                 (true, false)
             }
         };
 
-        if !had_failures && !made_changes {
-            println!("  ╷");
-            println!("  ╰─ Succeeded: no changes required.");
-        }
+        match (had_failures, made_changes) {
+            (false, false) => logger::end_action("Succeeded: no changes required"),
+            (false, true) => logger::end_action("Succeeded"),
+            (true, _) => logger::end_action(
+                "Failures occurred while evaluating the resource graph. See above for more details",
+            ),
+        };
 
         match had_failures {
-            true => Err(
-                "Failures occurred while evaluating resource graph. See above for more details."
-                    .to_owned(),
-            ),
+            true => Err("".to_owned()),
             false => Ok(()),
         }
     }

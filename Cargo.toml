@@ -19,3 +19,4 @@ rusoto_core = "0.47.0"
 rusoto_s3 = "0.47.0"
 tokio = { version = "1", features = ["full"] }
 chrono = "0.4"
+yansi = "0.5.0"

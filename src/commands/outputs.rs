@@ -25,16 +25,15 @@ pub async fn run(project: Option<&str>, output: Option<&str>, format: &str) -> i
     let resources = previous_graph.get_resource_list();
     let outputs_list: Vec<(ResourceRef, &BTreeMap<String, serde_yaml::Value>)> = resources
         .iter()
-        .filter_map(|r| match &r.outputs {
-            None => None,
-            Some(v) => Some((r.get_ref(), v)),
-        })
+        .filter_map(|r| r.outputs.as_ref().map(|o| (r.get_ref(), o)))
         .collect();
 
     let mut outputs_map: BTreeMap<String, BTreeMap<String, BTreeMap<String, serde_yaml::Value>>> =
         BTreeMap::new();
     for ((resource_type, resource_id), outputs) in outputs_list {
-        let type_map = outputs_map.entry(resource_type).or_insert(BTreeMap::new());
+        let type_map = outputs_map
+            .entry(resource_type)
+            .or_insert_with(BTreeMap::new);
         type_map.insert(resource_id, outputs.clone());
     }
 

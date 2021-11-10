@@ -10,7 +10,7 @@ fn get_app() -> App<'static, 'static> {
         .setting(AppSettings::ArgRequiredElseHelp)
         .subcommand(
             SubCommand::with_name("deploy")
-                .about("Saves a project file to a Roblox place")
+                .about("Deploys a project to Roblox")
                 .arg(
                     Arg::with_name("PROJECT")
                         .index(1)
@@ -19,7 +19,7 @@ fn get_app() -> App<'static, 'static> {
                 ),
         )
         .subcommand(SubCommand::with_name("outputs")
-            .about("Prints the outputs from the project to the console or a file")
+            .about("Prints a project's outputs to the console or a file in a machine-readable format")
             .arg(
                 Arg::with_name("PROJECT")
                     .index(1)

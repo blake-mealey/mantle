@@ -4,7 +4,12 @@ use std::{
     str,
 };
 
-use crate::{config::{load_config_file, Config, DeploymentConfig}, logger, resources::ResourceGraph, state::{ResourceState, get_desired_graph, get_previous_state}};
+use crate::{
+    config::{load_config_file, Config, DeploymentConfig},
+    logger,
+    resources::ResourceGraph,
+    state::{get_desired_graph, get_previous_state, ResourceState},
+};
 
 fn parse_project(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {
     let project = project.unwrap_or(".");

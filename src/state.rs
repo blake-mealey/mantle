@@ -290,7 +290,7 @@ pub fn get_desired_graph(
 
         if let Some(developer_products) = &experience_configuration.developer_products {
             for (name, developer_product) in developer_products {
-                let mut product_resource =
+                let product_resource =
                     Resource::new(resource_types::EXPERIENCE_DEVELOPER_PRODUCT, name)
                         .add_ref_input("experienceId", &experience_asset_id_ref)
                         .add_value_input("name", &developer_product.name)?
@@ -303,24 +303,6 @@ pub fn get_desired_graph(
                                 .unwrap_or(&"".to_owned()),
                         )?
                         .clone();
-                if let Some(icon_path) = &developer_product.icon {
-                    let id = format!(
-                        "{}_icon {}",
-                        resource_types::EXPERIENCE_DEVELOPER_PRODUCT,
-                        name
-                    );
-                    let icon_resource = Resource::new(resource_types::ASSET, &id)
-                        .add_value_input("filePath", icon_path)?
-                        .add_value_input(
-                            "fileHash",
-                            &get_file_hash(project_path.join(icon_path).as_path())?,
-                        )?
-                        .clone();
-                    resources.push(icon_resource.clone());
-                    product_resource = product_resource
-                        .add_ref_input("assetId", &icon_resource.get_input_ref("assetId"))
-                        .clone();
-                }
                 resources.push(product_resource);
             }
         }

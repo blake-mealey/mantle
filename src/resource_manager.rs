@@ -24,7 +24,6 @@ pub mod resource_types {
     pub const EXPERIENCE_DEVELOPER_PRODUCT: &str = "experience_developer_product";
     pub const PLACE_FILE: &str = "place_file";
     pub const PLACE_CONFIGURATION: &str = "place_configuration";
-    pub const ASSET: &str = "asset";
 }
 
 pub const SINGLETON_RESOURCE_ID: &str = "singleton";
@@ -119,18 +118,6 @@ struct PlaceConfigurationInputs {
     experience_id: AssetId,
     asset_id: AssetId,
     configuration: PlaceConfigurationModel,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-struct AssetInputs {
-    file_path: String,
-    file_hash: String,
-}
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-struct AssetOutputs {
-    asset_id: AssetId,
 }
 
 pub struct RobloxResourceManager {
@@ -236,15 +223,6 @@ impl ResourceManagerBackend for RobloxResourceManager {
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
             }
-            resource_types::ASSET => {
-                let inputs = serde_yaml::from_value::<AssetInputs>(resource_inputs)
-                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
-
-                self.roblox_api
-                    .upload_asset(self.project_path.join(inputs.file_path).as_path())?;
-
-                Ok(None)
-            }
             _ => panic!(
                 "Create not implemented for resource type: {}",
                 resource_type
@@ -330,7 +308,6 @@ impl ResourceManagerBackend for RobloxResourceManager {
 
                 Ok(Some(resource_outputs.clone()))
             }
-            resource_types::ASSET => self.create(resource_type, resource_inputs),
             _ => panic!(
                 "Update not implemented for resource type: {}",
                 resource_type
@@ -383,7 +360,6 @@ impl ResourceManagerBackend for RobloxResourceManager {
                     inputs.icon_asset_id,
                 )
             }
-            resource_types::ASSET => Ok(()),
             _ => panic!(
                 "Delete not implemented for resource type: {}",
                 resource_type

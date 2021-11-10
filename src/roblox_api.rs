@@ -648,40 +648,4 @@ impl RobloxApi {
 
         Ok(())
     }
-
-    pub fn upload_asset(&mut self, asset_file: &Path) -> Result<(), String> {
-        let mut fields: HashMap<String, String> = HashMap::new();
-        fields.insert("name".to_owned(), "A cool decal.".to_owned());
-        fields.insert("assetTypeId".to_owned(), (13 as u32).to_string().to_owned());
-        fields.insert("groupId".to_owned(), "".to_owned());
-        fields.insert(
-            "__RequestVerificationToken".to_owned(),
-            self.roblox_auth
-                .get_verification_token("https://www.roblox.com/build/upload".to_owned())?,
-        );
-        let multipart = Self::get_image_from_data("file".to_owned(), asset_file, Some(fields))?;
-
-        let res = ureq::post(&format!("https://www.roblox.com/build/upload"))
-            .set(
-                "Content-Type",
-                &format!("multipart/form-data; boundary={}", multipart.boundary()),
-            )
-            .set_auth(
-                AuthType::CookieAndCsrfTokenAndVerificationToken,
-                &mut self.roblox_auth,
-            )?
-            .send(multipart);
-
-        let response = Self::handle_response(res)?;
-        println!("{:?}", response.into_string());
-        // let model = response
-        //     .into_json::<UploadImageResponse>()
-        //     .map_err(|e| format!("Failed to deserialize upload image response: {}", e))?;
-
-        // Ok(UploadImageResult {
-        //     asset_id: model.target_id,
-        // })
-        // Ok(())
-        Err("unimplemented".to_owned())
-    }
 }

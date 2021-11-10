@@ -2,6 +2,8 @@ use std::{collections::HashMap, env};
 
 use ureq::Cookie;
 
+use ureq::Cookie;
+
 use crate::roblox_api::INVALID_API_KEY_HELP;
 
 pub enum AuthType {
@@ -95,10 +97,10 @@ impl RobloxAuth {
                         response
                             .header("x-csrf-token")
                             .map(|v| v.to_owned())
-                            .ok_or(
+                            .ok_or_else(|| {
                                 "Request for csrf token did not return an x-csrf-token header"
-                                    .to_owned(),
-                            )?,
+                                    .to_owned()
+                            })?,
                     ),
                     status => {
                         return Err(format!(

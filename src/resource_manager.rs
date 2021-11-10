@@ -365,10 +365,9 @@ impl ResourceManagerBackend for RobloxResourceManager {
                 let inputs =
                     serde_yaml::from_value::<ExperienceDeveloperProductInputs>(resource_inputs)
                         .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
-                let outputs = serde_yaml::from_value::<ExperienceDeveloperProductOutputs>(
-                    resource_outputs.clone(),
-                )
-                .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+                let outputs =
+                    serde_yaml::from_value::<ExperienceDeveloperProductOutputs>(resource_outputs)
+                        .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
 
                 let utc = Utc::now();
                 self.roblox_api.update_experience_developer_product(

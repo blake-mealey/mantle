@@ -575,7 +575,7 @@ impl RobloxApi {
         experience_id: AssetId,
         page: u32,
     ) -> Result<ListDeveloperProductsResponse, String> {
-        let res = ureq::get(&format!("https://api.roblox.com/developerproducts/list"))
+        let res = ureq::get(&"https://api.roblox.com/developerproducts/list".to_owned())
             .query("universeId", &experience_id.to_string())
             .query("page", &page.to_string())
             .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?

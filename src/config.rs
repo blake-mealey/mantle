@@ -117,6 +117,14 @@ pub enum AvatarTypeConfig {
 
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct DeveloperProductConifg {
+    pub name: String,
+    pub price: u32,
+    pub description: Option<String>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ExperienceTemplateConfig {
     // basic info
     pub genre: Option<GenreConfig>,
@@ -149,6 +157,7 @@ pub struct ExperienceTemplateConfig {
 
     // other
     // is_archived: Option<bool>,
+    pub developer_products: Option<HashMap<String, DeveloperProductConifg>>,
 }
 
 impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {

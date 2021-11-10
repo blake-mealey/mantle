@@ -261,6 +261,7 @@ pub fn get_desired_graph(
                     .clone(),
             );
         }
+
         if let Some(thumbnails) = &experience_configuration.thumbnails {
             let mut thumbnail_asset_id_refs: Vec<InputRef> = Vec::new();
             for file_path in thumbnails {
@@ -285,6 +286,25 @@ pub fn get_desired_graph(
                 .add_ref_input_list("assetIds", &thumbnail_asset_id_refs)
                 .clone(),
             );
+        }
+
+        if let Some(developer_products) = &experience_configuration.developer_products {
+            for (name, developer_product) in developer_products {
+                let product_resource =
+                    Resource::new(resource_types::EXPERIENCE_DEVELOPER_PRODUCT, name)
+                        .add_ref_input("experienceId", &experience_asset_id_ref)
+                        .add_value_input("name", &developer_product.name)?
+                        .add_value_input("price", &developer_product.price)?
+                        .add_value_input(
+                            "description",
+                            developer_product
+                                .description
+                                .as_ref()
+                                .unwrap_or(&"".to_owned()),
+                        )?
+                        .clone();
+                resources.push(product_resource);
+            }
         }
     }
 

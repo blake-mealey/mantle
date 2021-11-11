@@ -51,11 +51,12 @@ fn tag_commit(
 
         if let Some(version) = tag_version {
             logger::log(format!(
-                "Place '{}' was updated to version {}",
-                name, version
+                "Place {} was updated to version {}",
+                Paint::cyan(name),
+                Paint::cyan(version)
             ));
             let tag = format!("{}-v{}", name, version);
-            logger::log(format!("Tagging commit with {}", tag));
+            logger::log(format!("Tagging commit with {}", Paint::cyan(tag.clone())));
 
             tag_count += 1;
             run_command(&format!("git tag {}", tag))

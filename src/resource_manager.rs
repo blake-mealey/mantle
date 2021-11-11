@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 use crate::{
     resources::ResourceManager,
     roblox_api::{
-        CreateDeveloperProductResponse, DeployMode, ExperienceConfigurationModel,
-        GetDeveloperProductResponse, PlaceConfigurationModel, RobloxApi, UploadImageResult,
-        UploadPlaceResult,
+        CreateDeveloperProductResponse, CreateExperienceResponse, CreatePlaceResponse, DeployMode,
+        ExperienceConfigurationModel, GetDeveloperProductResponse, GetExperienceResponse,
+        PlaceConfigurationModel, RobloxApi, UploadImageResult, UploadPlaceResult,
     },
     roblox_auth::RobloxAuth,
 };
@@ -17,13 +17,15 @@ pub type AssetId = u64;
 
 pub mod resource_types {
     pub const EXPERIENCE: &str = "experience";
-    pub const EXPERIENCE_ACTIVATION: &str = "experience_activation";
-    pub const EXPERIENCE_ICON: &str = "experience_icon";
-    pub const EXPERIENCE_THUMBNAIL: &str = "experience_thumbnail";
-    pub const EXPERIENCE_THUMBNAIL_ORDER: &str = "experience_thumbnail_order";
-    pub const EXPERIENCE_DEVELOPER_PRODUCT: &str = "experience_developer_product";
-    pub const PLACE_FILE: &str = "place_file";
-    pub const PLACE_CONFIGURATION: &str = "place_configuration";
+    pub const EXPERIENCE_CONFIGURATION: &str = "experienceConfiguration";
+    pub const EXPERIENCE_ACTIVATION: &str = "experienceActivation";
+    pub const EXPERIENCE_ICON: &str = "experienceIcon";
+    pub const EXPERIENCE_THUMBNAIL: &str = "experienceThumbnail";
+    pub const EXPERIENCE_THUMBNAIL_ORDER: &str = "experienceThumbnailOrder";
+    pub const EXPERIENCE_DEVELOPER_PRODUCT: &str = "experienceDeveloperProduct";
+    pub const PLACE: &str = "place";
+    pub const PLACE_FILE: &str = "placeFile";
+    pub const PLACE_CONFIGURATION: &str = "placeConfiguration";
 }
 
 pub const SINGLETON_RESOURCE_ID: &str = "singleton";
@@ -31,12 +33,20 @@ pub const SINGLETON_RESOURCE_ID: &str = "singleton";
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct ExperienceInputs {
-    configuration: ExperienceConfigurationModel,
+    asset_id: Option<AssetId>,
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct ExperienceOutputs {
     asset_id: AssetId,
+    start_place_id: AssetId,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ExperienceConfigurationInputs {
+    experience_id: AssetId,
+    configuration: ExperienceConfigurationModel,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -98,8 +108,23 @@ struct ExperienceDeveloperProductOutputs {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+struct PlaceInputs {
+    experience_id: AssetId,
+    start_place_id: AssetId,
+    asset_id: Option<AssetId>,
+    is_start: bool,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct PlaceOutputs {
+    asset_id: AssetId,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 struct PlaceFileInputs {
     experience_id: AssetId,
+    asset_id: AssetId,
     file_path: String,
     file_hash: String,
     deploy_mode: DeployMode,
@@ -109,13 +134,11 @@ struct PlaceFileInputs {
 struct PlaceFileOutputs {
     #[serde(default)]
     version: u32,
-    asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct PlaceConfigurationInputs {
-    experience_id: AssetId,
     asset_id: AssetId,
     configuration: PlaceConfigurationModel,
 }
@@ -140,12 +163,46 @@ impl ResourceManager for RobloxResourceManager {
         resource_type: &str,
         resource_inputs: serde_yaml::Value,
     ) -> Result<Option<serde_yaml::Value>, String> {
-        // println!(
-        //     "CREATE: {} {}",
-        //     resource_type,
-        //     serde_yaml::to_string(&resource_inputs).map_err(|_| "".to_owned())?
-        // );
         match resource_type {
+            resource_types::EXPERIENCE => {
+                let inputs = serde_yaml::from_value::<ExperienceInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                let outputs = match inputs.asset_id {
+                    Some(asset_id) => {
+                        let GetExperienceResponse { root_place_id } =
+                            self.roblox_api.get_experience(asset_id)?;
+                        ExperienceOutputs {
+                            asset_id,
+                            start_place_id: root_place_id,
+                        }
+                    }
+                    None => {
+                        let CreateExperienceResponse {
+                            universe_id,
+                            root_place_id,
+                        } = self.roblox_api.create_experience()?;
+                        ExperienceOutputs {
+                            asset_id: universe_id,
+                            start_place_id: root_place_id,
+                        }
+                    }
+                };
+
+                Ok(Some(serde_yaml::to_value(outputs).map_err(|e| {
+                    format!("Failed to serialize outputs: {}", e)
+                })?))
+            }
+            resource_types::EXPERIENCE_CONFIGURATION => {
+                let inputs =
+                    serde_yaml::from_value::<ExperienceConfigurationInputs>(resource_inputs)
+                        .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                self.roblox_api
+                    .configure_experience(inputs.experience_id, &inputs.configuration)?;
+
+                Ok(None)
+            }
             resource_types::EXPERIENCE_ACTIVATION => {
                 let inputs = serde_yaml::from_value::<ExperienceActivationInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
@@ -223,58 +280,40 @@ impl ResourceManager for RobloxResourceManager {
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
             }
-            _ => panic!(
-                "Create not implemented for resource type: {}",
-                resource_type
-            ),
-        }
-    }
-
-    fn update(
-        &mut self,
-        resource_type: &str,
-        resource_inputs: serde_yaml::Value,
-        resource_outputs: serde_yaml::Value,
-    ) -> Result<Option<serde_yaml::Value>, String> {
-        // println!("UPDATE: {} {:?}", resource_type, resource_inputs);
-        match resource_type {
-            resource_types::EXPERIENCE => {
-                let inputs = serde_yaml::from_value::<ExperienceInputs>(resource_inputs)
+            resource_types::PLACE => {
+                let inputs = serde_yaml::from_value::<PlaceInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
-                let outputs = serde_yaml::from_value::<ExperienceOutputs>(resource_outputs)
-                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
 
-                self.roblox_api
-                    .configure_experience(outputs.asset_id, &inputs.configuration)?;
+                let outputs = match (inputs.is_start, inputs.asset_id) {
+                    (false, None) => {
+                        let CreatePlaceResponse { place_id, .. } =
+                            self.roblox_api.create_place(inputs.experience_id)?;
+                        PlaceOutputs { asset_id: place_id }
+                    }
+                    (true, None) => PlaceOutputs {
+                        asset_id: inputs.start_place_id,
+                    },
+                    (_, Some(asset_id)) => PlaceOutputs { asset_id },
+                };
 
-                Ok(None)
-            }
-            resource_types::EXPERIENCE_ACTIVATION => self.create(resource_type, resource_inputs),
-            resource_types::EXPERIENCE_ICON => self.create(resource_type, resource_inputs),
-            resource_types::EXPERIENCE_THUMBNAIL => {
-                self.delete(resource_type, resource_inputs.clone(), resource_outputs)?;
-                self.create(resource_type, resource_inputs)
-            }
-            resource_types::EXPERIENCE_THUMBNAIL_ORDER => {
-                self.create(resource_type, resource_inputs)
+                Ok(Some(serde_yaml::to_value(outputs).map_err(|e| {
+                    format!("Failed to serialize outputs: {}", e)
+                })?))
             }
             resource_types::PLACE_FILE => {
                 let inputs = serde_yaml::from_value::<PlaceFileInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
-                let outputs = serde_yaml::from_value::<PlaceFileOutputs>(resource_outputs)
-                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
 
                 let UploadPlaceResult { place_version } = self.roblox_api.upload_place(
                     self.project_path.join(inputs.file_path).as_path(),
                     inputs.experience_id,
-                    outputs.asset_id,
+                    inputs.asset_id,
                     inputs.deploy_mode,
                 )?;
 
                 Ok(Some(
                     serde_yaml::to_value(PlaceFileOutputs {
                         version: place_version,
-                        asset_id: outputs.asset_id,
                     })
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
@@ -288,6 +327,35 @@ impl ResourceManager for RobloxResourceManager {
 
                 Ok(None)
             }
+            _ => panic!(
+                "Create not implemented for resource type: {}",
+                resource_type
+            ),
+        }
+    }
+
+    fn update(
+        &mut self,
+        resource_type: &str,
+        resource_inputs: serde_yaml::Value,
+        resource_outputs: serde_yaml::Value,
+    ) -> Result<Option<serde_yaml::Value>, String> {
+        match resource_type {
+            resource_types::EXPERIENCE => self.create(resource_type, resource_inputs),
+            resource_types::EXPERIENCE_CONFIGURATION => self.create(resource_type, resource_inputs),
+            resource_types::EXPERIENCE_ACTIVATION => self.create(resource_type, resource_inputs),
+            resource_types::EXPERIENCE_ICON => self.create(resource_type, resource_inputs),
+            resource_types::EXPERIENCE_THUMBNAIL => {
+                self.delete(resource_type, resource_inputs.clone(), resource_outputs)?;
+                self.create(resource_type, resource_inputs)
+            }
+            resource_types::EXPERIENCE_THUMBNAIL_ORDER => {
+                self.create(resource_type, resource_inputs)
+            }
+            // TODO: is this correct?
+            resource_types::PLACE => self.create(resource_type, resource_inputs),
+            resource_types::PLACE_FILE => self.create(resource_type, resource_inputs),
+            resource_types::PLACE_CONFIGURATION => self.create(resource_type, resource_inputs),
             resource_types::EXPERIENCE_DEVELOPER_PRODUCT => {
                 let inputs =
                     serde_yaml::from_value::<ExperienceDeveloperProductInputs>(resource_inputs)
@@ -321,7 +389,6 @@ impl ResourceManager for RobloxResourceManager {
         resource_inputs: serde_yaml::Value,
         resource_outputs: serde_yaml::Value,
     ) -> Result<(), String> {
-        // println!("DELETE: {} {:?}", resource_type, resource_outputs);
         match resource_type {
             resource_types::EXPERIENCE_ICON => {
                 // TODO: figure out which endpoint to use to delete an icon

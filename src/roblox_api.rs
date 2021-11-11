@@ -51,6 +51,26 @@ struct RobloxApiErrorModel {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct CreateExperienceResponse {
+    pub universe_id: AssetId,
+    pub root_place_id: AssetId,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetExperienceResponse {
+    pub root_place_id: AssetId,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct CreatePlaceResponse {
+    pub success: bool,
+    pub place_id: AssetId,
+}
+
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PlaceManagementResponse {
     version_number: u32,
@@ -327,9 +347,62 @@ impl RobloxApi {
         })
     }
 
+    pub fn create_experience(&mut self) -> Result<CreateExperienceResponse, String> {
+        let res = ureq::post("https://api.roblox.com/universes/create")
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_json(json!({
+                "templatePlaceIdToUse": 95206881
+            }));
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<CreateExperienceResponse>()
+            .map_err(|e| format!("Failed to deserialize create experience response: {}", e))?;
+
+        Ok(model)
+    }
+
+    pub fn get_experience(
+        &mut self,
+        experience_id: AssetId,
+    ) -> Result<GetExperienceResponse, String> {
+        let res = ureq::get(&format!(
+            "https://develop.roblox.com/v1/universes/{}",
+            experience_id
+        ))
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .send_string("");
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<GetExperienceResponse>()
+            .map_err(|e| format!("Failed to deserialize get experience response: {}", e))?;
+
+        Ok(model)
+    }
+
+    pub fn create_place(&mut self, experience_id: AssetId) -> Result<CreatePlaceResponse, String> {
+        let res = ureq::post("https://www.roblox.com/ide/places/createV2")
+            .query("universeId", &experience_id.to_string())
+            .query("templatePlaceIdToUse", &95206881.to_string())
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_string("");
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<CreatePlaceResponse>()
+            .map_err(|e| format!("Failed to deserialize create place response: {}", e))?;
+
+        if !model.success {
+            return Err(format!("Failed to create place (unknown error)"));
+        }
+
+        Ok(model)
+    }
+
     pub fn configure_experience(
         &mut self,
-        experience_id: u64,
+        experience_id: AssetId,
         experience_configuration: &ExperienceConfigurationModel,
     ) -> Result<(), String> {
         // println!("TRACE: configure_experience {}", experience_id);

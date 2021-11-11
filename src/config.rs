@@ -13,7 +13,6 @@ pub struct Config {
     #[serde(default = "Vec::new")]
     pub deployments: Vec<DeploymentConfig>,
 
-    #[serde(default)]
     pub templates: TemplateConfig,
 
     #[serde(default)]
@@ -65,12 +64,13 @@ pub struct DeploymentConfig {
     #[serde(default)]
     pub tag_commit: bool,
 
-    pub experience_id: u64,
+    pub experience_id: Option<u64>,
 
+    #[serde(default = "HashMap::new")]
     pub place_ids: HashMap<String, u64>,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TemplateConfig {
     pub experience: Option<ExperienceTemplateConfig>,

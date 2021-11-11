@@ -11,6 +11,7 @@ deployments:
     experienceId: 3028808377
     placeIds:
       start: 7818935418
+  - name: preview
 
 templates:
   experience:

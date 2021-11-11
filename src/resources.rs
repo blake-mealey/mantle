@@ -534,7 +534,7 @@ impl ResourceGraph {
 
         if failures_count > 0 {
             Err(format!(
-                "Failed {} updates while evaluating the resource graph. See above for more details",
+                "Failed {} update(s) while evaluating the resource graph. See above for more details",
                 failures_count
             ))
         } else {

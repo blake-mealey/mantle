@@ -82,7 +82,10 @@ pub async fn load_project(
     let (project_path, config_file) = parse_project(project)?;
 
     let config = load_config_file(&config_file)?;
-    logger::log(format!("Loaded config file {}", config_file.display()));
+    logger::log(format!(
+        "Loaded config file {}",
+        Paint::cyan(config_file.display())
+    ));
 
     let current_branch = get_current_branch()?;
 

@@ -8,6 +8,7 @@ use rusoto_s3::{S3Client, S3};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::io::AsyncReadExt;
+use yansi::Paint;
 
 use crate::{
     config::{Config, DeploymentConfig, PlayabilityConfig, RemoteStateConfig, StateConfig},
@@ -50,8 +51,8 @@ fn parse_state(file_name: &str, data: &str) -> Result<ResourceState, String> {
 fn get_state_from_file(project_path: &Path) -> Result<Option<ResourceState>, String> {
     let state_file_path = get_state_file_path(project_path);
     logger::log(format!(
-        "Loading previous state from local file: {}",
-        state_file_path.display()
+        "Loading previous state from local file {}",
+        Paint::cyan(state_file_path.display())
     ));
 
     if state_file_path.exists() {
@@ -76,8 +77,8 @@ async fn get_state_from_remote(
     config: &RemoteStateConfig,
 ) -> Result<Option<ResourceState>, String> {
     logger::log(format!(
-        "Loading previous state from remote object: {}",
-        config
+        "Loading previous state from remote object {}",
+        Paint::cyan(config)
     ));
 
     let client = S3Client::new(config.region.clone());
@@ -173,7 +174,7 @@ pub async fn get_previous_state(
     if state.deployments.get(&deployment_config.name).is_none() {
         logger::log(format!(
             "No previous state for deployment {}",
-            deployment_config.name
+            Paint::cyan(deployment_config.name.clone())
         ));
         state.deployments.insert(
             deployment_config.name.clone(),
@@ -312,7 +313,7 @@ pub fn get_desired_graph(
 }
 
 pub async fn save_state_to_remote(config: &RemoteStateConfig, data: &[u8]) -> Result<(), String> {
-    logger::log(format!("Saving to remote object: {}", config));
+    logger::log(format!("Saving to remote object {}", Paint::cyan(config)));
 
     let client = S3Client::new(config.region.clone());
     let res = client
@@ -332,8 +333,8 @@ pub fn save_state_to_file(project_path: &Path, data: &[u8]) -> Result<(), String
     let state_file_path = get_state_file_path(project_path);
 
     logger::log(format!(
-        "Saving to local file: {}. It is recommended you commit this file to your source control",
-        state_file_path.display()
+        "Saving to local file {}. It is recommended you commit this file to your source control",
+        Paint::cyan(state_file_path.display())
     ));
 
     fs::write(&state_file_path, data).map_err(|e| {

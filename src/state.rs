@@ -150,7 +150,7 @@ pub fn get_desired_graph(
         .clone();
     let experience_asset_id_ref = experience.get_input_ref("assetId");
     let experience_start_place_id_ref = experience.get_input_ref("startPlaceId");
-    resources.push(experience.clone());
+    resources.push(experience);
 
     if let Some(experience_configuration) = &config.templates.experience {
         resources.push(

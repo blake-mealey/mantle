@@ -31,12 +31,6 @@ impl Resource {
         }
     }
 
-    pub fn add_value_stub_input(&mut self, name: &str) -> &mut Self {
-        self.inputs
-            .insert(name.to_owned(), Input::Value(serde_yaml::Value::Null));
-        self
-    }
-
     pub fn add_value_input<T>(&mut self, name: &str, input_value: &T) -> Result<&mut Self, String>
     where
         T: serde::Serialize,

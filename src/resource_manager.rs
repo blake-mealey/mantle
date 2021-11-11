@@ -8,7 +8,7 @@ use crate::{
     roblox_api::{
         CreateDeveloperProductResponse, CreateExperienceResponse, CreatePlaceResponse, DeployMode,
         ExperienceConfigurationModel, GetDeveloperProductResponse, GetExperienceResponse,
-        PlaceConfigurationModel, RobloxApi, UploadImageResult, UploadPlaceResult,
+        GetPlaceResponse, PlaceConfigurationModel, RobloxApi, UploadImageResponse,
     },
     roblox_auth::RobloxAuth,
 };
@@ -216,28 +216,32 @@ impl ResourceManager for RobloxResourceManager {
                 let inputs = serde_yaml::from_value::<ExperienceIconInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
 
-                let UploadImageResult { asset_id } = self.roblox_api.upload_icon(
+                let UploadImageResponse { target_id } = self.roblox_api.upload_icon(
                     inputs.experience_id,
                     self.project_path.join(inputs.file_path).as_path(),
                 )?;
 
                 Ok(Some(
-                    serde_yaml::to_value(ExperienceIconOutputs { asset_id })
-                        .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                    serde_yaml::to_value(ExperienceIconOutputs {
+                        asset_id: target_id,
+                    })
+                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
             }
             resource_types::EXPERIENCE_THUMBNAIL => {
                 let inputs = serde_yaml::from_value::<ExperienceThumbnailInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
 
-                let UploadImageResult { asset_id } = self.roblox_api.upload_thumbnail(
+                let UploadImageResponse { target_id } = self.roblox_api.upload_thumbnail(
                     inputs.experience_id,
                     self.project_path.join(inputs.file_path).as_path(),
                 )?;
 
                 Ok(Some(
-                    serde_yaml::to_value(ExperienceThumbnailOutputs { asset_id })
-                        .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                    serde_yaml::to_value(ExperienceThumbnailOutputs {
+                        asset_id: target_id,
+                    })
+                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
             }
             resource_types::EXPERIENCE_THUMBNAIL_ORDER => {
@@ -304,16 +308,17 @@ impl ResourceManager for RobloxResourceManager {
                 let inputs = serde_yaml::from_value::<PlaceFileInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
 
-                let UploadPlaceResult { place_version } = self.roblox_api.upload_place(
+                self.roblox_api.upload_place(
                     self.project_path.join(inputs.file_path).as_path(),
-                    inputs.experience_id,
                     inputs.asset_id,
-                    inputs.deploy_mode,
                 )?;
+                let GetPlaceResponse {
+                    current_saved_version,
+                } = self.roblox_api.get_place(inputs.asset_id)?;
 
                 Ok(Some(
                     serde_yaml::to_value(PlaceFileOutputs {
-                        version: place_version,
+                        version: current_saved_version,
                     })
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))

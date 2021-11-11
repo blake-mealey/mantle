@@ -30,16 +30,9 @@ documentation](https://github.com/Roblox/foreman#readme).
 
 ### Authentication
 
-In order to use any of the commands to save/publish places to Roblox, you must provide valid
-authentication. This is provided via the `ROBLOX_API_KEY` environment variable. You can create an
-API key in the Roblox [Creator portal](https://create.roblox.com/credentials).
-
-You also must ensure your API key has the required permissions. It must have the Place Management
-API System with the desired places added to it.
-
-If you are using the `templates` feature you will also need to provide a `ROBLOSECURITY` cookie via
-the `ROBLOSECURITY` environment variable. You can get the cookie from your browser dev tools on
-roblox.com.
+In order to use any of the commands to save/publish places to Roblox, you must provide a valid
+`.ROBLOSECURITY` cookie. This is provided via the `ROBLOSECURITY` environment variable. You can get
+the cookie from your browser dev tools on roblox.com.
 
 ### Configure deployments
 
@@ -168,7 +161,6 @@ jobs:
       - name: Deploy project
         run: rocat deploy
         env:
-          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
           ROBLOSECURITY: ${{ secrets.ROBLOSECURITY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

@@ -45,7 +45,6 @@ file in the provided directory.
 deployments:
   - name: staging
     branches: [dev, dev/*]
-    deployMode: save # optional; defaults to Publish
     experienceId: 7067418676
     placeIds:
       start: 8468630367

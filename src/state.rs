@@ -256,14 +256,12 @@ pub fn get_desired_graph(
 
         resources.push(
             Resource::new(resource_types::PLACE_FILE, name)
-                .add_ref_input("experienceId", &experience_asset_id_ref)
                 .add_ref_input("assetId", &place_asset_id_ref)
                 .add_value_input("filePath", &template.file)?
                 .add_value_input(
                     "fileHash",
                     &get_file_hash(project_path.join(&template.file).as_path())?,
                 )?
-                .add_value_input("deployMode", &deployment_config.deploy_mode)?
                 .clone(),
         );
 

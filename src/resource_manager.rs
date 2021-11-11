@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     resources::ResourceManager,
     roblox_api::{
-        CreateDeveloperProductResponse, CreateExperienceResponse, CreatePlaceResponse, DeployMode,
+        CreateDeveloperProductResponse, CreateExperienceResponse, CreatePlaceResponse,
         ExperienceConfigurationModel, GetDeveloperProductResponse, GetExperienceResponse,
         GetPlaceResponse, PlaceConfigurationModel, RobloxApi, UploadImageResponse,
     },
@@ -123,11 +123,9 @@ struct PlaceOutputs {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct PlaceFileInputs {
-    experience_id: AssetId,
     asset_id: AssetId,
     file_path: String,
     file_hash: String,
-    deploy_mode: DeployMode,
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

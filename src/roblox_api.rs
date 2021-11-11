@@ -1,34 +1,12 @@
 use multipart::client::lazy::{Multipart, PreparedFields};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{clone::Clone, collections::HashMap, default, ffi::OsStr, fmt, fs, path::Path};
+use std::{clone::Clone, collections::HashMap, ffi::OsStr, fs, path::Path};
 
 use crate::{
     resource_manager::AssetId,
     roblox_auth::{AuthType, RequestExt, RobloxAuth},
 };
-
-#[derive(Serialize, Deserialize, Copy, Clone)]
-#[serde(rename_all = "camelCase")]
-pub enum DeployMode {
-    Publish,
-    Save,
-}
-impl default::Default for DeployMode {
-    fn default() -> Self {
-        DeployMode::Publish
-    }
-}
-
-impl fmt::Display for DeployMode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let display = match self {
-            DeployMode::Publish => "Publish",
-            DeployMode::Save => "Save",
-        };
-        write!(f, "{}", display)
-    }
-}
 
 #[derive(Deserialize, Debug)]
 struct RobloxApiErrorModel {

@@ -1,5 +1,5 @@
 use crate::roblox_api::{
-    DeployMode, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
+    ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
     ExperienceConfigurationModel, ExperienceGenre, ExperiencePermissionsModel,
     ExperiencePlayableDevice, PlaceConfigurationModel, SocialSlotType,
 };
@@ -57,9 +57,6 @@ pub struct DeploymentConfig {
 
     #[serde(default = "Vec::new")]
     pub branches: Vec<String>,
-
-    #[serde(default)]
-    pub deploy_mode: DeployMode,
 
     #[serde(default)]
     pub tag_commit: bool,

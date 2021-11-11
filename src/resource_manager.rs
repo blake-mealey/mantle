@@ -393,6 +393,32 @@ impl ResourceManager for RobloxResourceManager {
         resource_outputs: serde_yaml::Value,
     ) -> Result<(), String> {
         match resource_type {
+            resource_types::EXPERIENCE => {
+                let outputs = serde_yaml::from_value::<ExperienceOutputs>(resource_outputs)
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                self.roblox_api.configure_experience(
+                    outputs.asset_id,
+                    &ExperienceConfigurationModel {
+                        genre: None,
+                        playable_devices: None,
+                        is_friends_only: None,
+                        allow_private_servers: None,
+                        private_server_price: None,
+                        is_for_sale: None,
+                        price: None,
+                        studio_access_to_apis_allowed: None,
+                        permissions: None,
+                        universe_avatar_type: None,
+                        universe_animation_type: None,
+                        universe_collision_type: None,
+                        is_archived: Some(true),
+                    },
+                )?;
+
+                Ok(())
+            }
+            resource_types::EXPERIENCE_CONFIGURATION => Ok(()),
             resource_types::EXPERIENCE_ICON => {
                 // TODO: figure out which endpoint to use to delete an icon
                 Ok(())
@@ -429,6 +455,22 @@ impl ResourceManager for RobloxResourceManager {
                     inputs.icon_asset_id,
                 )
             }
+            resource_types::PLACE => {
+                let inputs = serde_yaml::from_value::<PlaceInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let outputs = serde_yaml::from_value::<PlaceOutputs>(resource_outputs)
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                if inputs.is_start {
+                    return Err("Cannot delete the start place of an experience. Try creating a new experience instead.".to_owned());
+                }
+                self.roblox_api
+                    .remove_place_from_experience(inputs.experience_id, outputs.asset_id)?;
+
+                Ok(())
+            }
+            resource_types::PLACE_FILE => Ok(()),
+            resource_types::PLACE_CONFIGURATION => Ok(()),
             _ => panic!(
                 "Delete not implemented for resource type: {}",
                 resource_type

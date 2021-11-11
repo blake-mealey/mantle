@@ -51,6 +51,12 @@ pub struct GetPlaceResponse {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct RemovePlaceResponse {
+    pub success: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UploadImageResponse {
     pub target_id: AssetId,
 }
@@ -152,6 +158,8 @@ pub struct ExperienceConfigurationModel {
     pub universe_avatar_type: Option<ExperienceAvatarType>,
     pub universe_animation_type: Option<ExperienceAnimationType>,
     pub universe_collision_type: Option<ExperienceCollisionType>,
+
+    pub is_archived: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -265,6 +273,30 @@ impl RobloxApi {
             .map_err(|e| format!("Failed to deserialize get place response: {}", e))?;
 
         Ok(model)
+    }
+
+    pub fn remove_place_from_experience(
+        &mut self,
+        experience_id: AssetId,
+        place_id: AssetId,
+    ) -> Result<(), String> {
+        let res = ureq::post("https://www.roblox.com/universes/removeplace")
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_form(&[
+                ("universeId", &experience_id.to_string()),
+                ("placeId", &place_id.to_string()),
+            ]);
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<RemovePlaceResponse>()
+            .map_err(|e| format!("Failed to deserialize get place response: {}", e))?;
+
+        if !model.success {
+            return Err("Failed to remove place from experience (unknown error)".to_owned());
+        }
+
+        Ok(())
     }
 
     pub fn create_experience(&mut self) -> Result<CreateExperienceResponse, String> {

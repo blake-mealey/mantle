@@ -39,6 +39,12 @@ templates:
       maxPlayerCount: 20
       serverFill: { reservedSlots: 10 }
       allowCopying: false
+    firstWorld:
+      file: start.rbxlx
+      name: World
+    secondWorld:
+      file: start.rbxlx
+      name: Second World
 
 state:
   remote:

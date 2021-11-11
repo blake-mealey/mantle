@@ -153,7 +153,6 @@ pub struct ExperienceTemplateConfig {
     // avatar_scale_constraints: Option<HashMap<String, (f32, f32)>>,   // TODO: figure out api
 
     // other
-    // is_archived: Option<bool>,
     pub developer_products: Option<HashMap<String, DeveloperProductConifg>>,
 }
 
@@ -222,6 +221,8 @@ impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
             },
             universe_animation_type: config.avatar_animation_type,
             universe_collision_type: config.avatar_collision_type,
+
+            is_archived: None,
         }
     }
 }

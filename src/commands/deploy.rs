@@ -71,7 +71,7 @@ fn tag_commit(
     Ok(tag_count)
 }
 
-pub async fn run(project: Option<&str>) -> i32 {
+pub async fn run(project: Option<&str>, deployment: Option<&str>) -> i32 {
     logger::start_action("Loading project:");
     let Project {
         project_path,
@@ -80,7 +80,7 @@ pub async fn run(project: Option<&str>) -> i32 {
         mut next_graph,
         previous_graph,
         mut state,
-    } = match load_project(project).await {
+    } = match load_project(project, deployment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
             logger::end_action("No deployment necessary");

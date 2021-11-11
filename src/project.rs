@@ -3,6 +3,8 @@ use std::{
     str,
 };
 
+use yansi::Paint;
+
 use crate::{
     config::{load_config_file, Config, DeploymentConfig},
     logger,
@@ -73,7 +75,10 @@ pub struct Project {
     pub config: Config,
 }
 
-pub async fn load_project(project: Option<&str>) -> Result<Option<Project>, String> {
+pub async fn load_project(
+    project: Option<&str>,
+    deployment: Option<&str>,
+) -> Result<Option<Project>, String> {
     let (project_path, config_file) = parse_project(project)?;
 
     let config = load_config_file(&config_file)?;
@@ -81,25 +86,43 @@ pub async fn load_project(project: Option<&str>) -> Result<Option<Project>, Stri
 
     let current_branch = get_current_branch()?;
 
-    let deployment_config = config
-        .deployments
-        .iter()
-        .find(|deployment| match_branch(&current_branch, &deployment.branches));
-
-    let deployment_config = match deployment_config {
-        Some(v) => v,
+    let deployment_config = match deployment {
+        Some(name) => {
+            if let Some(result) = config.deployments.iter().find(|d| d.name == name) {
+                logger::log(format!(
+                    "Selected provided deployment configuration {}",
+                    Paint::cyan(name)
+                ));
+                result
+            } else {
+                return Err(format!(
+                    "No deployment configuration found with name {}",
+                    name
+                ));
+            }
+        }
         None => {
-            logger::log(format!(
-                "No deployment configuration found for branch '{}'",
-                current_branch
-            ));
-            return Ok(None);
+            if let Some(result) = config
+                .deployments
+                .iter()
+                .find(|deployment| match_branch(&current_branch, &deployment.branches))
+            {
+                logger::log(format!(
+                    "Selected deployment configuration {} because the current branch {} matched one of [{}]",
+                    Paint::cyan(result.name.clone()),
+                    Paint::cyan(current_branch),
+                    result.branches.iter().map(|b|Paint::cyan(b).to_string()).collect::<Vec<String>>().join(", ")
+                ));
+                result
+            } else {
+                logger::log(format!(
+                    "No deployment configuration found for the current branch {}",
+                    Paint::cyan(current_branch)
+                ));
+                return Ok(None);
+            }
         }
     };
-    logger::log(format!(
-        "Found deployment configuration '{}' for branch '{}'",
-        deployment_config.name, current_branch
-    ));
 
     // Get previous state
     let state = get_previous_state(project_path.as_path(), &config, deployment_config).await?;

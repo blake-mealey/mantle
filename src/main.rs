@@ -8,6 +8,7 @@ mod resources;
 mod roblox_api;
 mod roblox_auth;
 mod state;
+mod util;
 
 #[tokio::main]
 async fn main() {

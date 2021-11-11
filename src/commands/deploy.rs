@@ -1,14 +1,75 @@
 use std::str;
 
+use serde::de;
 use yansi::Paint;
 
 use crate::{
+    config::DeploymentConfig,
     logger,
     project::{load_project, Project},
-    resource_manager::RobloxResourceManager,
-    resources::{EvaluateResults, ResourceManager},
+    resource_manager::{resource_types, RobloxResourceManager},
+    resources::{EvaluateResults, InputRef, ResourceGraph, ResourceManager},
     state::save_state,
+    util::run_command,
 };
+
+fn get_output<T>(graph: &ResourceGraph, input_ref: &InputRef) -> Option<T>
+where
+    T: de::DeserializeOwned,
+{
+    graph
+        .get_resource_from_input_ref(input_ref)
+        .map(|r| {
+            r.get_output_from_input_ref(input_ref)
+                .ok()
+                .map(|v| serde_yaml::from_value::<T>(v).ok())
+                .flatten()
+        })
+        .flatten()
+}
+
+fn tag_commit(
+    deployment_config: &DeploymentConfig,
+    next_graph: &ResourceGraph,
+    previous_graph: &ResourceGraph,
+) -> Result<u32, String> {
+    let mut tag_count: u32 = 0;
+    for (name, _) in &deployment_config.place_ids {
+        let input_ref = (
+            resource_types::PLACE_FILE.to_owned(),
+            name.to_owned(),
+            "version".to_owned(),
+        );
+        let previous_version_output = get_output::<u32>(previous_graph, &input_ref);
+        let next_version_output = get_output::<u32>(next_graph, &input_ref);
+
+        let tag_version = match (previous_version_output, next_version_output) {
+            (None, Some(version)) => Some(version),
+            (Some(previous), Some(next)) if next != previous => Some(next),
+            _ => None,
+        };
+
+        if let Some(version) = tag_version {
+            logger::log(format!(
+                "Place '{}' was updated to version {}",
+                name, version
+            ));
+            let tag = format!("{}-v{}", name, version);
+            logger::log(format!("Tagging commit with {}", tag));
+
+            tag_count += 1;
+            run_command(&format!("git tag {}", tag))
+                .map_err(|e| format!("Unable to tag the current commit\n\t{}", e))?;
+        }
+    }
+
+    if tag_count > 0 {
+        run_command("git push --tags")
+            .map_err(|e| format!("Unable to push tags to remote\n\t{}", e))?;
+    }
+
+    Ok(tag_count)
+}
 
 pub async fn run(project: Option<&str>) -> i32 {
     logger::start_action("Loading project:");
@@ -36,7 +97,8 @@ pub async fn run(project: Option<&str>) -> i32 {
         ResourceManager::new(Box::new(RobloxResourceManager::new(&project_path)));
 
     logger::start_action("Deploying resources:");
-    let exit_code = match next_graph.evaluate(&previous_graph, &mut resource_manager) {
+    let results = next_graph.evaluate(&previous_graph, &mut resource_manager);
+    match &results {
         Ok(results) => {
             match results {
                 EvaluateResults {
@@ -55,13 +117,22 @@ pub async fn run(project: Option<&str>) -> i32 {
                     created_count, updated_count, deleted_count, noop_count
                 )),
             };
-            0
         }
         Err(e) => {
             logger::end_action(Paint::red(e));
-            1
         }
     };
+
+    if deployment_config.tag_commit && matches!(results, Ok(_)) {
+        logger::start_action("Tagging commit:");
+        match tag_commit(&deployment_config, &next_graph, &previous_graph) {
+            Ok(0) => logger::end_action("No tagging required"),
+            Ok(tag_count) => {
+                logger::end_action(format!("Succeeded in pushing {} tag(s)", tag_count))
+            }
+            Err(e) => logger::end_action(Paint::red(e)),
+        };
+    }
 
     logger::start_action("Saving state:");
     state.deployments.insert(
@@ -77,5 +148,8 @@ pub async fn run(project: Option<&str>) -> i32 {
     };
     logger::end_action("Succeeded");
 
-    exit_code
+    match &results {
+        Ok(_) => 0,
+        Err(_) => 1,
+    }
 }

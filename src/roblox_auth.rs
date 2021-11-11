@@ -2,10 +2,7 @@ use std::env;
 
 use ureq::Cookie;
 
-use crate::roblox_api::INVALID_API_KEY_HELP;
-
 pub enum AuthType {
-    ApiKey,
     Cookie,
     CookieAndCsrfToken,
 }
@@ -17,7 +14,6 @@ pub trait RequestExt {
 impl RequestExt for ureq::Request {
     fn set_auth(self, auth_type: AuthType, auth: &mut RobloxAuth) -> Result<ureq::Request, String> {
         match auth_type {
-            AuthType::ApiKey => Ok(self.set("x-api-key", &auth.get_api_key()?)),
             AuthType::Cookie => Ok(self.set("cookie", &auth.get_roblosecurity_cookie()?)),
             AuthType::CookieAndCsrfToken => Ok(self
                 .set("cookie", &auth.get_roblosecurity_cookie()?)
@@ -28,7 +24,6 @@ impl RequestExt for ureq::Request {
 
 #[derive(Default)]
 pub struct RobloxAuth {
-    api_key: Option<String>,
     roblosecurity: Option<String>,
     csrf_token: Option<String>,
 }
@@ -36,17 +31,6 @@ pub struct RobloxAuth {
 impl RobloxAuth {
     pub fn new() -> Self {
         Default::default()
-    }
-
-    pub fn get_api_key(&mut self) -> Result<String, String> {
-        if self.api_key.is_none() {
-            let var = match env::var("ROBLOX_API_KEY") {
-                Ok(v) => v,
-                Err(_) => return Err(INVALID_API_KEY_HELP.to_owned()),
-            };
-            self.api_key = Some(var);
-        }
-        Ok(self.api_key.clone().unwrap())
     }
 
     pub fn get_roblosecurity(&mut self) -> Result<String, String> {

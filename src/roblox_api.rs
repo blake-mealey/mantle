@@ -1,39 +1,12 @@
 use multipart::client::lazy::{Multipart, PreparedFields};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{clone::Clone, collections::HashMap, default, ffi::OsStr, fmt, fs, path::Path};
+use std::{clone::Clone, collections::HashMap, ffi::OsStr, fs, path::Path};
 
 use crate::{
     resource_manager::AssetId,
     roblox_auth::{AuthType, RequestExt, RobloxAuth},
 };
-
-#[derive(Serialize, Deserialize, Copy, Clone)]
-#[serde(rename_all = "camelCase")]
-pub enum DeployMode {
-    Publish,
-    Save,
-}
-impl default::Default for DeployMode {
-    fn default() -> Self {
-        DeployMode::Publish
-    }
-}
-
-impl fmt::Display for DeployMode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let display = match self {
-            DeployMode::Publish => "Publish",
-            DeployMode::Save => "Save",
-        };
-        write!(f, "{}", display)
-    }
-}
-
-enum ProjectType {
-    Xml,
-    Binary,
-}
 
 #[derive(Deserialize, Debug)]
 struct RobloxApiErrorModel {
@@ -51,15 +24,41 @@ struct RobloxApiErrorModel {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PlaceManagementResponse {
-    version_number: u32,
+#[serde(rename_all = "PascalCase")]
+pub struct CreateExperienceResponse {
+    pub universe_id: AssetId,
+    pub root_place_id: AssetId,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct UploadImageResponse {
-    target_id: u64,
+pub struct GetExperienceResponse {
+    pub root_place_id: AssetId,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct CreatePlaceResponse {
+    pub success: bool,
+    pub place_id: AssetId,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetPlaceResponse {
+    pub current_saved_version: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RemovePlaceResponse {
+    pub success: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadImageResponse {
+    pub target_id: AssetId,
 }
 
 #[derive(Deserialize)]
@@ -81,22 +80,6 @@ pub struct ListDeveloperProductsResponse {
 pub struct GetDeveloperProductResponse {
     pub product_id: AssetId,
     pub developer_product_id: AssetId,
-}
-
-pub static INVALID_API_KEY_HELP: &str = "\
-    Please check your ROBLOX_API_KEY environment variable. \n\
-    \tIf you don't have an API key, you can create one at https://create.roblox.com/credentials \n\
-    \tYou must ensure that your API key has enabled the 'Place Management API System' and you have \n\
-    \tadded the place you are trying to upload to the API System Configuration. You also must ensure \n\
-    \tthat your API key's IP whitelist includes the machine you are running this on. You can set it \n\
-    \tto '0.0.0.0/0' to whitelist all IPs but this should only be used for testing purposes.";
-
-pub struct UploadPlaceResult {
-    pub place_version: u32,
-}
-
-pub struct UploadImageResult {
-    pub asset_id: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -175,6 +158,8 @@ pub struct ExperienceConfigurationModel {
     pub universe_avatar_type: Option<ExperienceAvatarType>,
     pub universe_animation_type: Option<ExperienceAnimationType>,
     pub universe_collision_type: Option<ExperienceCollisionType>,
+
+    pub is_archived: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -250,90 +235,128 @@ impl RobloxApi {
         }
     }
 
-    pub fn upload_place(
-        &mut self,
-        place_file: &Path,
-        experience_id: u64,
-        place_id: u64,
-        mode: DeployMode,
-    ) -> Result<UploadPlaceResult, String> {
-        // println!("TRACE: upload_place {}", place_file.display());
-
-        let project_type = match place_file.extension().and_then(OsStr::to_str) {
-            Some("rbxlx") => ProjectType::Xml,
-            Some("rbxl") => ProjectType::Binary,
-            Some(v) => return Err(format!("Invalid project file extension: {}", v)),
-            None => {
+    pub fn upload_place(&mut self, place_file: &Path, place_id: AssetId) -> Result<(), String> {
+        let data = match fs::read_to_string(place_file) {
+            Ok(v) => v,
+            Err(e) => {
                 return Err(format!(
-                    "No project file extension in project file: {}",
-                    place_file.display()
+                    "Unable to read place file: {}\n\t{}",
+                    place_file.display(),
+                    e
                 ))
             }
         };
 
-        let content_type = match project_type {
-            ProjectType::Xml => "application/xml",
-            ProjectType::Binary => "application/octet-stream",
-        };
+        let res = ureq::post("https://data.roblox.com/Data/Upload.ashx")
+            .query("assetId", &place_id.to_string())
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .set("Content-Type", "application/xml")
+            .set("User-Agent", "Roblox/WinInet")
+            .send_string(&data);
 
-        let version_type = match mode {
-            DeployMode::Publish => "Published",
-            DeployMode::Save => "Saved",
-        };
+        Self::handle_response(res)?;
 
-        let req = ureq::post(&format!(
-            "https://apis.roblox.com/universes/v1/{}/places/{}/versions",
-            experience_id, place_id
+        Ok(())
+    }
+
+    pub fn get_place(&mut self, place_id: AssetId) -> Result<GetPlaceResponse, String> {
+        let res = ureq::get(&format!(
+            "https://develop.roblox.com/v2/places/{}",
+            place_id
         ))
-        .set_auth(AuthType::ApiKey, &mut self.roblox_auth)?
-        .set("Content-Type", content_type)
-        .query("versionType", version_type);
-
-        let res = match project_type {
-            ProjectType::Xml => {
-                let data = match fs::read_to_string(place_file) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        return Err(format!(
-                            "Unable to read place file: {}\n\t{}",
-                            place_file.display(),
-                            e
-                        ))
-                    }
-                };
-                req.send_string(&data)
-            }
-            ProjectType::Binary => {
-                let data = match fs::read(place_file) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        return Err(format!(
-                            "Unable to read place file: {}\n\t{}",
-                            place_file.display(),
-                            e
-                        ))
-                    }
-                };
-                req.send_bytes(&data)
-            }
-        };
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .send_string("");
 
         let response = Self::handle_response(res)?;
         let model = response
-            .into_json::<PlaceManagementResponse>()
-            .map_err(|e| format!("Failed to deserialize upload place response: {}", e))?;
-        Ok(UploadPlaceResult {
-            place_version: model.version_number,
-        })
+            .into_json::<GetPlaceResponse>()
+            .map_err(|e| format!("Failed to deserialize get place response: {}", e))?;
+
+        Ok(model)
+    }
+
+    pub fn remove_place_from_experience(
+        &mut self,
+        experience_id: AssetId,
+        place_id: AssetId,
+    ) -> Result<(), String> {
+        let res = ureq::post("https://www.roblox.com/universes/removeplace")
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_form(&[
+                ("universeId", &experience_id.to_string()),
+                ("placeId", &place_id.to_string()),
+            ]);
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<RemovePlaceResponse>()
+            .map_err(|e| format!("Failed to deserialize get place response: {}", e))?;
+
+        if !model.success {
+            return Err("Failed to remove place from experience (unknown error)".to_owned());
+        }
+
+        Ok(())
+    }
+
+    pub fn create_experience(&mut self) -> Result<CreateExperienceResponse, String> {
+        let res = ureq::post("https://api.roblox.com/universes/create")
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_json(json!({
+                "templatePlaceIdToUse": 95206881
+            }));
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<CreateExperienceResponse>()
+            .map_err(|e| format!("Failed to deserialize create experience response: {}", e))?;
+
+        Ok(model)
+    }
+
+    pub fn get_experience(
+        &mut self,
+        experience_id: AssetId,
+    ) -> Result<GetExperienceResponse, String> {
+        let res = ureq::get(&format!(
+            "https://develop.roblox.com/v1/universes/{}",
+            experience_id
+        ))
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .send_string("");
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<GetExperienceResponse>()
+            .map_err(|e| format!("Failed to deserialize get experience response: {}", e))?;
+
+        Ok(model)
+    }
+
+    pub fn create_place(&mut self, experience_id: AssetId) -> Result<CreatePlaceResponse, String> {
+        let res = ureq::post("https://www.roblox.com/ide/places/createV2")
+            .query("universeId", &experience_id.to_string())
+            .query("templatePlaceIdToUse", &95206881.to_string())
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_string("");
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<CreatePlaceResponse>()
+            .map_err(|e| format!("Failed to deserialize create place response: {}", e))?;
+
+        if !model.success {
+            return Err("Failed to create place (unknown error)".to_owned());
+        }
+
+        Ok(model)
     }
 
     pub fn configure_experience(
         &mut self,
-        experience_id: u64,
+        experience_id: AssetId,
         experience_configuration: &ExperienceConfigurationModel,
     ) -> Result<(), String> {
-        // println!("TRACE: configure_experience {}", experience_id);
-
         let json_data = match serde_json::to_value(&experience_configuration) {
             Ok(v) => v,
             Err(e) => {
@@ -361,11 +384,9 @@ impl RobloxApi {
 
     pub fn configure_place(
         &mut self,
-        place_id: u64,
+        place_id: AssetId,
         place_configuration: &PlaceConfigurationModel,
     ) -> Result<(), String> {
-        // println!("TRACE: configure_place {}", place_id);
-
         let json_data = match serde_json::to_value(&place_configuration) {
             Ok(v) => v,
             Err(e) => return Err(format!("Failed to serialize place configuration\n\t{}", e)),
@@ -386,11 +407,9 @@ impl RobloxApi {
 
     pub fn set_experience_active(
         &mut self,
-        experience_id: u64,
+        experience_id: AssetId,
         active: bool,
     ) -> Result<(), String> {
-        // println!("TRACE: set_experience_active {}", active);
-
         let endpoint = if active { "activate" } else { "deactivate" };
         let res = ureq::post(&format!(
             "https://develop.roblox.com/v1/universes/{}/{}",
@@ -435,11 +454,9 @@ impl RobloxApi {
 
     pub fn upload_icon(
         &mut self,
-        experience_id: u64,
+        experience_id: AssetId,
         icon_file: &Path,
-    ) -> Result<UploadImageResult, String> {
-        // println!("TRACE: upload_icon {}", icon_file.display());
-
+    ) -> Result<UploadImageResponse, String> {
         let multipart = Self::get_image_from_data("request.files".to_owned(), icon_file, None)?;
 
         let res = ureq::post(&format!(
@@ -458,18 +475,14 @@ impl RobloxApi {
             .into_json::<UploadImageResponse>()
             .map_err(|e| format!("Failed to deserialize upload image response: {}", e))?;
 
-        Ok(UploadImageResult {
-            asset_id: model.target_id,
-        })
+        Ok(model)
     }
 
     pub fn upload_thumbnail(
         &mut self,
-        experience_id: u64,
+        experience_id: AssetId,
         thumbnail_file: &Path,
-    ) -> Result<UploadImageResult, String> {
-        // println!("TRACE: upload_thumbnail {}", thumbnail_file.display());
-
+    ) -> Result<UploadImageResponse, String> {
         let multipart =
             Self::get_image_from_data("request.files".to_owned(), thumbnail_file, None)?;
 
@@ -489,21 +502,14 @@ impl RobloxApi {
             .into_json::<UploadImageResponse>()
             .map_err(|e| format!("Failed to deserialize upload image response: {}", e))?;
 
-        Ok(UploadImageResult {
-            asset_id: model.target_id,
-        })
+        Ok(model)
     }
 
     pub fn set_experience_thumbnail_order(
         &mut self,
-        experience_id: u64,
-        new_thumbnail_order: &[u64],
+        experience_id: AssetId,
+        new_thumbnail_order: &[AssetId],
     ) -> Result<(), String> {
-        // println!(
-        //     "TRACE: set_experience_thumbnail_order {:?}",
-        //     new_thumbnail_order
-        // );
-
         let res = ureq::post(&format!(
             "https://develop.roblox.com/v1/universes/{}/thumbnails/order",
             experience_id
@@ -518,11 +524,9 @@ impl RobloxApi {
 
     pub fn delete_experience_thumbnail(
         &mut self,
-        experience_id: u64,
-        thumbnail_id: u64,
+        experience_id: AssetId,
+        thumbnail_id: AssetId,
     ) -> Result<(), String> {
-        // println!("TRACE: delete_experience_thumbnail {}", thumbnail_id);
-
         let res = ureq::delete(&format!(
             "https://develop.roblox.com/v1/universes/{}/thumbnails/{}",
             experience_id, thumbnail_id

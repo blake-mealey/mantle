@@ -4,7 +4,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    resources::ResourceManagerBackend,
+    resources::ResourceManager,
     roblox_api::{
         CreateDeveloperProductResponse, DeployMode, ExperienceConfigurationModel,
         GetDeveloperProductResponse, PlaceConfigurationModel, RobloxApi, UploadImageResult,
@@ -134,7 +134,7 @@ impl RobloxResourceManager {
     }
 }
 
-impl ResourceManagerBackend for RobloxResourceManager {
+impl ResourceManager for RobloxResourceManager {
     fn create(
         &mut self,
         resource_type: &str,

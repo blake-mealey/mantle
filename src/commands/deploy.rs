@@ -8,7 +8,7 @@ use crate::{
     logger,
     project::{load_project, Project},
     resource_manager::{resource_types, RobloxResourceManager},
-    resources::{EvaluateResults, InputRef, ResourceGraph, ResourceManager},
+    resources::{EvaluateResults, InputRef, ResourceGraph},
     state::save_state,
     util::run_command,
 };
@@ -93,8 +93,7 @@ pub async fn run(project: Option<&str>) -> i32 {
     };
     logger::end_action("Succeeded");
 
-    let mut resource_manager =
-        ResourceManager::new(Box::new(RobloxResourceManager::new(&project_path)));
+    let mut resource_manager = RobloxResourceManager::new(&project_path);
 
     logger::start_action("Deploying resources:");
     let results = next_graph.evaluate(&previous_graph, &mut resource_manager);

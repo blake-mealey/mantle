@@ -1,6 +1,5 @@
 use std::{
     path::{Path, PathBuf},
-    process::Command,
     str,
 };
 
@@ -9,6 +8,7 @@ use crate::{
     logger,
     resources::ResourceGraph,
     state::{get_desired_graph, get_previous_state, ResourceState},
+    util::run_command,
 };
 
 fn parse_project(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {
@@ -28,14 +28,6 @@ fn parse_project(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {
     }
 
     Err(format!("Config file {} not found", config_file.display()))
-}
-
-fn run_command(command: &str) -> std::io::Result<std::process::Output> {
-    if cfg!(target_os = "windows") {
-        return Command::new("cmd").arg("/C").arg(command).output();
-    } else {
-        return Command::new("sh").arg("-c").arg(command).output();
-    }
 }
 
 fn get_current_branch() -> Result<String, String> {

@@ -88,11 +88,15 @@ impl Resource {
         )
     }
 
-    fn get_output_from_input_ref(&self, input_ref: &InputRef) -> Result<OutputValue, String> {
+    pub fn get_output_from_input_ref(&self, input_ref: &InputRef) -> Result<OutputValue, String> {
+        self.get_output(&output_name_from_input_ref(input_ref))
+    }
+
+    pub fn get_output(&self, name: &str) -> Result<OutputValue, String> {
         if let Some(outputs) = &self.outputs {
             let value = outputs
-                .get(&output_name_from_input_ref(input_ref))
-                .ok_or(format!("No output with ref: {:?}", input_ref))?;
+                .get(name)
+                .ok_or(format!("No output with name: {:?}", name))?;
             Ok(value.clone())
         } else {
             return Err(format!(
@@ -256,7 +260,7 @@ impl ResourceGraph {
         self.resources.get(resource_ref).cloned()
     }
 
-    fn get_resource_from_input_ref(&self, input_ref: &InputRef) -> Option<Resource> {
+    pub fn get_resource_from_input_ref(&self, input_ref: &InputRef) -> Option<Resource> {
         self.get_resource_from_ref(&resource_ref_from_input_ref(input_ref))
     }
 

@@ -7,6 +7,8 @@ use std::{
 use difference::{Changeset, Difference};
 use yansi::{Color, Paint, Style};
 
+const SPACING: &str = "  ";
+
 static ACTION_COUNT: AtomicU16 = AtomicU16::new(0);
 
 fn with_prefix_and_style<S1, S2>(text: S1, prefix: S2, style: Style) -> String
@@ -36,7 +38,7 @@ where
 }
 
 fn get_line_prefix() -> String {
-    "  │  ".repeat(ACTION_COUNT.load(Ordering::SeqCst).into())
+    format!("{0}|{0}", SPACING).repeat(ACTION_COUNT.load(Ordering::SeqCst).into())
 }
 
 pub fn log<S>(message: S)
@@ -67,11 +69,11 @@ where
 
     log("");
     ACTION_COUNT.fetch_sub(1, Ordering::SeqCst);
-    log(&format!("  ╰─ {}", message));
+    log(&format!("{}╰─ {}", SPACING, message));
     if let Some(results) = results {
         log(&with_prefix_and_style(
             results,
-            "       ",
+            format!("{0}{0}{0} ", SPACING),
             Style::default().dimmed(),
         ));
     }
@@ -98,7 +100,9 @@ pub fn log_changeset(changeset: Changeset) {
         .diffs
         .iter()
         .map(|diff| match diff {
-            Difference::Same(same) => with_prefix_and_style(same, "  ", Style::default().dimmed()),
+            Difference::Same(same) => {
+                with_prefix_and_style(same, SPACING, Style::default().dimmed())
+            }
             Difference::Add(add) => with_prefix_and_style(
                 add,
                 &format!("{} ", Paint::green("+")),

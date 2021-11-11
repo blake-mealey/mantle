@@ -34,7 +34,7 @@ fn tag_commit(
     previous_graph: &ResourceGraph,
 ) -> Result<u32, String> {
     let mut tag_count: u32 = 0;
-    for (name, _) in &deployment_config.place_ids {
+    for name in deployment_config.place_ids.keys() {
         let input_ref = (
             resource_types::PLACE_FILE.to_owned(),
             name.to_owned(),

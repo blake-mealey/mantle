@@ -2,7 +2,6 @@ deployments:
   - name: staging
     branches: [dev, dev/*]
     experienceId: 3028808377
-    tagCommit: true
     placeIds:
       start: 7818935418
   - name: production

@@ -587,7 +587,7 @@ impl RobloxApi {
         let mut text_fields = HashMap::new();
         text_fields.insert(
             "__RequestVerificationToken".to_owned(),
-            image_verification_token.clone(),
+            image_verification_token,
         );
         let multipart = Self::get_image_from_data(
             "DeveloperProductImageFile".to_owned(),

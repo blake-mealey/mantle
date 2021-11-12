@@ -409,7 +409,7 @@ impl ResourceManager for RobloxResourceManager {
                     inputs.icon_asset_id,
                 )?;
 
-                Ok(Some(resource_outputs.clone()))
+                Ok(Some(resource_outputs))
             }
             _ => panic!(
                 "Update not implemented for resource type: {}",

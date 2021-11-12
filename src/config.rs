@@ -1,5 +1,5 @@
 use crate::roblox_api::{
-    DeployMode, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
+    ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
     ExperienceConfigurationModel, ExperienceGenre, ExperiencePermissionsModel,
     ExperiencePlayableDevice, PlaceConfigurationModel, SocialSlotType,
 };
@@ -13,7 +13,6 @@ pub struct Config {
     #[serde(default = "Vec::new")]
     pub deployments: Vec<DeploymentConfig>,
 
-    #[serde(default)]
     pub templates: TemplateConfig,
 
     #[serde(default)]
@@ -60,17 +59,15 @@ pub struct DeploymentConfig {
     pub branches: Vec<String>,
 
     #[serde(default)]
-    pub deploy_mode: DeployMode,
-
-    #[serde(default)]
     pub tag_commit: bool,
 
-    pub experience_id: u64,
+    pub experience_id: Option<u64>,
 
+    #[serde(default = "HashMap::new")]
     pub place_ids: HashMap<String, u64>,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TemplateConfig {
     pub experience: Option<ExperienceTemplateConfig>,
@@ -157,7 +154,6 @@ pub struct ExperienceTemplateConfig {
     // avatar_scale_constraints: Option<HashMap<String, (f32, f32)>>,   // TODO: figure out api
 
     // other
-    // is_archived: Option<bool>,
     pub developer_products: Option<HashMap<String, DeveloperProductConifg>>,
 }
 
@@ -226,6 +222,8 @@ impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
             },
             universe_animation_type: config.avatar_animation_type,
             universe_collision_type: config.avatar_collision_type,
+
+            is_archived: None,
         }
     }
 }

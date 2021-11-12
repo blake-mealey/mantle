@@ -31,12 +31,6 @@ impl Resource {
         }
     }
 
-    pub fn add_value_stub_input(&mut self, name: &str) -> &mut Self {
-        self.inputs
-            .insert(name.to_owned(), Input::Value(serde_yaml::Value::Null));
-        self
-    }
-
     pub fn add_value_input<T>(&mut self, name: &str, input_value: &T) -> Result<&mut Self, String>
     where
         T: serde::Serialize,
@@ -88,11 +82,15 @@ impl Resource {
         )
     }
 
-    fn get_output_from_input_ref(&self, input_ref: &InputRef) -> Result<OutputValue, String> {
+    pub fn get_output_from_input_ref(&self, input_ref: &InputRef) -> Result<OutputValue, String> {
+        self.get_output(&output_name_from_input_ref(input_ref))
+    }
+
+    pub fn get_output(&self, name: &str) -> Result<OutputValue, String> {
         if let Some(outputs) = &self.outputs {
             let value = outputs
-                .get(&output_name_from_input_ref(input_ref))
-                .ok_or(format!("No output with ref: {:?}", input_ref))?;
+                .get(name)
+                .ok_or(format!("No output with name: {:?}", name))?;
             Ok(value.clone())
         } else {
             return Err(format!(
@@ -139,7 +137,7 @@ pub fn output_name_from_input_ref(input_ref: &InputRef) -> String {
     let (_, _, input_ref_output) = input_ref;
     input_ref_output.clone()
 }
-pub trait ResourceManagerBackend {
+pub trait ResourceManager {
     fn create(
         &mut self,
         resource_type: &str,
@@ -159,44 +157,6 @@ pub trait ResourceManagerBackend {
         resource_inputs: serde_yaml::Value,
         resource_outputs: serde_yaml::Value,
     ) -> Result<(), String>;
-}
-
-pub struct ResourceManager {
-    implementation: Box<dyn ResourceManagerBackend>,
-}
-
-impl ResourceManager {
-    pub fn new(implementation: Box<dyn ResourceManagerBackend>) -> Self {
-        ResourceManager { implementation }
-    }
-
-    fn create(
-        &mut self,
-        resource_type: &str,
-        resource_inputs: serde_yaml::Value,
-    ) -> Result<Option<serde_yaml::Value>, String> {
-        self.implementation.create(resource_type, resource_inputs)
-    }
-
-    fn update(
-        &mut self,
-        resource_type: &str,
-        resource_inputs: serde_yaml::Value,
-        resource_outputs: serde_yaml::Value,
-    ) -> Result<Option<serde_yaml::Value>, String> {
-        self.implementation
-            .update(resource_type, resource_inputs, resource_outputs)
-    }
-
-    fn delete(
-        &mut self,
-        resource_type: &str,
-        resource_inputs: serde_yaml::Value,
-        resource_outputs: serde_yaml::Value,
-    ) -> Result<(), String> {
-        self.implementation
-            .delete(resource_type, resource_inputs, resource_outputs)
-    }
 }
 
 fn format_inputs_hash(inputs_hash: &str) -> &str {
@@ -256,7 +216,7 @@ impl ResourceGraph {
         self.resources.get(resource_ref).cloned()
     }
 
-    fn get_resource_from_input_ref(&self, input_ref: &InputRef) -> Option<Resource> {
+    pub fn get_resource_from_input_ref(&self, input_ref: &InputRef) -> Option<Resource> {
         self.get_resource_from_ref(&resource_ref_from_input_ref(input_ref))
     }
 
@@ -397,12 +357,16 @@ impl ResourceGraph {
         }
     }
 
-    fn internal_evaluate(
+    pub fn evaluate<TManager>(
         &mut self,
-        resource_order: Vec<ResourceRef>,
         previous_graph: &ResourceGraph,
-        resource_manager: &mut ResourceManager,
-    ) -> Result<EvaluateResults, String> {
+        resource_manager: &mut TManager,
+    ) -> Result<EvaluateResults, String>
+    where
+        TManager: ResourceManager,
+    {
+        let resource_order = self.get_topological_order()?;
+
         let mut results: EvaluateResults = Default::default();
         let mut failures_count = 0;
 
@@ -564,20 +528,11 @@ impl ResourceGraph {
 
         if failures_count > 0 {
             Err(format!(
-                "Failed {} updates while evaluating the resource graph. See above for more details",
+                "Failed {} update(s) while evaluating the resource graph. See above for more details",
                 failures_count
             ))
         } else {
             Ok(results)
         }
-    }
-
-    pub fn evaluate(
-        &mut self,
-        previous_graph: &ResourceGraph,
-        resource_manager: &mut ResourceManager,
-    ) -> Result<EvaluateResults, String> {
-        let resource_order = self.get_topological_order()?;
-        self.internal_evaluate(resource_order, previous_graph, resource_manager)
     }
 }

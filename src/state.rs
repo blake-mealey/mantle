@@ -8,11 +8,12 @@ use rusoto_s3::{S3Client, S3};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::io::AsyncReadExt;
+use yansi::Paint;
 
 use crate::{
     config::{Config, DeploymentConfig, PlayabilityConfig, RemoteStateConfig, StateConfig},
     logger,
-    resource_manager::{resource_types, AssetId, SINGLETON_RESOURCE_ID},
+    resource_manager::{resource_types, SINGLETON_RESOURCE_ID},
     resources::{InputRef, Resource, ResourceGraph},
     roblox_api::{ExperienceConfigurationModel, PlaceConfigurationModel},
 };
@@ -50,8 +51,8 @@ fn parse_state(file_name: &str, data: &str) -> Result<ResourceState, String> {
 fn get_state_from_file(project_path: &Path) -> Result<Option<ResourceState>, String> {
     let state_file_path = get_state_file_path(project_path);
     logger::log(format!(
-        "Loading previous state from local file: {}",
-        state_file_path.display()
+        "Loading previous state from local file {}",
+        Paint::cyan(state_file_path.display())
     ));
 
     if state_file_path.exists() {
@@ -76,8 +77,8 @@ async fn get_state_from_remote(
     config: &RemoteStateConfig,
 ) -> Result<Option<ResourceState>, String> {
     logger::log(format!(
-        "Loading previous state from remote object: {}",
-        config
+        "Loading previous state from remote object {}",
+        Paint::cyan(config)
     ));
 
     let client = S3Client::new(config.region.clone());
@@ -107,52 +108,6 @@ async fn get_state_from_remote(
     }
 }
 
-fn get_default_resources(
-    config: &Config,
-    deployment_config: &DeploymentConfig,
-) -> Result<Vec<Resource>, String> {
-    let mut resources: Vec<Resource> = Vec::new();
-
-    let mut experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
-        .add_output::<AssetId>("assetId", &deployment_config.experience_id.clone())?
-        .clone();
-    let experience_asset_id_ref = experience.get_input_ref("assetId");
-    if config.templates.experience.is_some() {
-        experience.add_value_stub_input("configuration");
-    }
-    resources.push(experience.clone());
-
-    for (name, id) in deployment_config.place_ids.iter() {
-        let place_file = config
-            .templates
-            .places
-            .get(name)
-            .map(|p| p.file.clone())
-            .ok_or(format!("No place file configured for place: {}", name))?;
-        let place_file_resource = Resource::new(resource_types::PLACE_FILE, name)
-            .add_output("assetId", &id)?
-            .add_ref_input("experienceId", &experience_asset_id_ref)
-            .add_value_input("filePath", &place_file)?
-            .add_value_stub_input("fileHash")
-            .add_value_stub_input("version")
-            .add_value_stub_input("deployMode")
-            .clone();
-        let place_file_asset_id_ref = place_file_resource.get_input_ref("assetId");
-        resources.push(place_file_resource);
-        if config.templates.places.contains_key(name) {
-            resources.push(
-                Resource::new(resource_types::PLACE_CONFIGURATION, name)
-                    .add_ref_input("experienceId", &experience_asset_id_ref)
-                    .add_ref_input("assetId", &place_file_asset_id_ref)
-                    .add_value_stub_input("configuration")
-                    .clone(),
-            );
-        }
-    }
-
-    Ok(resources)
-}
-
 pub async fn get_previous_state(
     project_path: &Path,
     config: &Config,
@@ -173,12 +128,11 @@ pub async fn get_previous_state(
     if state.deployments.get(&deployment_config.name).is_none() {
         logger::log(format!(
             "No previous state for deployment {}",
-            deployment_config.name
+            Paint::cyan(deployment_config.name.clone())
         ));
-        state.deployments.insert(
-            deployment_config.name.clone(),
-            get_default_resources(config, deployment_config)?,
-        );
+        state
+            .deployments
+            .insert(deployment_config.name.clone(), Vec::new());
     }
 
     Ok(state)
@@ -191,15 +145,27 @@ pub fn get_desired_graph(
 ) -> Result<ResourceGraph, String> {
     let mut resources: Vec<Resource> = Vec::new();
 
-    let mut experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
-        .add_output::<AssetId>("assetId", &deployment_config.experience_id.clone())?
+    let experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
+        .add_value_input("assetId", &deployment_config.experience_id.clone())?
         .clone();
     let experience_asset_id_ref = experience.get_input_ref("assetId");
+    let experience_start_place_id_ref = experience.get_input_ref("startPlaceId");
+    resources.push(experience);
+
     if let Some(experience_configuration) = &config.templates.experience {
-        experience.add_value_input::<ExperienceConfigurationModel>(
-            "configuration",
-            &experience_configuration.into(),
-        )?;
+        resources.push(
+            Resource::new(
+                resource_types::EXPERIENCE_CONFIGURATION,
+                SINGLETON_RESOURCE_ID,
+            )
+            .add_ref_input("experienceId", &experience_asset_id_ref)
+            .add_value_input::<ExperienceConfigurationModel>(
+                "configuration",
+                &experience_configuration.into(),
+            )?
+            .clone(),
+        );
+
         resources.push(
             Resource::new(resource_types::EXPERIENCE_ACTIVATION, SINGLETON_RESOURCE_ID)
                 .add_value_input(
@@ -212,43 +178,7 @@ pub fn get_desired_graph(
                 .add_ref_input("experienceId", &experience_asset_id_ref)
                 .clone(),
         );
-    }
-    resources.push(experience.clone());
 
-    for (name, id) in deployment_config.place_ids.iter() {
-        let place_file = config
-            .templates
-            .places
-            .get(name)
-            .map(|p| p.file.clone())
-            .ok_or(format!("No place file configured for place: {}", name))?;
-        let place_file_resource = Resource::new(resource_types::PLACE_FILE, name)
-            .add_output("assetId", &id)?
-            .add_ref_input("experienceId", &experience_asset_id_ref)
-            .add_value_input("filePath", &place_file)?
-            .add_value_input(
-                "fileHash",
-                &get_file_hash(project_path.join(place_file).as_path())?,
-            )?
-            .add_value_input("deployMode", &deployment_config.deploy_mode)?
-            .clone();
-        let place_file_asset_id_ref = place_file_resource.get_input_ref("assetId");
-        resources.push(place_file_resource);
-        if let Some(place_configuration) = config.templates.places.get(name) {
-            resources.push(
-                Resource::new(resource_types::PLACE_CONFIGURATION, name)
-                    .add_ref_input("experienceId", &experience_asset_id_ref)
-                    .add_ref_input("assetId", &place_file_asset_id_ref)
-                    .add_value_input::<PlaceConfigurationModel>(
-                        "configuration",
-                        &place_configuration.clone().into(),
-                    )?
-                    .clone(),
-            );
-        }
-    }
-
-    if let Some(experience_configuration) = &config.templates.experience {
         if let Some(file_path) = &experience_configuration.icon {
             resources.push(
                 Resource::new(resource_types::EXPERIENCE_ICON, file_path)
@@ -326,11 +256,49 @@ pub fn get_desired_graph(
         }
     }
 
+    if !config.templates.places.keys().any(|n| n == "start") {
+        return Err("No start place defined".to_owned());
+    }
+
+    for (name, template) in config.templates.places.iter() {
+        let place_id = deployment_config.place_ids.get(name);
+
+        let place = Resource::new(resource_types::PLACE, name)
+            .add_ref_input("experienceId", &experience_asset_id_ref)
+            .add_ref_input("startPlaceId", &experience_start_place_id_ref)
+            .add_value_input("assetId", &place_id)?
+            .add_value_input("isStart", &(name == "start"))?
+            .clone();
+        let place_asset_id_ref = place.get_input_ref("assetId");
+        resources.push(place);
+
+        resources.push(
+            Resource::new(resource_types::PLACE_FILE, name)
+                .add_ref_input("assetId", &place_asset_id_ref)
+                .add_value_input("filePath", &template.file)?
+                .add_value_input(
+                    "fileHash",
+                    &get_file_hash(project_path.join(&template.file).as_path())?,
+                )?
+                .clone(),
+        );
+
+        resources.push(
+            Resource::new(resource_types::PLACE_CONFIGURATION, name)
+                .add_ref_input("assetId", &place_asset_id_ref)
+                .add_value_input::<PlaceConfigurationModel>(
+                    "configuration",
+                    &template.clone().into(),
+                )?
+                .clone(),
+        );
+    }
+
     Ok(ResourceGraph::new(&resources))
 }
 
 pub async fn save_state_to_remote(config: &RemoteStateConfig, data: &[u8]) -> Result<(), String> {
-    logger::log(format!("Saving to remote object: {}", config));
+    logger::log(format!("Saving to remote object {}", Paint::cyan(config)));
 
     let client = S3Client::new(config.region.clone());
     let res = client
@@ -350,8 +318,8 @@ pub fn save_state_to_file(project_path: &Path, data: &[u8]) -> Result<(), String
     let state_file_path = get_state_file_path(project_path);
 
     logger::log(format!(
-        "Saving to local file: {}. It is recommended you commit this file to your source control",
-        state_file_path.display()
+        "Saving to local file {}. It is recommended you commit this file to your source control",
+        Paint::cyan(state_file_path.display())
     ));
 
     fs::write(&state_file_path, data).map_err(|e| {

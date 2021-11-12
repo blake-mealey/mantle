@@ -5,6 +5,7 @@ use ureq::Cookie;
 pub enum AuthType {
     Cookie,
     CookieAndCsrfToken,
+    CookieAndCsrfTokenAndVerificationToken { verification_token: String },
 }
 
 pub trait RequestExt {
@@ -18,6 +19,16 @@ impl RequestExt for ureq::Request {
             AuthType::CookieAndCsrfToken => Ok(self
                 .set("cookie", &auth.get_roblosecurity_cookie()?)
                 .set("x-csrf-token", &auth.get_csrf_token()?)),
+            AuthType::CookieAndCsrfTokenAndVerificationToken { verification_token } => Ok(self
+                .set(
+                    "cookie",
+                    &format!(
+                        "{}; {}",
+                        auth.get_roblosecurity_cookie()?,
+                        Cookie::new("__RequestVerificationToken", verification_token).to_string()
+                    ),
+                )
+                .set("x-csrf-token", &auth.get_csrf_token()?)),
         }
     }
 }
@@ -26,6 +37,7 @@ impl RequestExt for ureq::Request {
 pub struct RobloxAuth {
     roblosecurity: Option<String>,
     csrf_token: Option<String>,
+    // verification_tokens: HashMap<String, String>,
 }
 
 impl RobloxAuth {
@@ -81,4 +93,49 @@ impl RobloxAuth {
         }
         Ok(self.csrf_token.clone().unwrap())
     }
+
+    // pub fn get_verification_token(&mut self, url: String) -> Result<String, String> {
+    //     if let Some(verification_token) = self.verification_tokens.get(&url) {
+    //         return Ok(verification_token.to_owned());
+    //     }
+
+    //     let res = ureq::get(&url)
+    //         .set_auth(AuthType::CookieAndCsrfToken, self)?
+    //         .send_string("");
+
+    //     let response = match res {
+    //         Ok(response) => response,
+    //         Err(ureq::Error::Status(_code, response)) => response,
+    //         Err(e) => return Err(format!("Request for verification token failed: {}", e)),
+    //     };
+
+    //     let cookies = response.all("set-cookie");
+    //     for cookie in cookies {
+    //         let cookie = Cookie::parse(cookie).map_err(|e| {
+    //             format!(
+    //                 "Request for verification token's set-cookie header could not be parsed: {}",
+    //                 e
+    //             )
+    //         })?;
+
+    //         if let ("__RequestVerificationToken", value) = cookie.name_value() {
+    //             self.verification_tokens
+    //                 .insert(url.clone(), value.to_owned());
+    //             return Ok(value.to_owned());
+    //         }
+    //     }
+
+    //     return Err(
+    //         "Request for verification token did not return a __RequestVerificationToken cookie"
+    //             .to_owned(),
+    //     );
+    // }
+
+    // pub fn get_verification_token_cookie(&mut self, url: String) -> Result<String, String> {
+    //     Ok(Cookie::new(
+    //         "__RequestVerificationToken",
+    //         self.get_verification_token(url)?.to_string(),
+    //     )
+    //     .to_string())
+    // }
 }

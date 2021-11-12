@@ -31,6 +31,7 @@ templates:
         name: My first product
         description: With an amazing description
         price: 50
+        icon: developer-product-1.png
   places:
     start:
       file: start.rbxlx

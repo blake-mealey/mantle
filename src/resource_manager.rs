@@ -23,6 +23,7 @@ pub mod resource_types {
     pub const EXPERIENCE_THUMBNAIL: &str = "experienceThumbnail";
     pub const EXPERIENCE_THUMBNAIL_ORDER: &str = "experienceThumbnailOrder";
     pub const EXPERIENCE_DEVELOPER_PRODUCT: &str = "experienceDeveloperProduct";
+    pub const EXPERIENCE_DEVELOPER_PRODUCT_ICON: &str = "experienceDeveloperProductIcon";
     pub const PLACE: &str = "place";
     pub const PLACE_FILE: &str = "placeFile";
     pub const PLACE_CONFIGURATION: &str = "placeConfiguration";
@@ -79,6 +80,19 @@ struct ExperienceIconInputs {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct ExperienceIconOutputs {
+    asset_id: AssetId,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ExperienceDeveloperProductIconInputs {
+    experience_id: AssetId,
+    file_path: String,
+    file_hash: String,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ExperienceDeveloperProductIconOutputs {
     asset_id: AssetId,
 }
 
@@ -252,6 +266,21 @@ impl ResourceManager for RobloxResourceManager {
 
                 Ok(None)
             }
+            resource_types::EXPERIENCE_DEVELOPER_PRODUCT_ICON => {
+                let inputs =
+                    serde_yaml::from_value::<ExperienceDeveloperProductIconInputs>(resource_inputs)
+                        .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                let asset_id = self.roblox_api.create_experience_developer_product_icon(
+                    inputs.experience_id,
+                    self.project_path.join(inputs.file_path).as_path(),
+                )?;
+
+                Ok(Some(
+                    serde_yaml::to_value(ExperienceDeveloperProductIconOutputs { asset_id })
+                        .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
+            }
             resource_types::EXPERIENCE_DEVELOPER_PRODUCT => {
                 let inputs =
                     serde_yaml::from_value::<ExperienceDeveloperProductInputs>(resource_inputs)
@@ -359,6 +388,9 @@ impl ResourceManager for RobloxResourceManager {
             resource_types::PLACE => self.create(resource_type, resource_inputs),
             resource_types::PLACE_FILE => self.create(resource_type, resource_inputs),
             resource_types::PLACE_CONFIGURATION => self.create(resource_type, resource_inputs),
+            resource_types::EXPERIENCE_DEVELOPER_PRODUCT_ICON => {
+                self.create(resource_type, resource_inputs)
+            }
             resource_types::EXPERIENCE_DEVELOPER_PRODUCT => {
                 let inputs =
                     serde_yaml::from_value::<ExperienceDeveloperProductInputs>(resource_inputs)
@@ -434,6 +466,7 @@ impl ResourceManager for RobloxResourceManager {
                     .delete_experience_thumbnail(inputs.experience_id, outputs.asset_id)
             }
             resource_types::EXPERIENCE_THUMBNAIL_ORDER => Ok(()),
+            resource_types::EXPERIENCE_DEVELOPER_PRODUCT_ICON => Ok(()),
             resource_types::EXPERIENCE_DEVELOPER_PRODUCT => {
                 let inputs =
                     serde_yaml::from_value::<ExperienceDeveloperProductInputs>(resource_inputs)

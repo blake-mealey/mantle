@@ -118,6 +118,7 @@ pub struct DeveloperProductConifg {
     pub name: String,
     pub price: u32,
     pub description: Option<String>,
+    pub icon: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]

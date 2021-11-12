@@ -1,7 +1,9 @@
 use multipart::client::lazy::{Multipart, PreparedFields};
+use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{clone::Clone, collections::HashMap, ffi::OsStr, fs, path::Path};
+use ureq::Cookie;
 
 use crate::{
     resource_manager::AssetId,
@@ -265,7 +267,7 @@ impl RobloxApi {
             place_id
         ))
         .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
-        .send_string("");
+        .call();
 
         let response = Self::handle_response(res)?;
         let model = response
@@ -323,7 +325,7 @@ impl RobloxApi {
             experience_id
         ))
         .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
-        .send_string("");
+        .call();
 
         let response = Self::handle_response(res)?;
         let model = response
@@ -539,6 +541,95 @@ impl RobloxApi {
         Ok(())
     }
 
+    pub fn create_experience_developer_product_icon(
+        &mut self,
+        experience_id: AssetId,
+        icon_file: &Path,
+    ) -> Result<AssetId, String> {
+        let (image_verification_token, request_verification_token) = {
+            let res = ureq::get("https://www.roblox.com/places/create-developerproduct")
+                .query("universeId", &experience_id.to_string())
+                .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+                .call();
+
+            let response = Self::handle_response(res)?;
+            let request_verification_token = response
+                .all("set-cookie")
+                .iter()
+                .find_map(|c| match Cookie::parse(c.to_owned()) {
+                    Ok(cookie) if cookie.name() == "__RequestVerificationToken" => {
+                        Some(cookie.value().to_owned())
+                    }
+                    _ => None,
+                })
+                .ok_or("Response did not include a __RequestVerificationToken cookie")?;
+            let raw_html = response
+                .into_string()
+                .map_err(|e| format!("Failed to read HTML response: {}", e))?;
+            let fragment = Html::parse_fragment(&raw_html);
+            let verification_token_input_selector = Selector::parse(
+                "#DeveloperProductImageUpload input[name=\"__RequestVerificationToken\"]",
+            )
+            .unwrap();
+            let verification_token_input = fragment
+                .select(&verification_token_input_selector)
+                .next()
+                .ok_or("Failed to find __RequestVerificationToken input")?;
+            let image_verification_token = verification_token_input
+                .value()
+                .attr("value")
+                .ok_or("__RequestVerificationToken input did not have a value")?
+                .to_owned();
+
+            (image_verification_token, request_verification_token)
+        };
+
+        let mut text_fields = HashMap::new();
+        text_fields.insert(
+            "__RequestVerificationToken".to_owned(),
+            image_verification_token.clone(),
+        );
+        let multipart = Self::get_image_from_data(
+            "DeveloperProductImageFile".to_owned(),
+            icon_file,
+            Some(text_fields),
+        )?;
+
+        let res = ureq::post("https://www.roblox.com/places/developerproduct-icon")
+            .query("developerProductId", "0")
+            .set(
+                "Content-Type",
+                &format!("multipart/form-data; boundary={}", multipart.boundary()),
+            )
+            .set_auth(
+                AuthType::CookieAndCsrfTokenAndVerificationToken {
+                    verification_token: request_verification_token,
+                },
+                &mut self.roblox_auth,
+            )?
+            .send(multipart);
+        let response = Self::handle_response(res)?;
+        let raw_html = response
+            .into_string()
+            .map_err(|e| format!("Failed to read HTML response: {}", e))?;
+        let fragment = Html::parse_fragment(&raw_html);
+        let asset_id_input_selector =
+            Selector::parse("#developerProductIcon input[id=\"assetId\"]").unwrap();
+        let asset_id_input = fragment
+            .select(&asset_id_input_selector)
+            .next()
+            .ok_or("Failed to find assetId input")?;
+        let asset_id_str = asset_id_input
+            .value()
+            .attr("value")
+            .ok_or("assetId input did not have a value")?;
+        let asset_id = asset_id_str
+            .parse::<AssetId>()
+            .map_err(|e| format!("Failed to parse asset id: {}", e))?;
+
+        Ok(asset_id)
+    }
+
     pub fn create_experience_developer_product(
         &mut self,
         experience_id: AssetId,
@@ -555,7 +646,7 @@ impl RobloxApi {
         .query("priceInRobux", &price.to_string())
         .query("description", &description);
         if let Some(icon_asset_id) = icon_asset_id {
-            req = req.query("iconAssetId", &icon_asset_id.to_string());
+            req = req.query("iconImageAssetId", &icon_asset_id.to_string());
         }
         let res = req
             .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
@@ -583,7 +674,7 @@ impl RobloxApi {
             .query("universeId", &experience_id.to_string())
             .query("page", &page.to_string())
             .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
-            .send_string("");
+            .call();
 
         let response = Self::handle_response(res)?;
         let model = response
@@ -642,10 +733,10 @@ impl RobloxApi {
         ))
         .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
         .send_json(json!({
-            "name": name,
-            "priceInRobux": price,
-            "description": description,
-            "iconAssetId": icon_asset_id
+            "Name": name,
+            "PriceInRobux": price,
+            "Description": description,
+            "IconImageAssetId": icon_asset_id
         }));
 
         Self::handle_response(res)?;
@@ -653,39 +744,39 @@ impl RobloxApi {
         Ok(())
     }
 
-    pub fn upload_asset(&mut self, asset_file: &Path) -> Result<(), String> {
-        let mut fields: HashMap<String, String> = HashMap::new();
-        fields.insert("name".to_owned(), "A cool decal.".to_owned());
-        fields.insert("assetTypeId".to_owned(), (13 as u32).to_string().to_owned());
-        fields.insert("groupId".to_owned(), "".to_owned());
-        fields.insert(
-            "__RequestVerificationToken".to_owned(),
-            self.roblox_auth
-                .get_verification_token("https://www.roblox.com/build/upload".to_owned())?,
-        );
-        let multipart = Self::get_image_from_data("file".to_owned(), asset_file, Some(fields))?;
+    // pub fn upload_asset(&mut self, asset_file: &Path) -> Result<(), String> {
+    //     let mut fields: HashMap<String, String> = HashMap::new();
+    //     fields.insert("name".to_owned(), "A cool decal.".to_owned());
+    //     fields.insert("assetTypeId".to_owned(), (13 as u32).to_string().to_owned());
+    //     fields.insert("groupId".to_owned(), "".to_owned());
+    //     fields.insert(
+    //         "__RequestVerificationToken".to_owned(),
+    //         self.roblox_auth
+    //             .get_verification_token("https://www.roblox.com/build/upload".to_owned())?,
+    //     );
+    //     let multipart = Self::get_image_from_data("file".to_owned(), asset_file, Some(fields))?;
 
-        let res = ureq::post(&format!("https://www.roblox.com/build/upload"))
-            .set(
-                "Content-Type",
-                &format!("multipart/form-data; boundary={}", multipart.boundary()),
-            )
-            .set_auth(
-                AuthType::CookieAndCsrfTokenAndVerificationToken,
-                &mut self.roblox_auth,
-            )?
-            .send(multipart);
+    //     let res = ureq::post(&format!("https://www.roblox.com/build/upload"))
+    //         .set(
+    //             "Content-Type",
+    //             &format!("multipart/form-data; boundary={}", multipart.boundary()),
+    //         )
+    //         .set_auth(
+    //             AuthType::CookieAndCsrfTokenAndVerificationToken,
+    //             &mut self.roblox_auth,
+    //         )?
+    //         .send(multipart);
 
-        let response = Self::handle_response(res)?;
-        println!("{:?}", response.into_string());
-        // let model = response
-        //     .into_json::<UploadImageResponse>()
-        //     .map_err(|e| format!("Failed to deserialize upload image response: {}", e))?;
+    //     let response = Self::handle_response(res)?;
+    //     println!("{:?}", response.into_string());
+    //     // let model = response
+    //     //     .into_json::<UploadImageResponse>()
+    //     //     .map_err(|e| format!("Failed to deserialize upload image response: {}", e))?;
 
-        // Ok(UploadImageResult {
-        //     asset_id: model.target_id,
-        // })
-        // Ok(())
-        Err("unimplemented".to_owned())
-    }
+    //     // Ok(UploadImageResult {
+    //     //     asset_id: model.target_id,
+    //     // })
+    //     // Ok(())
+    //     Err("unimplemented".to_owned())
+    // }
 }

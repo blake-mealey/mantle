@@ -234,21 +234,18 @@ pub fn get_desired_graph(
                         )?
                         .clone();
                 if let Some(icon_path) = &developer_product.icon {
-                    let id = format!(
-                        "{}_icon {}",
-                        resource_types::EXPERIENCE_DEVELOPER_PRODUCT,
-                        name
-                    );
-                    let icon_resource = Resource::new(resource_types::ASSET, &id)
-                        .add_value_input("filePath", icon_path)?
-                        .add_value_input(
-                            "fileHash",
-                            &get_file_hash(project_path.join(icon_path).as_path())?,
-                        )?
-                        .clone();
+                    let icon_resource =
+                        Resource::new(resource_types::EXPERIENCE_DEVELOPER_PRODUCT_ICON, name)
+                            .add_ref_input("experienceId", &experience_asset_id_ref)
+                            .add_value_input("filePath", icon_path)?
+                            .add_value_input(
+                                "fileHash",
+                                &get_file_hash(project_path.join(icon_path).as_path())?,
+                            )?
+                            .clone();
                     resources.push(icon_resource.clone());
                     product_resource = product_resource
-                        .add_ref_input("assetId", &icon_resource.get_input_ref("assetId"))
+                        .add_ref_input("iconAssetId", &icon_resource.get_input_ref("assetId"))
                         .clone();
                 }
                 resources.push(product_resource);

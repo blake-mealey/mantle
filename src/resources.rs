@@ -485,7 +485,13 @@ impl ResourceGraph {
             }
         }
 
-        for (resource_ref, resource) in previous_graph.resources.iter() {
+        // Iterate over previous resources in reverse order so that leaf resources are removed first
+        let mut previous_resource_order = previous_graph.get_topological_order()?;
+        previous_resource_order.reverse();
+
+        for resource_ref in previous_resource_order.iter() {
+            let resource = &previous_graph.get_resource_from_ref(resource_ref).unwrap();
+
             // If the resource is still in the graph, there is no need to delete the resource
             if self.get_resource_from_ref(resource_ref).is_some() {
                 continue;

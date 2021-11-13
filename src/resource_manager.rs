@@ -553,6 +553,15 @@ impl ResourceManager for RobloxResourceManager {
                 Ok(())
             }
             resource_types::EXPERIENCE_CONFIGURATION => Ok(()),
+            resource_types::EXPERIENCE_ACTIVATION => {
+                let inputs = serde_yaml::from_value::<ExperienceActivationInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                self.roblox_api
+                    .set_experience_active(inputs.experience_id, false)?;
+
+                Ok(())
+            }
             resource_types::EXPERIENCE_ICON => {
                 // TODO: figure out which endpoint to use to delete an icon
                 Ok(())

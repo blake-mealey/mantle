@@ -14,10 +14,10 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>) -> i32 {
     logger::start_action("Loading project:");
     let Project {
         project_path,
-        config,
-        deployment_config,
         previous_graph,
         mut state,
+        deployment_config,
+        state_config,
         ..
     } = match load_project(project, deployment).await {
         Ok(Some(v)) => v,
@@ -55,7 +55,7 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>) -> i32 {
 
     logger::start_action("Saving state:");
     state.deployments.remove(&deployment_config.name);
-    match save_state(&project_path, &config.state, &state).await {
+    match save_state(&project_path, &state_config, &state).await {
         Ok(_) => {}
         Err(e) => {
             logger::end_action(Paint::red(e));

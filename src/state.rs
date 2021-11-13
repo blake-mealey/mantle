@@ -11,7 +11,9 @@ use tokio::io::AsyncReadExt;
 use yansi::Paint;
 
 use crate::{
-    config::{Config, DeploymentConfig, PlayabilityConfig, RemoteStateConfig, StateConfig},
+    config::{
+        Config, DeploymentConfig, PlayabilityConfig, RemoteStateConfig, StateConfig, TemplateConfig,
+    },
     logger,
     resource_manager::{resource_types, SINGLETON_RESOURCE_ID},
     resources::{InputRef, Resource, ResourceGraph},
@@ -140,7 +142,7 @@ pub async fn get_previous_state(
 
 pub fn get_desired_graph(
     project_path: &Path,
-    config: &Config,
+    templates_config: &TemplateConfig,
     deployment_config: &DeploymentConfig,
 ) -> Result<ResourceGraph, String> {
     let mut resources: Vec<Resource> = Vec::new();
@@ -152,7 +154,7 @@ pub fn get_desired_graph(
     let experience_start_place_id_ref = experience.get_input_ref("startPlaceId");
     resources.push(experience);
 
-    if let Some(experience_configuration) = &config.templates.experience {
+    if let Some(experience_configuration) = &templates_config.experience {
         resources.push(
             Resource::new(
                 resource_types::EXPERIENCE_CONFIGURATION,
@@ -219,50 +221,66 @@ pub fn get_desired_graph(
         }
     }
 
-    if !config.templates.places.keys().any(|n| n == "start") {
+    if let Some(places) = &templates_config.places {
+        if !places.keys().any(|n| n == "start") {
+            return Err("No start place defined".to_owned());
+        }
+
+        for (name, template) in places.iter() {
+            let place_id = deployment_config.place_ids.get(name);
+            let place_file = template
+                .file
+                .clone()
+                .ok_or(format!("Missing required field file for place {}", name))?;
+
+            let place = Resource::new(resource_types::PLACE, name)
+                .add_ref_input("experienceId", &experience_asset_id_ref)
+                .add_ref_input("startPlaceId", &experience_start_place_id_ref)
+                .add_value_input("assetId", &place_id)?
+                .add_value_input("isStart", &(name == "start"))?
+                .clone();
+            let place_asset_id_ref = place.get_input_ref("assetId");
+            resources.push(place);
+
+            resources.push(
+                Resource::new(resource_types::PLACE_FILE, name)
+                    .add_ref_input("assetId", &place_asset_id_ref)
+                    .add_value_input("filePath", &place_file)?
+                    .add_value_input(
+                        "fileHash",
+                        &get_file_hash(project_path.join(&place_file).as_path())?,
+                    )?
+                    .clone(),
+            );
+
+            resources.push(
+                Resource::new(resource_types::PLACE_CONFIGURATION, name)
+                    .add_ref_input("assetId", &place_asset_id_ref)
+                    .add_value_input::<PlaceConfigurationModel>(
+                        "configuration",
+                        &template.clone().into(),
+                    )?
+                    .clone(),
+            );
+        }
+    } else {
         return Err("No start place defined".to_owned());
     }
 
-    for (name, template) in config.templates.places.iter() {
-        let place_id = deployment_config.place_ids.get(name);
-
-        let place = Resource::new(resource_types::PLACE, name)
-            .add_ref_input("experienceId", &experience_asset_id_ref)
-            .add_ref_input("startPlaceId", &experience_start_place_id_ref)
-            .add_value_input("assetId", &place_id)?
-            .add_value_input("isStart", &(name == "start"))?
-            .clone();
-        let place_asset_id_ref = place.get_input_ref("assetId");
-        resources.push(place);
-
-        resources.push(
-            Resource::new(resource_types::PLACE_FILE, name)
-                .add_ref_input("assetId", &place_asset_id_ref)
-                .add_value_input("filePath", &template.file)?
-                .add_value_input(
-                    "fileHash",
-                    &get_file_hash(project_path.join(&template.file).as_path())?,
-                )?
-                .clone(),
-        );
-
-        resources.push(
-            Resource::new(resource_types::PLACE_CONFIGURATION, name)
-                .add_ref_input("assetId", &place_asset_id_ref)
-                .add_value_input::<PlaceConfigurationModel>(
-                    "configuration",
-                    &template.clone().into(),
-                )?
-                .clone(),
-        );
-    }
-
-    if let Some(developer_products) = &config.templates.products {
+    if let Some(developer_products) = &templates_config.products {
         for (name, developer_product) in developer_products {
+            let product_name = developer_product
+                .name
+                .clone()
+                .ok_or(format!("Missing required field name for product {}", name))?;
+            let product_price = developer_product
+                .price
+                .ok_or(format!("Missing required field price for product {}", name))?;
+
             let mut product_resource = Resource::new(resource_types::DEVELOPER_PRODUCT, name)
                 .add_ref_input("experienceId", &experience_asset_id_ref)
-                .add_value_input("name", &developer_product.name)?
-                .add_value_input("price", &developer_product.price)?
+                .add_value_input("name", &product_name)?
+                .add_value_input("price", &product_price)?
                 .add_value_input(
                     "description",
                     developer_product
@@ -289,14 +307,23 @@ pub fn get_desired_graph(
         }
     }
 
-    if let Some(passes) = &config.templates.passes {
+    if let Some(passes) = &templates_config.passes {
         for (name, pass_config) in passes {
+            let pass_icon_file = pass_config
+                .icon
+                .clone()
+                .ok_or(format!("Missing required field icon for pass {}", name))?;
+            let pass_name = pass_config
+                .name
+                .clone()
+                .ok_or(format!("Missing required field name for pass {}", name))?;
+
             let pass_resource = Resource::new(resource_types::GAME_PASS, name)
                 .add_ref_input("startPlaceId", &experience_start_place_id_ref)
-                .add_value_input("name", &pass_config.name)?
+                .add_value_input("name", &pass_name)?
                 .add_value_input("description", &pass_config.description)?
                 .add_value_input("price", &pass_config.price)?
-                .add_value_input("iconFilePath", &pass_config.icon)?
+                .add_value_input("iconFilePath", &pass_icon_file)?
                 .clone();
             resources.push(pass_resource.clone());
             resources.push(
@@ -306,10 +333,10 @@ pub fn get_desired_graph(
                         "initialAssetId",
                         &pass_resource.get_input_ref("initialIconAssetId"),
                     )
-                    .add_value_input("filePath", &pass_config.icon)?
+                    .add_value_input("filePath", &pass_icon_file)?
                     .add_value_input(
                         "fileHash",
-                        &get_file_hash(project_path.join(&pass_config.icon).as_path())?,
+                        &get_file_hash(project_path.join(&pass_icon_file).as_path())?,
                     )?
                     .clone(),
             )

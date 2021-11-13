@@ -4,7 +4,7 @@ use crate::roblox_api::{
     ExperiencePlayableDevice, PlaceConfigurationModel, SocialSlotType,
 };
 use rusoto_core::Region;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, default, fmt, fs, path::Path, str};
 
 #[derive(Deserialize)]
@@ -65,22 +65,23 @@ pub struct DeploymentConfig {
 
     #[serde(default = "HashMap::new")]
     pub place_ids: HashMap<String, u64>,
+
+    pub overrides: Option<TemplateConfig>,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct TemplateConfig {
     pub experience: Option<ExperienceTemplateConfig>,
 
-    #[serde(default = "HashMap::new")]
-    pub places: HashMap<String, PlaceTemplateConfig>,
+    pub places: Option<HashMap<String, PlaceTemplateConfig>>,
 
     pub passes: Option<HashMap<String, PassTemplateConfig>>,
 
     pub products: Option<HashMap<String, DeveloperProductConifg>>,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum GenreConfig {
     All,
@@ -100,7 +101,7 @@ pub enum GenreConfig {
     Western,
 }
 
-#[derive(Deserialize, Clone, Copy)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub enum PlayabilityConfig {
     Private,
@@ -108,7 +109,7 @@ pub enum PlayabilityConfig {
     Friends,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum AvatarTypeConfig {
     R6,
@@ -116,25 +117,25 @@ pub enum AvatarTypeConfig {
     PlayerChoice,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DeveloperProductConifg {
-    pub name: String,
-    pub price: u32,
+    pub name: Option<String>,
+    pub price: Option<u32>,
     pub description: Option<String>,
     pub icon: Option<String>,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PassTemplateConfig {
-    pub name: String,
+    pub name: Option<String>,
     pub description: Option<String>,
-    pub icon: String,
+    pub icon: Option<String>,
     pub price: Option<u32>,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ExperienceTemplateConfig {
     // basic info
@@ -238,7 +239,7 @@ impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
     }
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum ServerFillConfig {
     RobloxOptimized,
@@ -246,10 +247,10 @@ pub enum ServerFillConfig {
     ReservedSlots(u32),
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaceTemplateConfig {
-    pub file: String,
+    pub file: Option<String>,
     pub name: Option<String>,
     pub description: Option<String>,
     pub max_player_count: Option<u32>,

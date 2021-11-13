@@ -6,7 +6,7 @@ use std::{
 use yansi::Paint;
 
 use crate::{
-    config::{load_config_file, Config, DeploymentConfig},
+    config::{load_config_file, DeploymentConfig, StateConfig, TemplateConfig},
     logger,
     resources::ResourceGraph,
     state::{get_desired_graph, get_previous_state, ResourceState},
@@ -66,13 +66,45 @@ fn match_branch(branch: &str, patterns: &[String]) -> bool {
     false
 }
 
+fn override_yaml(a: &mut serde_yaml::Value, b: serde_yaml::Value) {
+    match (a, b) {
+        (a @ &mut serde_yaml::Value::Mapping(_), serde_yaml::Value::Mapping(b)) => {
+            let a = a.as_mapping_mut().unwrap();
+            for (k, v) in b {
+                if !v.is_null() {
+                    if a.contains_key(&k) {
+                        override_yaml(&mut a[&k], v);
+                    } else {
+                        a.insert(k.to_owned(), v.to_owned());
+                    }
+                }
+            }
+        }
+        (a, b) => *a = b,
+    }
+}
+
+fn get_templates_config(
+    templates: TemplateConfig,
+    overrides: TemplateConfig,
+) -> Result<TemplateConfig, String> {
+    let mut templates_value = serde_yaml::to_value(templates)
+        .map_err(|e| format!("Failed to serialize templates: {}", e))?;
+    let overrides_value = serde_yaml::to_value(overrides)
+        .map_err(|e| format!("Failed to serialize overrides: {}", e))?;
+    override_yaml(&mut templates_value, overrides_value);
+    serde_yaml::from_value::<TemplateConfig>(templates_value)
+        .map_err(|e| format!("Failed to deserialize templates: {}", e))
+}
+
 pub struct Project {
     pub project_path: PathBuf,
     pub next_graph: ResourceGraph,
     pub previous_graph: ResourceGraph,
     pub state: ResourceState,
     pub deployment_config: DeploymentConfig,
-    pub config: Config,
+    pub templates_config: TemplateConfig,
+    pub state_config: StateConfig,
 }
 
 pub async fn load_project(
@@ -127,13 +159,19 @@ pub async fn load_project(
         }
     };
 
+    let templates_config = match &deployment_config.overrides {
+        Some(overrides) => get_templates_config(config.templates.clone(), overrides.clone())?,
+        None => config.templates.clone(),
+    };
+
     // Get previous state
     let state = get_previous_state(project_path.as_path(), &config, deployment_config).await?;
 
     // Get our resource graphs
     let previous_graph =
         ResourceGraph::new(state.deployments.get(&deployment_config.name).unwrap());
-    let next_graph = get_desired_graph(project_path.as_path(), &config, deployment_config)?;
+    let next_graph =
+        get_desired_graph(project_path.as_path(), &templates_config, deployment_config)?;
 
     Ok(Some(Project {
         project_path,
@@ -141,6 +179,7 @@ pub async fn load_project(
         previous_graph,
         state,
         deployment_config: deployment_config.clone(),
-        config,
+        templates_config,
+        state_config: config.state.clone(),
     }))
 }

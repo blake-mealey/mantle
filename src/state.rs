@@ -291,6 +291,23 @@ pub fn get_desired_graph(
         );
     }
 
+    if let Some(passes) = &config.templates.passes {
+        for (name, pass_config) in passes {
+            resources.push(
+                Resource::new(resource_types::GAME_PASS, name)
+                    .add_ref_input("startPlaceId", &experience_start_place_id_ref)
+                    .add_value_input("name", &pass_config.name)?
+                    .add_value_input("description", &pass_config.description)?
+                    .add_value_input("iconFilePath", &pass_config.icon)?
+                    .add_value_input(
+                        "iconFileHash",
+                        &get_file_hash(project_path.join(&pass_config.icon).as_path())?,
+                    )?
+                    .clone(),
+            );
+        }
+    }
+
     Ok(ResourceGraph::new(&resources))
 }
 

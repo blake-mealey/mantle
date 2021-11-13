@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{clone::Clone, collections::HashMap, ffi::OsStr, fs, path::Path};
 use ureq::Cookie;
+use url::Url;
 
 use crate::{
     resource_manager::AssetId,
@@ -237,6 +238,26 @@ impl RobloxApi {
         }
     }
 
+    fn get_html_input_value(raw_html: &str, selector: &str) -> Result<String, String> {
+        let fragment = Html::parse_fragment(raw_html);
+        let input_selector = Selector::parse(selector)
+            .map_err(|_| format!("Failed to parse selector {}", selector))?;
+        let input_element = fragment
+            .select(&input_selector)
+            .next()
+            .ok_or(format!("Failed to find input with selector {}", selector))?;
+        let input_value = input_element
+            .value()
+            .attr("value")
+            .ok_or(format!(
+                "input with selector {} did not have a value",
+                selector
+            ))?
+            .to_owned();
+
+        Ok(input_value)
+    }
+
     pub fn upload_place(&mut self, place_file: &Path, place_id: AssetId) -> Result<(), String> {
         let data = match fs::read_to_string(place_file) {
             Ok(v) => v,
@@ -425,7 +446,31 @@ impl RobloxApi {
         Ok(())
     }
 
-    fn get_image_from_data(
+    fn internal_create_multipart_form(
+        text_fields: Option<HashMap<String, String>>,
+    ) -> Multipart<'static, 'static> {
+        let mut multipart = Multipart::new();
+
+        if let Some(fields) = text_fields {
+            for (name, text) in fields {
+                multipart.add_text(name, text);
+            }
+        }
+
+        multipart
+    }
+
+    fn create_multipart_form_from_fields(
+        text_fields: HashMap<String, String>,
+    ) -> Result<PreparedFields<'static>, String> {
+        let mut multipart = Self::internal_create_multipart_form(Some(text_fields));
+
+        multipart
+            .prepare()
+            .map_err(|e| format!("Failed to create multipart form from fields: {}", e))
+    }
+
+    fn create_multipart_form_from_file(
         file_field_name: String,
         image_file: &Path,
         text_fields: Option<HashMap<String, String>>,
@@ -440,18 +485,17 @@ impl RobloxApi {
         );
         let mime = Some(mime_guess::from_path(image_file).first_or_octet_stream());
 
-        let mut multipart = Multipart::new();
+        let mut multipart = Self::internal_create_multipart_form(text_fields);
+
         multipart.add_stream(file_field_name, stream, file_name, mime);
 
-        if let Some(fields) = text_fields {
-            for (name, text) in fields {
-                multipart.add_text(name, text);
-            }
-        }
-
-        multipart
-            .prepare()
-            .map_err(|e| format!("Failed to load image file {}: {}", image_file.display(), e))
+        multipart.prepare().map_err(|e| {
+            format!(
+                "Failed to create multipart form from image file {}: {}",
+                image_file.display(),
+                e
+            )
+        })
     }
 
     pub fn upload_icon(
@@ -459,7 +503,8 @@ impl RobloxApi {
         experience_id: AssetId,
         icon_file: &Path,
     ) -> Result<UploadImageResponse, String> {
-        let multipart = Self::get_image_from_data("request.files".to_owned(), icon_file, None)?;
+        let multipart =
+            Self::create_multipart_form_from_file("request.files".to_owned(), icon_file, None)?;
 
         let res = ureq::post(&format!(
             "https://publish.roblox.com/v1/games/{}/icon",
@@ -485,8 +530,11 @@ impl RobloxApi {
         experience_id: AssetId,
         thumbnail_file: &Path,
     ) -> Result<UploadImageResponse, String> {
-        let multipart =
-            Self::get_image_from_data("request.files".to_owned(), thumbnail_file, None)?;
+        let multipart = Self::create_multipart_form_from_file(
+            "request.files".to_owned(),
+            thumbnail_file,
+            None,
+        )?;
 
         let res = ureq::post(&format!(
             "https://publish.roblox.com/v1/games/{}/thumbnail/image",
@@ -566,20 +614,10 @@ impl RobloxApi {
             let raw_html = response
                 .into_string()
                 .map_err(|e| format!("Failed to read HTML response: {}", e))?;
-            let fragment = Html::parse_fragment(&raw_html);
-            let verification_token_input_selector = Selector::parse(
+            let image_verification_token = Self::get_html_input_value(
+                &raw_html,
                 "#DeveloperProductImageUpload input[name=\"__RequestVerificationToken\"]",
-            )
-            .unwrap();
-            let verification_token_input = fragment
-                .select(&verification_token_input_selector)
-                .next()
-                .ok_or("Failed to find __RequestVerificationToken input")?;
-            let image_verification_token = verification_token_input
-                .value()
-                .attr("value")
-                .ok_or("__RequestVerificationToken input did not have a value")?
-                .to_owned();
+            )?;
 
             (image_verification_token, request_verification_token)
         };
@@ -589,7 +627,7 @@ impl RobloxApi {
             "__RequestVerificationToken".to_owned(),
             image_verification_token,
         );
-        let multipart = Self::get_image_from_data(
+        let multipart = Self::create_multipart_form_from_file(
             "DeveloperProductImageFile".to_owned(),
             icon_file,
             Some(text_fields),
@@ -608,24 +646,15 @@ impl RobloxApi {
                 &mut self.roblox_auth,
             )?
             .send(multipart);
+
         let response = Self::handle_response(res)?;
         let raw_html = response
             .into_string()
             .map_err(|e| format!("Failed to read HTML response: {}", e))?;
-        let fragment = Html::parse_fragment(&raw_html);
-        let asset_id_input_selector =
-            Selector::parse("#developerProductIcon input[id=\"assetId\"]").unwrap();
-        let asset_id_input = fragment
-            .select(&asset_id_input_selector)
-            .next()
-            .ok_or("Failed to find assetId input")?;
-        let asset_id_str = asset_id_input
-            .value()
-            .attr("value")
-            .ok_or("assetId input did not have a value")?;
-        let asset_id = asset_id_str
-            .parse::<AssetId>()
-            .map_err(|e| format!("Failed to parse asset id: {}", e))?;
+        let asset_id =
+            Self::get_html_input_value(&raw_html, "#developerProductIcon input[id=\"assetId\"]")?
+                .parse::<AssetId>()
+                .map_err(|e| format!("Failed to parse asset id: {}", e))?;
 
         Ok(asset_id)
     }
@@ -742,6 +771,109 @@ impl RobloxApi {
         Self::handle_response(res)?;
 
         Ok(())
+    }
+
+    pub fn create_game_pass(
+        &mut self,
+        start_place_id: AssetId,
+        name: String,
+        description: Option<String>,
+        icon_file: &Path,
+    ) -> Result<AssetId, String> {
+        let verification_token = {
+            let res = ureq::get("https://www.roblox.com/build/upload")
+                .query("assetTypeId", "34")
+                .query("targetPlaceId", &start_place_id.to_string())
+                .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+                .call();
+
+            let response = Self::handle_response(res)?;
+            let raw_html = response
+                .into_string()
+                .map_err(|e| format!("Failed to read HTML response: {}", e))?;
+            let verification_token = Self::get_html_input_value(
+                &raw_html,
+                "#upload-form input[name=\"__RequestVerificationToken\"]",
+            )?;
+
+            verification_token
+        };
+
+        let (verification_token, asset_image_id) = {
+            let mut text_fields = HashMap::new();
+            text_fields.insert("__RequestVerificationToken".to_owned(), verification_token);
+            text_fields.insert("assetTypeId".to_owned(), "34".to_owned());
+            text_fields.insert("targetPlaceId".to_owned(), start_place_id.to_string());
+            text_fields.insert("name".to_owned(), name.clone());
+            if let Some(description) = description.clone() {
+                text_fields.insert("description".to_owned(), description);
+            }
+            let multipart = Self::create_multipart_form_from_file(
+                "file".to_owned(),
+                icon_file,
+                Some(text_fields),
+            )?;
+
+            // TODO: do we need to grab the verification token from cookies?
+            let res = ureq::post("https://www.roblox.com/build/verifyupload")
+                .set(
+                    "Content-Type",
+                    &format!("multipart/form-data; boundary={}", multipart.boundary()),
+                )
+                .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+                .send(multipart);
+
+            let response = Self::handle_response(res)?;
+            let raw_html = response
+                .into_string()
+                .map_err(|e| format!("Failed to read HTML response: {}", e))?;
+            let verification_token = Self::get_html_input_value(
+                &raw_html,
+                "#upload-form input[name=\"__RequestVerificationToken\"]",
+            )?;
+            let asset_image_id =
+                Self::get_html_input_value(&raw_html, "#upload-form input[name=\"assetImageId\"]")?;
+
+            (verification_token, asset_image_id)
+        };
+
+        let mut text_fields = HashMap::new();
+        text_fields.insert("__RequestVerificationToken".to_owned(), verification_token);
+        text_fields.insert("assetTypeId".to_owned(), "34".to_owned());
+        text_fields.insert("targetPlaceId".to_owned(), start_place_id.to_string());
+        text_fields.insert("name".to_owned(), name);
+        if let Some(description) = description {
+            text_fields.insert("description".to_owned(), description);
+        }
+        text_fields.insert("assetImageId".to_owned(), asset_image_id);
+        let multipart = Self::create_multipart_form_from_fields(text_fields)?;
+        // TODO: do we need to grab the verification token from cookies?
+        let res = ureq::post("https://www.roblox.com/build/doverifiedupload")
+            .set(
+                "Content-Type",
+                &format!("multipart/form-data; boundary={}", multipart.boundary()),
+            )
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send(multipart);
+
+        let response = Self::handle_response(res)?;
+        let location = response
+            .header("Location")
+            .ok_or("The response did not include a Location header.")?;
+
+        let location_url = Url::parse("https://www.roblox.com")
+            .unwrap()
+            .join(location)
+            .map_err(|e| format!("Failed to parse Location: {}", e))?;
+        let asset_id = location_url
+            .query_pairs()
+            .find_map(|(k, v)| if k == "uploadedId" { Some(v) } else { None })
+            .ok_or("Failed to find ID from Location")?
+            .parse::<AssetId>()
+            .map_err(|e| format!("Failed to parse asset id: {}", e))?;
+
+        //TODO: We should return the icon image asset ID too
+        Ok(asset_id)
     }
 
     // pub fn upload_asset(&mut self, asset_file: &Path) -> Result<(), String> {

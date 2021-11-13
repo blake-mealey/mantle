@@ -21,3 +21,4 @@ tokio = { version = "1", features = ["full"] }
 chrono = "0.4"
 yansi = "0.5.0"
 scraper = "0.12.0"
+url = "2.2.2"

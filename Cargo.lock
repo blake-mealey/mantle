@@ -1645,6 +1645,7 @@ dependencies = [
  "sha2",
  "tokio",
  "ureq",
+ "url 2.2.2",
  "yansi",
 ]
 

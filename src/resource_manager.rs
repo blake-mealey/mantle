@@ -27,6 +27,7 @@ pub mod resource_types {
     pub const PLACE: &str = "place";
     pub const PLACE_FILE: &str = "placeFile";
     pub const PLACE_CONFIGURATION: &str = "placeConfiguration";
+    pub const GAME_PASS: &str = "gamePass";
 }
 
 pub const SINGLETON_RESOURCE_ID: &str = "singleton";
@@ -144,7 +145,6 @@ struct PlaceFileInputs {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct PlaceFileOutputs {
-    #[serde(default)]
     version: u32,
 }
 
@@ -153,6 +153,22 @@ struct PlaceFileOutputs {
 struct PlaceConfigurationInputs {
     asset_id: AssetId,
     configuration: PlaceConfigurationModel,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct GamePassInputs {
+    start_place_id: AssetId,
+    name: String,
+    description: Option<String>,
+    icon_file_path: String,
+    icon_file_hash: String,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct GamePassOutputs {
+    asset_id: AssetId,
+    // icon_asset_id: AssetId,
 }
 
 pub struct RobloxResourceManager {
@@ -358,6 +374,22 @@ impl ResourceManager for RobloxResourceManager {
                     .configure_place(inputs.asset_id, &inputs.configuration)?;
 
                 Ok(None)
+            }
+            resource_types::GAME_PASS => {
+                let inputs = serde_yaml::from_value::<GamePassInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                let asset_id = self.roblox_api.create_game_pass(
+                    inputs.start_place_id,
+                    inputs.name,
+                    inputs.description,
+                    self.project_path.join(inputs.icon_file_path).as_path(),
+                )?;
+
+                Ok(Some(
+                    serde_yaml::to_value(GamePassOutputs { asset_id })
+                        .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
             }
             _ => panic!(
                 "Create not implemented for resource type: {}",

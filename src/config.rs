@@ -74,6 +74,8 @@ pub struct TemplateConfig {
 
     #[serde(default = "HashMap::new")]
     pub places: HashMap<String, PlaceTemplateConfig>,
+
+    pub passes: Option<HashMap<String, PassTemplateConfig>>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -119,6 +121,15 @@ pub struct DeveloperProductConifg {
     pub price: u32,
     pub description: Option<String>,
     pub icon: Option<String>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct PassTemplateConfig {
+    pub name: String,
+    pub description: Option<String>,
+    pub icon: String,
+    // pub price: Option<u32>,
 }
 
 #[derive(Deserialize, Clone)]

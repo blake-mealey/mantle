@@ -275,7 +275,6 @@ pub fn get_desired_graph(
                 .ok_or(format!("Missing required field name for product {}", name))?;
             let product_price = developer_product
                 .price
-                .clone()
                 .ok_or(format!("Missing required field price for product {}", name))?;
 
             let mut product_resource = Resource::new(resource_types::DEVELOPER_PRODUCT, name)

@@ -303,7 +303,7 @@ impl ResourceManager for RobloxResourceManager {
                     serde_yaml::from_value::<ExperienceDeveloperProductIconInputs>(resource_inputs)
                         .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
 
-                let asset_id = self.roblox_api.create_experience_developer_product_icon(
+                let asset_id = self.roblox_api.create_developer_product_icon(
                     inputs.experience_id,
                     self.project_path.join(inputs.file_path).as_path(),
                 )?;
@@ -319,7 +319,7 @@ impl ResourceManager for RobloxResourceManager {
                         .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
 
                 let CreateDeveloperProductResponse { id, shop_id } =
-                    self.roblox_api.create_experience_developer_product(
+                    self.roblox_api.create_developer_product(
                         inputs.experience_id,
                         inputs.name,
                         inputs.price,
@@ -332,7 +332,7 @@ impl ResourceManager for RobloxResourceManager {
                     developer_product_id: _,
                 } = self
                     .roblox_api
-                    .find_experience_developer_product_by_id(inputs.experience_id, id)?;
+                    .find_developer_product_by_id(inputs.experience_id, id)?;
 
                 Ok(Some(
                     serde_yaml::to_value(ExperienceDeveloperProductOutputs {
@@ -469,7 +469,7 @@ impl ResourceManager for RobloxResourceManager {
                 )
                 .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
 
-                self.roblox_api.update_experience_developer_product(
+                self.roblox_api.update_developer_product(
                     inputs.experience_id,
                     outputs.asset_id,
                     inputs.name,
@@ -585,7 +585,7 @@ impl ResourceManager for RobloxResourceManager {
                         .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
 
                 let utc = Utc::now();
-                self.roblox_api.update_experience_developer_product(
+                self.roblox_api.update_developer_product(
                     inputs.experience_id,
                     outputs.asset_id,
                     format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),

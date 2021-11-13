@@ -561,7 +561,7 @@ impl ResourceManager for RobloxResourceManager {
                     .set_experience_active(inputs.experience_id, false)?;
 
                 Ok(())
-            },
+            }
             resource_types::EXPERIENCE_ICON => {
                 // TODO: figure out which endpoint to use to delete an icon
                 Ok(())

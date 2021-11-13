@@ -26,12 +26,6 @@ templates:
       - game-thumbnail-1.png
       - game-thumbnail-2.png
       - game-thumbnail-3.png
-    developerProducts:
-      myFirstProduct:
-        name: My first product
-        description: With an amazing description
-        price: 50
-        icon: developer-product-1.png
   places:
     start:
       file: start.rbxlx
@@ -46,6 +40,12 @@ templates:
     secondWorld:
       file: start.rbxlx
       name: Second World
+  products:
+    myFirstProduct:
+      name: My first product
+      description: With an amazing description
+      price: 50
+      icon: developer-product-1.png
   passes:
     myFirstPass:
       name: My first pass

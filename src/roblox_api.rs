@@ -605,7 +605,7 @@ impl RobloxApi {
         Ok(())
     }
 
-    pub fn create_experience_developer_product_icon(
+    pub fn create_developer_product_icon(
         &mut self,
         experience_id: AssetId,
         icon_file: &Path,
@@ -667,7 +667,7 @@ impl RobloxApi {
         Ok(asset_id)
     }
 
-    pub fn create_experience_developer_product(
+    pub fn create_developer_product(
         &mut self,
         experience_id: AssetId,
         name: String,
@@ -702,7 +702,7 @@ impl RobloxApi {
         Ok(model)
     }
 
-    pub fn list_experience_developer_products(
+    pub fn list_developer_products(
         &mut self,
         experience_id: AssetId,
         page: u32,
@@ -726,14 +726,14 @@ impl RobloxApi {
         Ok(model)
     }
 
-    pub fn find_experience_developer_product_by_id(
+    pub fn find_developer_product_by_id(
         &mut self,
         experience_id: AssetId,
         developer_product_id: AssetId,
     ) -> Result<GetDeveloperProductResponse, String> {
         let mut page: u32 = 1;
         loop {
-            let res = self.list_experience_developer_products(experience_id, page)?;
+            let res = self.list_developer_products(experience_id, page)?;
 
             let product = res
                 .developer_products
@@ -755,7 +755,7 @@ impl RobloxApi {
         }
     }
 
-    pub fn update_experience_developer_product(
+    pub fn update_developer_product(
         &mut self,
         experience_id: AssetId,
         developer_product_id: AssetId,

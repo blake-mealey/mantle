@@ -76,6 +76,8 @@ pub struct TemplateConfig {
     pub places: HashMap<String, PlaceTemplateConfig>,
 
     pub passes: Option<HashMap<String, PassTemplateConfig>>,
+
+    pub products: Option<HashMap<String, DeveloperProductConifg>>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -163,9 +165,6 @@ pub struct ExperienceTemplateConfig {
     pub avatar_collision_type: Option<ExperienceCollisionType>,
     // avatar_asset_overrides: Option<HashMap<String, u64>>,    // TODO: figure out api
     // avatar_scale_constraints: Option<HashMap<String, (f32, f32)>>,   // TODO: figure out api
-
-    // other
-    pub developer_products: Option<HashMap<String, DeveloperProductConifg>>,
 }
 
 impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {

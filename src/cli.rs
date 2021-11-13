@@ -10,11 +10,11 @@ fn get_app() -> App<'static, 'static> {
         .setting(AppSettings::ArgRequiredElseHelp)
         .subcommand(
             SubCommand::with_name("deploy")
-                .about("Deploys a project to Roblox")
+                .about("Deploys a Rocat deployment")
                 .arg(
                     Arg::with_name("PROJECT")
                         .index(1)
-                        .help("The project to deploy: either the path to a directory containing a 'rocat.yml' file or the path to a configuration file. Defaults to the current directory.")
+                        .help("The Rocat project: either the path to a directory containing a 'rocat.yml' file or the path to a configuration file. Defaults to the current directory.")
                         .takes_value(true)
                 )
                 .arg(
@@ -26,12 +26,29 @@ fn get_app() -> App<'static, 'static> {
                         .takes_value(true))
         )
         .subcommand(
-            SubCommand::with_name("outputs")
-                .about("Prints a project's outputs to the console or a file in a machine-readable format")
+            SubCommand::with_name("destroy")
+                .about("Destroys a Rocat deployment")
                 .arg(
                     Arg::with_name("PROJECT")
                         .index(1)
-                        .help("The project to print outputs from: either the path to a directory containing a 'rocat.yml' file or the path to a configuration file. Defaults to the current directory.")
+                        .help("The Rocat project: either the path to a directory containing a 'rocat.yml' file or the path to a configuration file. Defaults to the current directory.")
+                        .takes_value(true)
+                )
+                .arg(
+                    Arg::with_name("deployment")
+                        .long("deployment")
+                        .short("d")
+                        .help("The deployment to destroy. If not specified, attempts to match the current git branch to each deployment's branches field.")
+                        .value_name("DEPLOYMENT")
+                        .takes_value(true))
+        )
+        .subcommand(
+            SubCommand::with_name("outputs")
+                .about("Prints a Rocat deployment's outputs to the console or a file in a machine-readable format")
+                .arg(
+                    Arg::with_name("PROJECT")
+                        .index(1)
+                        .help("The Rocat project: either the path to a directory containing a 'rocat.yml' file or the path to a configuration file. Defaults to the current directory.")
                         .takes_value(true)
                 )
                 .arg(
@@ -68,6 +85,13 @@ pub async fn run_with(args: Vec<String>) -> i32 {
             commands::deploy::run(
                 deploy_matches.value_of("PROJECT"),
                 deploy_matches.value_of("deployment"),
+            )
+            .await
+        }
+        ("destroy", Some(destroy_matches)) => {
+            commands::destroy::run(
+                destroy_matches.value_of("PROJECT"),
+                destroy_matches.value_of("deployment"),
             )
             .await
         }

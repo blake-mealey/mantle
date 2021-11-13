@@ -609,7 +609,7 @@ impl ResourceManager for RobloxResourceManager {
             resource_types::GAME_PASS => {
                 let inputs = serde_yaml::from_value::<GamePassInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
-                let outputs = serde_yaml::from_value::<GamePassOutputs>(resource_outputs.clone())
+                let outputs = serde_yaml::from_value::<GamePassOutputs>(resource_outputs)
                     .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
 
                 let utc = Utc::now();
@@ -622,7 +622,7 @@ impl ResourceManager for RobloxResourceManager {
                         inputs
                             .price
                             .map(|p| p.to_string())
-                            .unwrap_or("Not for sale".to_owned()),
+                            .unwrap_or_else(|| "Not for sale".to_owned()),
                         inputs.description.unwrap_or_default()
                     )),
                     None,

@@ -6,9 +6,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     resources::ResourceManager,
     roblox_api::{
-        CreateDeveloperProductResponse, CreateExperienceResponse, CreatePlaceResponse,
-        ExperienceConfigurationModel, GetDeveloperProductResponse, GetExperienceResponse,
-        GetPlaceResponse, PlaceConfigurationModel, RobloxApi, UploadImageResponse,
+        CreateDeveloperProductResponse, CreateExperienceResponse, CreateGamePassResponse,
+        CreatePlaceResponse, ExperienceConfigurationModel, GetDeveloperProductResponse,
+        GetExperienceResponse, GetPlaceResponse, PlaceConfigurationModel, RobloxApi,
+        UploadImageResponse,
     },
     roblox_auth::RobloxAuth,
 };
@@ -27,6 +28,8 @@ pub mod resource_types {
     pub const PLACE: &str = "place";
     pub const PLACE_FILE: &str = "placeFile";
     pub const PLACE_CONFIGURATION: &str = "placeConfiguration";
+    pub const GAME_PASS: &str = "gamePass";
+    pub const GAME_PASS_ICON: &str = "gamePassIcon";
 }
 
 pub const SINGLETON_RESOURCE_ID: &str = "singleton";
@@ -144,7 +147,6 @@ struct PlaceFileInputs {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct PlaceFileOutputs {
-    #[serde(default)]
     version: u32,
 }
 
@@ -153,6 +155,36 @@ struct PlaceFileOutputs {
 struct PlaceConfigurationInputs {
     asset_id: AssetId,
     configuration: PlaceConfigurationModel,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct GamePassInputs {
+    start_place_id: AssetId,
+    name: String,
+    description: Option<String>,
+    price: Option<u32>,
+    icon_file_path: String,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct GamePassOutputs {
+    asset_id: AssetId,
+    initial_icon_asset_id: AssetId,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct GamePassIconInputs {
+    game_pass_id: AssetId,
+    initial_asset_id: AssetId,
+    file_path: String,
+    file_hash: String,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct GamePassIconOutputs {
+    asset_id: AssetId,
 }
 
 pub struct RobloxResourceManager {
@@ -359,6 +391,45 @@ impl ResourceManager for RobloxResourceManager {
 
                 Ok(None)
             }
+            resource_types::GAME_PASS => {
+                let inputs = serde_yaml::from_value::<GamePassInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                let CreateGamePassResponse {
+                    asset_id,
+                    icon_asset_id,
+                } = self.roblox_api.create_game_pass(
+                    inputs.start_place_id,
+                    inputs.name.clone(),
+                    inputs.description.clone(),
+                    self.project_path.join(inputs.icon_file_path).as_path(),
+                )?;
+                self.roblox_api.update_game_pass(
+                    asset_id,
+                    inputs.name,
+                    inputs.description,
+                    inputs.price,
+                )?;
+
+                Ok(Some(
+                    serde_yaml::to_value(GamePassOutputs {
+                        asset_id,
+                        initial_icon_asset_id: icon_asset_id,
+                    })
+                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
+            }
+            resource_types::GAME_PASS_ICON => {
+                let inputs = serde_yaml::from_value::<GamePassIconInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                Ok(Some(
+                    serde_yaml::to_value(GamePassIconOutputs {
+                        asset_id: inputs.initial_asset_id,
+                    })
+                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
+            }
             _ => panic!(
                 "Create not implemented for resource type: {}",
                 resource_type
@@ -410,6 +481,37 @@ impl ResourceManager for RobloxResourceManager {
                 )?;
 
                 Ok(Some(resource_outputs))
+            }
+            resource_types::GAME_PASS => {
+                let inputs = serde_yaml::from_value::<GamePassInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let outputs = serde_yaml::from_value::<GamePassOutputs>(resource_outputs.clone())
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                self.roblox_api.update_game_pass(
+                    outputs.asset_id,
+                    inputs.name,
+                    inputs.description,
+                    inputs.price,
+                )?;
+
+                Ok(Some(resource_outputs))
+            }
+            resource_types::GAME_PASS_ICON => {
+                let inputs = serde_yaml::from_value::<GamePassIconInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                let UploadImageResponse { target_id } = self.roblox_api.update_game_pass_icon(
+                    inputs.game_pass_id,
+                    self.project_path.join(inputs.file_path).as_path(),
+                )?;
+
+                Ok(Some(
+                    serde_yaml::to_value(GamePassIconOutputs {
+                        asset_id: target_id,
+                    })
+                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
             }
             _ => panic!(
                 "Update not implemented for resource type: {}",
@@ -504,6 +606,31 @@ impl ResourceManager for RobloxResourceManager {
             }
             resource_types::PLACE_FILE => Ok(()),
             resource_types::PLACE_CONFIGURATION => Ok(()),
+            resource_types::GAME_PASS => {
+                let inputs = serde_yaml::from_value::<GamePassInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let outputs = serde_yaml::from_value::<GamePassOutputs>(resource_outputs)
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                let utc = Utc::now();
+                self.roblox_api.update_game_pass(
+                    outputs.asset_id,
+                    format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
+                    Some(format!(
+                        "Name: {}\nPrice: {}\nDescription:\n{}",
+                        inputs.name,
+                        inputs
+                            .price
+                            .map(|p| p.to_string())
+                            .unwrap_or_else(|| "Not for sale".to_owned()),
+                        inputs.description.unwrap_or_default()
+                    )),
+                    None,
+                )?;
+
+                Ok(())
+            }
+            resource_types::GAME_PASS_ICON => Ok(()),
             _ => panic!(
                 "Delete not implemented for resource type: {}",
                 resource_type

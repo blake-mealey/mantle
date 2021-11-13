@@ -46,6 +46,12 @@ templates:
     secondWorld:
       file: start.rbxlx
       name: Second World
+  passes:
+    myFirstPass:
+      name: My first pass
+      description: With a description!
+      price: 50
+      icon: game-pass-1.png
 
 state:
   remote:

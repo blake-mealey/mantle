@@ -291,6 +291,33 @@ pub fn get_desired_graph(
         );
     }
 
+    if let Some(passes) = &config.templates.passes {
+        for (name, pass_config) in passes {
+            let pass_resource = Resource::new(resource_types::GAME_PASS, name)
+                .add_ref_input("startPlaceId", &experience_start_place_id_ref)
+                .add_value_input("name", &pass_config.name)?
+                .add_value_input("description", &pass_config.description)?
+                .add_value_input("price", &pass_config.price)?
+                .add_value_input("iconFilePath", &pass_config.icon)?
+                .clone();
+            resources.push(pass_resource.clone());
+            resources.push(
+                Resource::new(resource_types::GAME_PASS_ICON, name)
+                    .add_ref_input("gamePassId", &pass_resource.get_input_ref("assetId"))
+                    .add_ref_input(
+                        "initialAssetId",
+                        &pass_resource.get_input_ref("initialIconAssetId"),
+                    )
+                    .add_value_input("filePath", &pass_config.icon)?
+                    .add_value_input(
+                        "fileHash",
+                        &get_file_hash(project_path.join(&pass_config.icon).as_path())?,
+                    )?
+                    .clone(),
+            )
+        }
+    }
+
     Ok(ResourceGraph::new(&resources))
 }
 

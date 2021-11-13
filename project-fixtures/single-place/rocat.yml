@@ -1,22 +1,27 @@
 deployments:
   - name: staging
     branches: [dev, dev/*]
-    experienceId: 3028808377
-    placeIds:
-      start: 7818935418
+    overrides:
+      places:
+        start:
+          name: Staging - Start name
   - name: production
     branches: [main]
     # tagCommit: true
-    experienceId: 3028808377
-    placeIds:
-      start: 7818935418
+    overrides:
+      experience:
+        playability: friends
   - name: preview
+    overrides:
+      places:
+        start:
+          name: Preview - Start name
 
 templates:
   experience:
     genre: naval
     playableDevices: [computer]
-    playability: friends
+    playability: private
     enableStudioAccessToApis: true
     avatarType: r15
     avatarAnimationType: playerChoice

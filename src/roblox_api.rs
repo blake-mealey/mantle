@@ -111,7 +111,7 @@ pub enum ExperienceGenre {
     WildWest,
 }
 
-#[derive(Deserialize, Serialize, Clone, Copy)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub enum ExperiencePlayableDevice {
     Computer,

@@ -76,11 +76,12 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>) -> i32 {
     logger::start_action("Loading project:");
     let Project {
         project_path,
-        config,
-        deployment_config,
         mut next_graph,
         previous_graph,
         mut state,
+        deployment_config,
+        state_config,
+        ..
     } = match load_project(project, deployment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
@@ -139,7 +140,7 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>) -> i32 {
         deployment_config.name.clone(),
         next_graph.get_resource_list(),
     );
-    match save_state(&project_path, &config.state, &state).await {
+    match save_state(&project_path, &state_config, &state).await {
         Ok(_) => {}
         Err(e) => {
             logger::end_action(Paint::red(e));

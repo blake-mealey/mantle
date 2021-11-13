@@ -1,6 +1,6 @@
 [package]
 name = "rocat"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["Blake Mealey <blakemealey@gmail.com>"]
 edition = "2018"
 

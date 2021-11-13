@@ -129,7 +129,7 @@ pub struct PassTemplateConfig {
     pub name: String,
     pub description: Option<String>,
     pub icon: String,
-    // pub price: Option<u32>,
+    pub price: Option<u32>,
 }
 
 #[derive(Deserialize, Clone)]

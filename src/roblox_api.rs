@@ -3,7 +3,7 @@ use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{clone::Clone, collections::HashMap, ffi::OsStr, fs, path::Path};
-use ureq::Cookie;
+use ureq::{Cookie, Response};
 use url::Url;
 
 use crate::{
@@ -83,6 +83,11 @@ pub struct ListDeveloperProductsResponse {
 pub struct GetDeveloperProductResponse {
     pub product_id: AssetId,
     pub developer_product_id: AssetId,
+}
+
+pub struct CreateGamePassResponse {
+    pub asset_id: AssetId,
+    pub icon_asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -256,6 +261,17 @@ impl RobloxApi {
             .to_owned();
 
         Ok(input_value)
+    }
+
+    fn get_cookie_value(response: &Response, name: &str) -> Result<String, String> {
+        response
+            .all("set-cookie")
+            .iter()
+            .find_map(|c| match Cookie::parse(c.to_owned()) {
+                Ok(cookie) if cookie.name() == name => Some(cookie.value().to_owned()),
+                _ => None,
+            })
+            .ok_or(format!("Response did not include a {} cookie", name))
     }
 
     pub fn upload_place(&mut self, place_file: &Path, place_id: AssetId) -> Result<(), String> {
@@ -601,16 +617,8 @@ impl RobloxApi {
                 .call();
 
             let response = Self::handle_response(res)?;
-            let request_verification_token = response
-                .all("set-cookie")
-                .iter()
-                .find_map(|c| match Cookie::parse(c.to_owned()) {
-                    Ok(cookie) if cookie.name() == "__RequestVerificationToken" => {
-                        Some(cookie.value().to_owned())
-                    }
-                    _ => None,
-                })
-                .ok_or("Response did not include a __RequestVerificationToken cookie")?;
+            let request_verification_token =
+                Self::get_cookie_value(&response, "__RequestVerificationToken")?;
             let raw_html = response
                 .into_string()
                 .map_err(|e| format!("Failed to read HTML response: {}", e))?;
@@ -779,8 +787,8 @@ impl RobloxApi {
         name: String,
         description: Option<String>,
         icon_file: &Path,
-    ) -> Result<AssetId, String> {
-        let verification_token = {
+    ) -> Result<CreateGamePassResponse, String> {
+        let (form_verification_token, request_verification_token) = {
             let res = ureq::get("https://www.roblox.com/build/upload")
                 .query("assetTypeId", "34")
                 .query("targetPlaceId", &start_place_id.to_string())
@@ -788,20 +796,25 @@ impl RobloxApi {
                 .call();
 
             let response = Self::handle_response(res)?;
+            let request_verification_token =
+                Self::get_cookie_value(&response, "__RequestVerificationToken")?;
             let raw_html = response
                 .into_string()
                 .map_err(|e| format!("Failed to read HTML response: {}", e))?;
-            let verification_token = Self::get_html_input_value(
+            let form_verification_token = Self::get_html_input_value(
                 &raw_html,
                 "#upload-form input[name=\"__RequestVerificationToken\"]",
             )?;
 
-            verification_token
+            (form_verification_token, request_verification_token)
         };
 
-        let (verification_token, asset_image_id) = {
+        let (form_verification_token, icon_asset_id) = {
             let mut text_fields = HashMap::new();
-            text_fields.insert("__RequestVerificationToken".to_owned(), verification_token);
+            text_fields.insert(
+                "__RequestVerificationToken".to_owned(),
+                form_verification_token,
+            );
             text_fields.insert("assetTypeId".to_owned(), "34".to_owned());
             text_fields.insert("targetPlaceId".to_owned(), start_place_id.to_string());
             text_fields.insert("name".to_owned(), name.clone());
@@ -814,53 +827,65 @@ impl RobloxApi {
                 Some(text_fields),
             )?;
 
-            // TODO: do we need to grab the verification token from cookies?
             let res = ureq::post("https://www.roblox.com/build/verifyupload")
                 .set(
                     "Content-Type",
                     &format!("multipart/form-data; boundary={}", multipart.boundary()),
                 )
-                .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+                .set_auth(
+                    AuthType::CookieAndCsrfTokenAndVerificationToken {
+                        verification_token: request_verification_token.clone(),
+                    },
+                    &mut self.roblox_auth,
+                )?
                 .send(multipart);
 
             let response = Self::handle_response(res)?;
             let raw_html = response
                 .into_string()
                 .map_err(|e| format!("Failed to read HTML response: {}", e))?;
-            let verification_token = Self::get_html_input_value(
+            let form_verification_token = Self::get_html_input_value(
                 &raw_html,
                 "#upload-form input[name=\"__RequestVerificationToken\"]",
             )?;
-            let asset_image_id =
-                Self::get_html_input_value(&raw_html, "#upload-form input[name=\"assetImageId\"]")?;
+            let icon_asset_id =
+                Self::get_html_input_value(&raw_html, "#upload-form input[name=\"assetImageId\"]")?
+                    .parse::<AssetId>()
+                    .map_err(|e| format!("Failed to parse asset id: {}", e))?;
 
-            (verification_token, asset_image_id)
+            (form_verification_token, icon_asset_id)
         };
 
         let mut text_fields = HashMap::new();
-        text_fields.insert("__RequestVerificationToken".to_owned(), verification_token);
+        text_fields.insert(
+            "__RequestVerificationToken".to_owned(),
+            form_verification_token,
+        );
         text_fields.insert("assetTypeId".to_owned(), "34".to_owned());
         text_fields.insert("targetPlaceId".to_owned(), start_place_id.to_string());
         text_fields.insert("name".to_owned(), name);
         if let Some(description) = description {
             text_fields.insert("description".to_owned(), description);
         }
-        text_fields.insert("assetImageId".to_owned(), asset_image_id);
+        text_fields.insert("assetImageId".to_owned(), icon_asset_id.to_string());
         let multipart = Self::create_multipart_form_from_fields(text_fields)?;
-        // TODO: do we need to grab the verification token from cookies?
+
         let res = ureq::post("https://www.roblox.com/build/doverifiedupload")
             .set(
                 "Content-Type",
                 &format!("multipart/form-data; boundary={}", multipart.boundary()),
             )
-            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .set_auth(
+                AuthType::CookieAndCsrfTokenAndVerificationToken {
+                    verification_token: request_verification_token,
+                },
+                &mut self.roblox_auth,
+            )?
             .send(multipart);
 
         let response = Self::handle_response(res)?;
-        let location = response
-            .header("Location")
-            .ok_or("The response did not include a Location header.")?;
 
+        let location = response.get_url();
         let location_url = Url::parse("https://www.roblox.com")
             .unwrap()
             .join(location)
@@ -872,8 +897,59 @@ impl RobloxApi {
             .parse::<AssetId>()
             .map_err(|e| format!("Failed to parse asset id: {}", e))?;
 
-        //TODO: We should return the icon image asset ID too
-        Ok(asset_id)
+        Ok(CreateGamePassResponse {
+            asset_id,
+            icon_asset_id,
+        })
+    }
+
+    pub fn update_game_pass(
+        &mut self,
+        game_pass_id: AssetId,
+        name: String,
+        description: Option<String>,
+        price: Option<u32>,
+    ) -> Result<(), String> {
+        let res = ureq::post("https://www.roblox.com/game-pass/update")
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_json(json!({
+                "id":game_pass_id,
+                "name": name,
+                "description": description,
+                "price": price,
+                "isForSale": price.is_some(),
+            }));
+
+        Self::handle_response(res)?;
+
+        Ok(())
+    }
+
+    pub fn update_game_pass_icon(
+        &mut self,
+        game_pass_id: AssetId,
+        icon_file: &Path,
+    ) -> Result<UploadImageResponse, String> {
+        let multipart =
+            Self::create_multipart_form_from_file("request.files".to_owned(), icon_file, None)?;
+
+        let res = ureq::post(&format!(
+            "https://publish.roblox.com/v1/game-passes/{}/icon",
+            game_pass_id
+        ))
+        .set(
+            "Content-Type",
+            &format!("multipart/form-data; boundary={}", multipart.boundary()),
+        )
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .send(multipart);
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<UploadImageResponse>()
+            .map_err(|e| format!("Failed to deserialize upload image response: {}", e))?;
+
+        Ok(model)
     }
 
     // pub fn upload_asset(&mut self, asset_file: &Path) -> Result<(), String> {

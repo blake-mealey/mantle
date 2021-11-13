@@ -259,29 +259,27 @@ pub fn get_desired_graph(
 
     if let Some(developer_products) = &config.templates.products {
         for (name, developer_product) in developer_products {
-            let mut product_resource =
-                Resource::new(resource_types::EXPERIENCE_DEVELOPER_PRODUCT, name)
+            let mut product_resource = Resource::new(resource_types::DEVELOPER_PRODUCT, name)
+                .add_ref_input("experienceId", &experience_asset_id_ref)
+                .add_value_input("name", &developer_product.name)?
+                .add_value_input("price", &developer_product.price)?
+                .add_value_input(
+                    "description",
+                    developer_product
+                        .description
+                        .as_ref()
+                        .unwrap_or(&"".to_owned()),
+                )?
+                .clone();
+            if let Some(icon_path) = &developer_product.icon {
+                let icon_resource = Resource::new(resource_types::DEVELOPER_PRODUCT_ICON, name)
                     .add_ref_input("experienceId", &experience_asset_id_ref)
-                    .add_value_input("name", &developer_product.name)?
-                    .add_value_input("price", &developer_product.price)?
+                    .add_value_input("filePath", icon_path)?
                     .add_value_input(
-                        "description",
-                        developer_product
-                            .description
-                            .as_ref()
-                            .unwrap_or(&"".to_owned()),
+                        "fileHash",
+                        &get_file_hash(project_path.join(icon_path).as_path())?,
                     )?
                     .clone();
-            if let Some(icon_path) = &developer_product.icon {
-                let icon_resource =
-                    Resource::new(resource_types::EXPERIENCE_DEVELOPER_PRODUCT_ICON, name)
-                        .add_ref_input("experienceId", &experience_asset_id_ref)
-                        .add_value_input("filePath", icon_path)?
-                        .add_value_input(
-                            "fileHash",
-                            &get_file_hash(project_path.join(icon_path).as_path())?,
-                        )?
-                        .clone();
                 resources.push(icon_resource.clone());
                 product_resource = product_resource
                     .add_ref_input("iconAssetId", &icon_resource.get_input_ref("assetId"))

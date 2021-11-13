@@ -23,8 +23,8 @@ pub mod resource_types {
     pub const EXPERIENCE_ICON: &str = "experienceIcon";
     pub const EXPERIENCE_THUMBNAIL: &str = "experienceThumbnail";
     pub const EXPERIENCE_THUMBNAIL_ORDER: &str = "experienceThumbnailOrder";
-    pub const EXPERIENCE_DEVELOPER_PRODUCT: &str = "experienceDeveloperProduct";
-    pub const EXPERIENCE_DEVELOPER_PRODUCT_ICON: &str = "experienceDeveloperProductIcon";
+    pub const DEVELOPER_PRODUCT: &str = "developerProduct";
+    pub const DEVELOPER_PRODUCT_ICON: &str = "developerProductIcon";
     pub const PLACE: &str = "place";
     pub const PLACE_FILE: &str = "placeFile";
     pub const PLACE_CONFIGURATION: &str = "placeConfiguration";
@@ -298,7 +298,7 @@ impl ResourceManager for RobloxResourceManager {
 
                 Ok(None)
             }
-            resource_types::EXPERIENCE_DEVELOPER_PRODUCT_ICON => {
+            resource_types::DEVELOPER_PRODUCT_ICON => {
                 let inputs =
                     serde_yaml::from_value::<ExperienceDeveloperProductIconInputs>(resource_inputs)
                         .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
@@ -313,7 +313,7 @@ impl ResourceManager for RobloxResourceManager {
                         .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
             }
-            resource_types::EXPERIENCE_DEVELOPER_PRODUCT => {
+            resource_types::DEVELOPER_PRODUCT => {
                 let inputs =
                     serde_yaml::from_value::<ExperienceDeveloperProductInputs>(resource_inputs)
                         .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
@@ -459,10 +459,8 @@ impl ResourceManager for RobloxResourceManager {
             resource_types::PLACE => self.create(resource_type, resource_inputs),
             resource_types::PLACE_FILE => self.create(resource_type, resource_inputs),
             resource_types::PLACE_CONFIGURATION => self.create(resource_type, resource_inputs),
-            resource_types::EXPERIENCE_DEVELOPER_PRODUCT_ICON => {
-                self.create(resource_type, resource_inputs)
-            }
-            resource_types::EXPERIENCE_DEVELOPER_PRODUCT => {
+            resource_types::DEVELOPER_PRODUCT_ICON => self.create(resource_type, resource_inputs),
+            resource_types::DEVELOPER_PRODUCT => {
                 let inputs =
                     serde_yaml::from_value::<ExperienceDeveloperProductInputs>(resource_inputs)
                         .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
@@ -577,8 +575,8 @@ impl ResourceManager for RobloxResourceManager {
                     .delete_experience_thumbnail(inputs.experience_id, outputs.asset_id)
             }
             resource_types::EXPERIENCE_THUMBNAIL_ORDER => Ok(()),
-            resource_types::EXPERIENCE_DEVELOPER_PRODUCT_ICON => Ok(()),
-            resource_types::EXPERIENCE_DEVELOPER_PRODUCT => {
+            resource_types::DEVELOPER_PRODUCT_ICON => Ok(()),
+            resource_types::DEVELOPER_PRODUCT => {
                 let inputs =
                     serde_yaml::from_value::<ExperienceDeveloperProductInputs>(resource_inputs)
                         .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;

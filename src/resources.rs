@@ -364,6 +364,7 @@ impl ResourceGraph {
         &self,
         resource_manager: &mut TManager,
         resource_diff: &ResourceDiff,
+        allow_purchases: bool,
     ) -> OperationResult
     where
         TManager: ResourceManager,
@@ -423,10 +424,18 @@ impl ResourceGraph {
 
                 match resource_manager.get_create_price(&resource.resource_type, inputs.clone()) {
                     Ok(Some(price)) if price > 0 => {
-                        return OperationResult::Skipped(format!(
-                            "Resource would cost {} Robux to create. Allow purchases with --allow-purchases.",
-                            price
-                        ));
+                        if allow_purchases {
+                            logger::log("");
+                            logger::log(Paint::yellow(format!(
+                                "{} Robux will be charged from your account.",
+                                price
+                            )))
+                        } else {
+                            return OperationResult::Skipped(format!(
+                                "Resource would cost {} Robux to create. Give Rocat permission to make purchases with --allow-purchases.",
+                                price
+                            ));
+                        }
                     }
                     Err(e) => {
                         return OperationResult::Failed(format!(
@@ -514,6 +523,7 @@ impl ResourceGraph {
         &mut self,
         previous_graph: &ResourceGraph,
         resource_manager: &mut TManager,
+        allow_purchases: bool,
     ) -> Result<EvaluateResults, String>
     where
         TManager: ResourceManager,
@@ -526,7 +536,8 @@ impl ResourceGraph {
         for resource_ref in resource_order {
             let resource_diff = self.get_resource_diff(previous_graph, &resource_ref)?;
 
-            let operation_result = self.evaluate_create_or_update(resource_manager, &resource_diff);
+            let operation_result =
+                self.evaluate_create_or_update(resource_manager, &resource_diff, allow_purchases);
 
             match operation_result {
                 OperationResult::Succeeded(op_type, outputs) => {

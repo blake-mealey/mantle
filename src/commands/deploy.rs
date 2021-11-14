@@ -72,7 +72,7 @@ fn tag_commit(
     Ok(tag_count)
 }
 
-pub async fn run(project: Option<&str>, deployment: Option<&str>) -> i32 {
+pub async fn run(project: Option<&str>, deployment: Option<&str>, allow_purchases: bool) -> i32 {
     logger::start_action("Loading project:");
     let Project {
         project_path,
@@ -98,7 +98,7 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>) -> i32 {
     let mut resource_manager = RobloxResourceManager::new(&project_path);
 
     logger::start_action("Deploying resources:");
-    let results = next_graph.evaluate(&previous_graph, &mut resource_manager);
+    let results = next_graph.evaluate(&previous_graph, &mut resource_manager, allow_purchases);
     match &results {
         Ok(results) => {
             match results {

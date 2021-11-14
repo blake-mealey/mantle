@@ -24,6 +24,10 @@ fn get_app() -> App<'static, 'static> {
                         .help("The deployment to deploy. If not specified, attempts to match the current git branch to each deployment's branches field.")
                         .value_name("DEPLOYMENT")
                         .takes_value(true))
+                .arg(
+                    Arg::with_name("allow_purchases")
+                        .long("allow-purchases")
+                        .help("Gives Rocat permission to make purchases with Robux."))
         )
         .subcommand(
             SubCommand::with_name("destroy")
@@ -85,6 +89,7 @@ pub async fn run_with(args: Vec<String>) -> i32 {
             commands::deploy::run(
                 deploy_matches.value_of("PROJECT"),
                 deploy_matches.value_of("deployment"),
+                deploy_matches.is_present("allow_purchases"),
             )
             .await
         }

@@ -205,7 +205,7 @@ impl RobloxResourceManager {
 }
 
 impl ResourceManager for RobloxResourceManager {
-    fn get_price(
+    fn get_create_price(
         &mut self,
         resource_type: &str,
         _resource_inputs: serde_yaml::Value,

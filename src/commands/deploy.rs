@@ -106,6 +106,7 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>) -> i32 {
                     created_count: 0,
                     updated_count: 0,
                     deleted_count: 0,
+                    skipped_count: 0,
                     ..
                 } => logger::end_action("No changes required"),
                 EvaluateResults {

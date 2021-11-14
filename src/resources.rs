@@ -122,7 +122,7 @@ pub fn output_name_from_input_ref(input_ref: &InputRef) -> String {
     input_ref_output.clone()
 }
 pub trait ResourceManager {
-    fn get_price(
+    fn get_create_price(
         &mut self,
         resource_type: &str,
         resource_inputs: serde_yaml::Value,
@@ -181,7 +181,7 @@ enum OperationType {
 }
 
 enum OperationResult {
-    Skipped,
+    Skipped(String),
     Noop,
     Failed(String),
     Succeeded(OperationType, Option<BTreeMap<String, OutputValue>>),
@@ -381,7 +381,17 @@ impl ResourceGraph {
 
         let inputs = match resolved_inputs {
             Some(v) => v,
-            None => return OperationResult::Skipped,
+            None => {
+                logger::start_action(format!(
+                    "{} Unknown: {} {}",
+                    Paint::new("○").dimmed(),
+                    resource.resource_type,
+                    resource.id
+                ));
+                return OperationResult::Skipped(
+                    "A dependency failed to produce required outputs.".to_owned(),
+                );
+            }
         };
 
         let inputs_hash = match self.get_inputs_hash(&inputs) {
@@ -410,6 +420,24 @@ impl ResourceGraph {
                         ))
                     }
                 };
+
+                match resource_manager.get_create_price(&resource.resource_type, inputs.clone()) {
+                    Ok(Some(price)) if price > 0 => {
+                        return OperationResult::Skipped(format!(
+                            "Resource would cost {} Robux to create. Allow purchases with --allow-purchases.",
+                            price
+                        ));
+                    }
+                    Err(e) => {
+                        return OperationResult::Failed(format!(
+                            "Unable to get create price: {}",
+                            e
+                        ))
+                    }
+                    Ok(None) => {}
+                    Ok(Some(_)) => {}
+                };
+
                 match resource_manager.create(&resource.resource_type, inputs) {
                     Ok(Some(outputs)) => {
                         let outputs = match serde_yaml::from_value::<BTreeMap<String, OutputValue>>(
@@ -530,15 +558,8 @@ impl ResourceGraph {
                         .insert(resource_ref, resource_diff.resource.clone());
 
                     results.noop_count += 1;
-
-                    // logger::log(format!(
-                    //     "{} Noop:     {} {}\n",
-                    //     Paint::new("○").dimmed(),
-                    //     resource_diff.resource.resource_type,
-                    //     resource_diff.resource.id,
-                    // ));
                 }
-                OperationResult::Skipped => {
+                OperationResult::Skipped(reason) => {
                     // A dependency of this resource failed to evaluate. If the resource existed
                     // previously, we will copy the old version into this graph. Otherwise, we will
                     // remove this resource from the graph.
@@ -549,12 +570,7 @@ impl ResourceGraph {
                     }
 
                     results.skipped_count += 1;
-                    logger::log(format!(
-                        "{} Skipping: {} {}\n",
-                        Paint::red("×"),
-                        resource_diff.resource.resource_type,
-                        resource_diff.resource.id,
-                    ));
+                    logger::end_action(format!("Skipped: {}", Paint::yellow(reason)));
                 }
                 OperationResult::Failed(e) => {
                     // An error occurred while creating or updating the resource. If the

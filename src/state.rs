@@ -185,6 +185,7 @@ pub fn get_desired_graph(
             resources.push(
                 Resource::new(resource_types::EXPERIENCE_ICON, file_path)
                     .add_ref_input("experienceId", &experience_asset_id_ref)
+                    .add_ref_input("startPlaceId", &experience_start_place_id_ref)
                     .add_value_input("filePath", file_path)?
                     .add_value_input(
                         "fileHash",

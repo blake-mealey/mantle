@@ -541,6 +541,23 @@ impl RobloxApi {
         Ok(model)
     }
 
+    pub fn remove_experience_icon(
+        &mut self,
+        start_place_id: AssetId,
+        icon_asset_id: AssetId,
+    ) -> Result<(), String> {
+        let res = ureq::post("https://www.roblox.com/places/icons/remove-icon")
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_form(&[
+                ("placeId", &start_place_id.to_string()),
+                ("placeIconId", &icon_asset_id.to_string()),
+            ]);
+
+        Self::handle_response(res)?;
+
+        Ok(())
+    }
+
     pub fn upload_thumbnail(
         &mut self,
         experience_id: AssetId,

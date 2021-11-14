@@ -77,6 +77,7 @@ struct ExperienceThumbnailOutputs {
 #[serde(rename_all = "camelCase")]
 struct ExperienceIconInputs {
     experience_id: AssetId,
+    start_place_id: AssetId,
     file_path: String,
     file_hash: String,
 }
@@ -561,7 +562,14 @@ impl ResourceManager for RobloxResourceManager {
                 Ok(())
             }
             resource_types::EXPERIENCE_ICON => {
-                // TODO: figure out which endpoint to use to delete an icon
+                let inputs = serde_yaml::from_value::<ExperienceIconInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let outputs = serde_yaml::from_value::<ExperienceIconOutputs>(resource_outputs)
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                self.roblox_api
+                    .remove_experience_icon(inputs.start_place_id, outputs.asset_id)?;
+
                 Ok(())
             }
             resource_types::EXPERIENCE_THUMBNAIL => {

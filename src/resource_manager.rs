@@ -30,6 +30,8 @@ pub mod resource_types {
     pub const PLACE_CONFIGURATION: &str = "placeConfiguration";
     pub const GAME_PASS: &str = "gamePass";
     pub const GAME_PASS_ICON: &str = "gamePassIcon";
+    pub const BADGE: &str = "badge";
+    pub const BADGE_ICON: &str = "badgeIcon";
 }
 
 pub const SINGLETON_RESOURCE_ID: &str = "singleton";
@@ -203,6 +205,17 @@ impl RobloxResourceManager {
 }
 
 impl ResourceManager for RobloxResourceManager {
+    fn get_price(
+        &mut self,
+        resource_type: &str,
+        _resource_inputs: serde_yaml::Value,
+    ) -> Result<Option<u32>, String> {
+        match resource_type {
+            resource_types::BADGE => Ok(Some(100)),
+            _ => Ok(None),
+        }
+    }
+
     fn create(
         &mut self,
         resource_type: &str,

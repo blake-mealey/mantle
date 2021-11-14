@@ -113,9 +113,10 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>) -> i32 {
                     updated_count,
                     deleted_count,
                     noop_count,
+                    skipped_count,
                 } => logger::end_action(format!(
-                    "Succeeded with {} create(s), {} update(s), {} delete(s), {} noop(s)",
-                    created_count, updated_count, deleted_count, noop_count
+                    "Succeeded with {} create(s), {} update(s), {} delete(s), {} noop(s), {} skip(s)",
+                    created_count, updated_count, deleted_count, noop_count, skipped_count
                 )),
             };
         }

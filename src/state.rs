@@ -354,16 +354,12 @@ pub fn get_desired_graph(
                 .name
                 .clone()
                 .ok_or(format!("Missing required field name for pass {}", name))?;
-            let badge_enabled = match badge_config.enabled {
-                Some(enabled) => enabled,
-                None => true,
-            };
 
             let badge_resource = Resource::new(resource_types::BADGE, name)
                 .add_ref_input("experienceId", &experience_asset_id_ref)
                 .add_value_input("name", &badge_name)?
                 .add_value_input("description", &badge_config.description)?
-                .add_value_input("enabled", &badge_enabled)?
+                .add_value_input("enabled", &badge_config.enabled.unwrap_or(true))?
                 .add_value_input("iconFilePath", &badge_icon_file)?
                 .clone();
             resources.push(badge_resource.clone());

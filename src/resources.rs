@@ -466,7 +466,7 @@ impl ResourceGraph {
                     Err(error) => OperationResult::Failed(error),
                 }
             }
-            Some(previous_hash) if previous_hash.to_owned() != inputs_hash => {
+            Some(previous_hash) if *previous_hash != inputs_hash => {
                 // This resource has changed
                 logger::start_action(format!(
                     "{} Updating: {} {}",
@@ -474,7 +474,7 @@ impl ResourceGraph {
                     resource.resource_type,
                     resource.id
                 ));
-                logger::log_changeset(get_changeset(&previous_hash, &inputs_hash));
+                logger::log_changeset(get_changeset(previous_hash, &inputs_hash));
 
                 let inputs = match serde_yaml::to_value(inputs) {
                     Ok(v) => v,

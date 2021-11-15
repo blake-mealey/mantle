@@ -344,6 +344,46 @@ pub fn get_desired_graph(
         }
     }
 
+    if let Some(badges) = &templates_config.badges {
+        for (name, badge_config) in badges {
+            let badge_icon_file = badge_config
+                .icon
+                .clone()
+                .ok_or(format!("Missing required field icon for pass {}", name))?;
+            let badge_name = badge_config
+                .name
+                .clone()
+                .ok_or(format!("Missing required field name for pass {}", name))?;
+            let badge_enabled = match badge_config.enabled {
+                Some(enabled) => enabled,
+                None => true,
+            };
+
+            let badge_resource = Resource::new(resource_types::BADGE, name)
+                .add_ref_input("experienceId", &experience_asset_id_ref)
+                .add_value_input("name", &badge_name)?
+                .add_value_input("description", &badge_config.description)?
+                .add_value_input("enabled", &badge_enabled)?
+                .add_value_input("iconFilePath", &badge_icon_file)?
+                .clone();
+            resources.push(badge_resource.clone());
+            resources.push(
+                Resource::new(resource_types::BADGE_ICON, name)
+                    .add_ref_input("badgeId", &badge_resource.get_input_ref("assetId"))
+                    .add_ref_input(
+                        "initialAssetId",
+                        &badge_resource.get_input_ref("initialIconAssetId"),
+                    )
+                    .add_value_input("filePath", &badge_icon_file)?
+                    .add_value_input(
+                        "fileHash",
+                        &get_file_hash(project_path.join(&badge_icon_file).as_path())?,
+                    )?
+                    .clone(),
+            )
+        }
+    }
+
     Ok(ResourceGraph::new(&resources))
 }
 

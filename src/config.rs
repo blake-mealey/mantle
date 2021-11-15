@@ -76,9 +76,11 @@ pub struct TemplateConfig {
 
     pub places: Option<HashMap<String, PlaceTemplateConfig>>,
 
+    pub products: Option<HashMap<String, DeveloperProductConifg>>,
+
     pub passes: Option<HashMap<String, PassTemplateConfig>>,
 
-    pub products: Option<HashMap<String, DeveloperProductConifg>>,
+    pub badges: Option<HashMap<String, BadgeConfig>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -133,6 +135,15 @@ pub struct PassTemplateConfig {
     pub description: Option<String>,
     pub icon: Option<String>,
     pub price: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BadgeConfig {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub icon: Option<String>,
+    pub enabled: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

@@ -6,10 +6,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     resources::ResourceManager,
     roblox_api::{
-        CreateDeveloperProductResponse, CreateExperienceResponse, CreateGamePassResponse,
-        CreatePlaceResponse, ExperienceConfigurationModel, GetDeveloperProductResponse,
-        GetExperienceResponse, GetPlaceResponse, PlaceConfigurationModel, RobloxApi,
-        UploadImageResponse,
+        CreateBadgeResponse, CreateDeveloperProductResponse, CreateExperienceResponse,
+        CreateGamePassResponse, CreatePlaceResponse, ExperienceConfigurationModel,
+        GetDeveloperProductResponse, GetExperienceResponse, GetPlaceResponse,
+        PlaceConfigurationModel, RobloxApi, UploadImageResponse,
     },
     roblox_auth::RobloxAuth,
 };
@@ -187,6 +187,36 @@ struct GamePassIconInputs {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct GamePassIconOutputs {
+    asset_id: AssetId,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct BadgeInputs {
+    experience_id: AssetId,
+    name: String,
+    description: Option<String>,
+    enabled: bool,
+    icon_file_path: String,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct BadgeOutputs {
+    asset_id: AssetId,
+    initial_icon_asset_id: AssetId,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct BadgeIconInputs {
+    badge_id: AssetId,
+    initial_asset_id: AssetId,
+    file_path: String,
+    file_hash: String,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct BadgeIconOutputs {
     asset_id: AssetId,
 }
 
@@ -444,6 +474,36 @@ impl ResourceManager for RobloxResourceManager {
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
             }
+            resource_types::BADGE => {
+                let inputs = serde_yaml::from_value::<BadgeInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                let CreateBadgeResponse { id, icon_image_id } = self.roblox_api.create_badge(
+                    inputs.experience_id,
+                    inputs.name,
+                    inputs.description,
+                    self.project_path.join(inputs.icon_file_path).as_path(),
+                )?;
+
+                Ok(Some(
+                    serde_yaml::to_value(BadgeOutputs {
+                        asset_id: id,
+                        initial_icon_asset_id: icon_image_id,
+                    })
+                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
+            }
+            resource_types::BADGE_ICON => {
+                let inputs = serde_yaml::from_value::<BadgeIconInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                Ok(Some(
+                    serde_yaml::to_value(BadgeIconOutputs {
+                        asset_id: inputs.initial_asset_id,
+                    })
+                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
+            }
             _ => panic!(
                 "Create not implemented for resource type: {}",
                 resource_type
@@ -520,6 +580,37 @@ impl ResourceManager for RobloxResourceManager {
 
                 Ok(Some(
                     serde_yaml::to_value(GamePassIconOutputs {
+                        asset_id: target_id,
+                    })
+                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
+            }
+            resource_types::BADGE => {
+                let inputs = serde_yaml::from_value::<BadgeInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let outputs = serde_yaml::from_value::<BadgeOutputs>(resource_outputs.clone())
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                self.roblox_api.update_badge(
+                    outputs.asset_id,
+                    inputs.name,
+                    inputs.description,
+                    inputs.enabled,
+                )?;
+
+                Ok(Some(resource_outputs))
+            }
+            resource_types::BADGE_ICON => {
+                let inputs = serde_yaml::from_value::<BadgeIconInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                let UploadImageResponse { target_id } = self.roblox_api.update_badge_icon(
+                    inputs.badge_id,
+                    self.project_path.join(inputs.file_path).as_path(),
+                )?;
+
+                Ok(Some(
+                    serde_yaml::to_value(BadgeIconOutputs {
                         asset_id: target_id,
                     })
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
@@ -659,6 +750,28 @@ impl ResourceManager for RobloxResourceManager {
                 Ok(())
             }
             resource_types::GAME_PASS_ICON => Ok(()),
+            resource_types::BADGE => {
+                let inputs = serde_yaml::from_value::<BadgeInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let outputs = serde_yaml::from_value::<BadgeOutputs>(resource_outputs)
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                let utc = Utc::now();
+                self.roblox_api.update_badge(
+                    outputs.asset_id,
+                    format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
+                    Some(format!(
+                        "Name: {}\nEnabled: {}\nDescription:\n{}",
+                        inputs.name,
+                        inputs.enabled,
+                        inputs.description.unwrap_or_default()
+                    )),
+                    false,
+                )?;
+
+                Ok(())
+            }
+            resource_types::BADGE_ICON => Ok(()),
             _ => panic!(
                 "Delete not implemented for resource type: {}",
                 resource_type

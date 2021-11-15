@@ -54,22 +54,6 @@ impl Resource {
         self
     }
 
-    pub fn add_output<T>(&mut self, name: &str, output_value: &T) -> Result<&mut Self, String>
-    where
-        T: serde::Serialize,
-    {
-        if self.outputs.is_none() {
-            self.outputs = Some(BTreeMap::new());
-        }
-        let serialized_value = serde_yaml::to_value(output_value)
-            .map_err(|e| format!("Failed to serialize output value:\n\t{}", e))?;
-        self.outputs
-            .as_mut()
-            .unwrap()
-            .insert(name.to_owned(), serialized_value);
-        Ok(self)
-    }
-
     pub fn get_ref(&self) -> ResourceRef {
         (self.resource_type.clone(), self.id.clone())
     }
@@ -138,6 +122,12 @@ pub fn output_name_from_input_ref(input_ref: &InputRef) -> String {
     input_ref_output.clone()
 }
 pub trait ResourceManager {
+    fn get_create_price(
+        &mut self,
+        resource_type: &str,
+        resource_inputs: serde_yaml::Value,
+    ) -> Result<Option<u32>, String>;
+
     fn create(
         &mut self,
         resource_type: &str,
@@ -182,6 +172,19 @@ pub struct EvaluateResults {
     pub updated_count: u32,
     pub deleted_count: u32,
     pub noop_count: u32,
+    pub skipped_count: u32,
+}
+
+enum OperationType {
+    Create,
+    Update,
+}
+
+enum OperationResult {
+    Skipped(String),
+    Noop,
+    Failed(String),
+    Succeeded(OperationType, Option<BTreeMap<String, OutputValue>>),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -357,10 +360,170 @@ impl ResourceGraph {
         }
     }
 
+    fn evaluate_create_or_update<TManager>(
+        &self,
+        resource_manager: &mut TManager,
+        resource_diff: &ResourceDiff,
+        allow_purchases: bool,
+    ) -> OperationResult
+    where
+        TManager: ResourceManager,
+    {
+        let ResourceDiff {
+            previous_hash,
+            resource,
+            ..
+        } = resource_diff;
+
+        let resolved_inputs = match self.resolve_inputs(&resource_diff.resource) {
+            Ok(v) => v,
+            Err(e) => return OperationResult::Failed(e),
+        };
+
+        let inputs = match resolved_inputs {
+            Some(v) => v,
+            None => {
+                logger::start_action(format!(
+                    "{} Unknown: {} {}",
+                    Paint::new("○").dimmed(),
+                    resource.resource_type,
+                    resource.id
+                ));
+                return OperationResult::Skipped(
+                    "A dependency failed to produce required outputs.".to_owned(),
+                );
+            }
+        };
+
+        let inputs_hash = match self.get_inputs_hash(&inputs) {
+            Ok(v) => v,
+            Err(e) => return OperationResult::Failed(e),
+        };
+
+        // TODO: improve DRY here
+        match previous_hash {
+            None => {
+                // This resource is new
+                logger::start_action(format!(
+                    "{} Creating: {} {}",
+                    Paint::green("+"),
+                    resource.resource_type,
+                    resource.id
+                ));
+                logger::log_changeset(get_changeset("", &inputs_hash));
+
+                let inputs = match serde_yaml::to_value(inputs) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return OperationResult::Failed(format!(
+                            "Unable to serialize inputs: {}",
+                            e
+                        ))
+                    }
+                };
+
+                match resource_manager.get_create_price(&resource.resource_type, inputs.clone()) {
+                    Ok(Some(price)) if price > 0 => {
+                        if allow_purchases {
+                            logger::log("");
+                            logger::log(Paint::yellow(format!(
+                                "{} Robux will be charged from your account.",
+                                price
+                            )))
+                        } else {
+                            return OperationResult::Skipped(format!(
+                                "Resource would cost {} Robux to create. Give Rocat permission to make purchases with --allow-purchases.",
+                                price
+                            ));
+                        }
+                    }
+                    Err(e) => {
+                        return OperationResult::Failed(format!(
+                            "Unable to get create price: {}",
+                            e
+                        ))
+                    }
+                    Ok(None) => {}
+                    Ok(Some(_)) => {}
+                };
+
+                match resource_manager.create(&resource.resource_type, inputs) {
+                    Ok(Some(outputs)) => {
+                        let outputs = match serde_yaml::from_value::<BTreeMap<String, OutputValue>>(
+                            outputs,
+                        ) {
+                            Ok(v) => v,
+                            Err(e) => {
+                                return OperationResult::Failed(format!(
+                                    "Unable to deserialize outputs: {}",
+                                    e
+                                ))
+                            }
+                        };
+                        OperationResult::Succeeded(OperationType::Create, Some(outputs))
+                    }
+                    Ok(None) => OperationResult::Succeeded(OperationType::Create, None),
+                    Err(error) => OperationResult::Failed(error),
+                }
+            }
+            Some(previous_hash) if *previous_hash != inputs_hash => {
+                // This resource has changed
+                logger::start_action(format!(
+                    "{} Updating: {} {}",
+                    Paint::yellow("~"),
+                    resource.resource_type,
+                    resource.id
+                ));
+                logger::log_changeset(get_changeset(previous_hash, &inputs_hash));
+
+                let inputs = match serde_yaml::to_value(inputs) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return OperationResult::Failed(format!(
+                            "Unable to serialize inputs: {}",
+                            e
+                        ))
+                    }
+                };
+                let outputs = resource.outputs.clone().unwrap_or_default();
+                let outputs = match serde_yaml::to_value(outputs) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return OperationResult::Failed(format!(
+                            "Unable to serialize outputs: {}",
+                            e
+                        ))
+                    }
+                };
+
+                match resource_manager.update(&resource.resource_type, inputs, outputs) {
+                    Ok(Some(outputs)) => {
+                        let outputs = match serde_yaml::from_value::<BTreeMap<String, OutputValue>>(
+                            outputs,
+                        ) {
+                            Ok(v) => v,
+                            Err(e) => {
+                                return OperationResult::Failed(format!(
+                                    "Unable to deserialize outputs: {}",
+                                    e
+                                ))
+                            }
+                        };
+                        OperationResult::Succeeded(OperationType::Update, Some(outputs))
+                    }
+                    Ok(None) => OperationResult::Succeeded(OperationType::Update, None),
+                    Err(error) => OperationResult::Failed(error),
+                }
+            }
+            _ => OperationResult::Noop,
+        }
+    }
+
     pub fn evaluate<TManager>(
         &mut self,
         previous_graph: &ResourceGraph,
         resource_manager: &mut TManager,
+        allow_purchases: bool,
     ) -> Result<EvaluateResults, String>
     where
         TManager: ResourceManager,
@@ -371,124 +534,78 @@ impl ResourceGraph {
         let mut failures_count = 0;
 
         for resource_ref in resource_order {
-            let ResourceDiff {
-                resource,
-                previous_resource,
-                previous_hash,
-            } = self.get_resource_diff(previous_graph, &resource_ref)?;
+            let resource_diff = self.get_resource_diff(previous_graph, &resource_ref)?;
 
-            let resolved_inputs = self.resolve_inputs(&resource)?;
-            if let Some(inputs) = resolved_inputs {
-                // We can proceed to evaluate this resource
-                let inputs_hash = self.get_inputs_hash(&inputs)?;
-                let outputs = match previous_hash {
-                    None => {
-                        // This resource is new
-                        results.created_count += 1;
-                        logger::start_action(format!(
-                            "{} Creating: {} {}",
-                            Paint::green("+"),
-                            resource.resource_type,
-                            resource.id
-                        ));
-                        logger::log_changeset(get_changeset("", &inputs_hash));
-                        Some(
-                            resource_manager.create(
-                                &resource.resource_type,
-                                serde_yaml::to_value(&inputs)
-                                    .map_err(|e| format!("Failed to serialize inputs: {}", e))?,
+            let operation_result =
+                self.evaluate_create_or_update(resource_manager, &resource_diff, allow_purchases);
+
+            match operation_result {
+                OperationResult::Succeeded(op_type, outputs) => {
+                    let mut resource_with_outputs = resource_diff.resource.clone();
+                    resource_with_outputs.outputs = outputs.clone();
+                    self.resources.insert(resource_ref, resource_with_outputs);
+
+                    match op_type {
+                        OperationType::Create => results.created_count += 1,
+                        OperationType::Update => results.updated_count += 1,
+                    };
+
+                    match outputs {
+                        None => logger::end_action("Succeeded"),
+                        Some(outputs) => logger::end_action_with_results(
+                            "Succeeded with outputs:",
+                            format_inputs_hash(
+                                &serde_yaml::to_string(&outputs)
+                                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                             ),
-                        )
-                    }
-                    Some(previous_hash) if previous_hash != inputs_hash => {
-                        // This resource has changed
-                        results.updated_count += 1;
-                        logger::start_action(format!(
-                            "{} Updating: {} {}",
-                            Paint::yellow("~"),
-                            resource.resource_type,
-                            resource.id
-                        ));
-                        logger::log_changeset(get_changeset(&previous_hash, &inputs_hash));
-                        let outputs = resource.outputs.clone().unwrap_or_default();
-                        Some(
-                            resource_manager.update(
-                                &resource.resource_type,
-                                serde_yaml::to_value(inputs)
-                                    .map_err(|e| format!("Failed to serialize inputs: {}", e))?,
-                                serde_yaml::to_value(outputs)
-                                    .map_err(|e| format!("Failed to serialize inputs: {}", e))?,
-                            ),
-                        )
-                    }
-                    _ => {
-                        results.noop_count += 1;
-                        None
-                    }
-                };
-
-                if let Some(outputs) = outputs {
-                    // We attempted to create or update the resource
-                    if let Ok(outputs) = outputs {
-                        // We successfully created or updated the resource
-
-                        if let Some(outputs) = outputs {
-                            // Apply the outputs to the resource
-                            logger::end_action_with_results(
-                                "Succeeded with outputs:",
-                                format_inputs_hash(
-                                    &serde_yaml::to_string(&outputs).map_err(|e| {
-                                        format!("Failed to serialize outputs: {}", e)
-                                    })?,
-                                ),
-                            );
-                            let mut resource_with_outputs = resource.clone();
-                            let outputs =
-                                serde_yaml::from_value::<BTreeMap<String, OutputValue>>(outputs)
-                                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
-                            // TODO: how to handle deserialization errors?
-                            for (key, value) in outputs {
-                                resource_with_outputs.add_output(&key, &value)?;
-                            }
-                            self.resources.insert(resource_ref, resource_with_outputs);
-                        } else {
-                            logger::end_action("Succeeded");
-                        }
-                    } else {
-                        // An error occurred while creating or updating the resource. If the
-                        // resource existed previously, we will copy the old version into this
-                        // graph. Otherwise, we will remove this resource from the graph.
-                        // TODO: this may need work for formatting
-                        logger::end_action(format!("Failed: {}", Paint::red(outputs.unwrap_err())));
-                        failures_count += 1;
-                        if let Some(previous_resource) = previous_resource {
-                            self.resources.insert(resource_ref, previous_resource);
-                        } else {
-                            self.resources.remove(&resource_ref);
-                        }
-                    }
-                } else {
+                        ),
+                    };
+                }
+                OperationResult::Noop => {
                     // There was no need to create or update the resource. We will update the graph
                     // with the resource diff (which may include outputs copied from the previous
                     // resoure).
-                    self.resources.insert(resource_ref, resource.clone());
+                    self.resources
+                        .insert(resource_ref, resource_diff.resource.clone());
+
+                    results.noop_count += 1;
                 }
-            } else {
-                // A dependency of this resource failed to evaluate. If the resource existed
-                // previously, we will copy the old version into this graph. Otherwise, we will
-                // remove this resource from the graph.
-                if let Some(previous_resource) = previous_resource {
-                    self.resources.insert(resource_ref, previous_resource);
-                } else {
-                    self.resources.remove(&resource_ref);
+                OperationResult::Skipped(reason) => {
+                    // A dependency of this resource failed to evaluate. If the resource existed
+                    // previously, we will copy the old version into this graph. Otherwise, we will
+                    // remove this resource from the graph.
+                    if let Some(previous_resource) = resource_diff.previous_resource {
+                        self.resources.insert(resource_ref, previous_resource);
+                    } else {
+                        self.resources.remove(&resource_ref);
+                    }
+
+                    results.skipped_count += 1;
+                    logger::end_action(format!("Skipped: {}", Paint::yellow(reason)));
                 }
-            }
+                OperationResult::Failed(e) => {
+                    // An error occurred while creating or updating the resource. If the
+                    // resource existed previously, we will copy the old version into this
+                    // graph. Otherwise, we will remove this resource from the graph.
+                    if let Some(previous_resource) = resource_diff.previous_resource {
+                        self.resources.insert(resource_ref, previous_resource);
+                    } else {
+                        self.resources.remove(&resource_ref);
+                    }
+
+                    failures_count += 1;
+
+                    // TODO: this may need work for formatting
+                    logger::end_action(format!("Failed: {}", Paint::red(e)));
+                }
+            };
         }
 
         // Iterate over previous resources in reverse order so that leaf resources are removed first
         let mut previous_resource_order = previous_graph.get_topological_order()?;
         previous_resource_order.reverse();
 
+        // TODO: improve error handling for deletes too
         for resource_ref in previous_resource_order.iter() {
             let resource = &previous_graph.get_resource_from_ref(resource_ref).unwrap();
 

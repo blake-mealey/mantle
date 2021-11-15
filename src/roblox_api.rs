@@ -90,6 +90,13 @@ pub struct CreateGamePassResponse {
     pub icon_asset_id: AssetId,
 }
 
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateBadgeResponse {
+    pub id: AssetId,
+    pub icon_image_id: AssetId,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub enum ExperienceGenre {
     All,
@@ -969,39 +976,91 @@ impl RobloxApi {
         Ok(model)
     }
 
-    // pub fn upload_asset(&mut self, asset_file: &Path) -> Result<(), String> {
-    //     let mut fields: HashMap<String, String> = HashMap::new();
-    //     fields.insert("name".to_owned(), "A cool decal.".to_owned());
-    //     fields.insert("assetTypeId".to_owned(), (13 as u32).to_string().to_owned());
-    //     fields.insert("groupId".to_owned(), "".to_owned());
-    //     fields.insert(
-    //         "__RequestVerificationToken".to_owned(),
-    //         self.roblox_auth
-    //             .get_verification_token("https://www.roblox.com/build/upload".to_owned())?,
-    //     );
-    //     let multipart = Self::get_image_from_data("file".to_owned(), asset_file, Some(fields))?;
+    pub fn create_badge(
+        &mut self,
+        experience_id: AssetId,
+        name: String,
+        description: Option<String>,
+        icon_file_path: &Path,
+    ) -> Result<CreateBadgeResponse, String> {
+        let mut text_fields = HashMap::new();
+        text_fields.insert("request.name".to_owned(), name);
+        if let Some(description) = description {
+            text_fields.insert("request.description".to_owned(), description);
+        }
+        text_fields.insert("request.paymentSourceType".to_owned(), "User".to_owned());
+        let multipart = Self::create_multipart_form_from_file(
+            "request.files".to_owned(),
+            icon_file_path,
+            Some(text_fields),
+        )?;
 
-    //     let res = ureq::post(&format!("https://www.roblox.com/build/upload"))
-    //         .set(
-    //             "Content-Type",
-    //             &format!("multipart/form-data; boundary={}", multipart.boundary()),
-    //         )
-    //         .set_auth(
-    //             AuthType::CookieAndCsrfTokenAndVerificationToken,
-    //             &mut self.roblox_auth,
-    //         )?
-    //         .send(multipart);
+        let res = ureq::post(&format!(
+            "https://badges.roblox.com/v1/universes/{}/badges",
+            experience_id
+        ))
+        .set(
+            "Content-Type",
+            &format!("multipart/form-data; boundary={}", multipart.boundary()),
+        )
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .send(multipart);
 
-    //     let response = Self::handle_response(res)?;
-    //     println!("{:?}", response.into_string());
-    //     // let model = response
-    //     //     .into_json::<UploadImageResponse>()
-    //     //     .map_err(|e| format!("Failed to deserialize upload image response: {}", e))?;
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<CreateBadgeResponse>()
+            .map_err(|e| format!("Failed to deserialize create badge response: {}", e))?;
 
-    //     // Ok(UploadImageResult {
-    //     //     asset_id: model.target_id,
-    //     // })
-    //     // Ok(())
-    //     Err("unimplemented".to_owned())
-    // }
+        Ok(model)
+    }
+
+    pub fn update_badge(
+        &mut self,
+        badge_id: AssetId,
+        name: String,
+        description: Option<String>,
+        enabled: bool,
+    ) -> Result<(), String> {
+        let res = ureq::request(
+            "PATCH",
+            &format!("https://badges.roblox.com/v1/badges/{}", badge_id),
+        )
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .send_json(json!({
+            "name": name,
+            "description": description,
+            "enabled": enabled,
+        }));
+
+        Self::handle_response(res)?;
+
+        Ok(())
+    }
+
+    pub fn update_badge_icon(
+        &mut self,
+        badge_id: AssetId,
+        icon_file: &Path,
+    ) -> Result<UploadImageResponse, String> {
+        let multipart =
+            Self::create_multipart_form_from_file("request.files".to_owned(), icon_file, None)?;
+
+        let res = ureq::post(&format!(
+            "https://publish.roblox.com/v1/badges/{}/icon",
+            badge_id
+        ))
+        .set(
+            "Content-Type",
+            &format!("multipart/form-data; boundary={}", multipart.boundary()),
+        )
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .send(multipart);
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<UploadImageResponse>()
+            .map_err(|e| format!("Failed to deserialize upload image response: {}", e))?;
+
+        Ok(model)
+    }
 }

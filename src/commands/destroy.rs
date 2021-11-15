@@ -36,7 +36,7 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>) -> i32 {
 
     logger::start_action("Destroying resources:");
     let mut next_graph = ResourceGraph::new(&Vec::new());
-    let results = next_graph.evaluate(&previous_graph, &mut resource_manager);
+    let results = next_graph.evaluate(&previous_graph, &mut resource_manager, false);
     match &results {
         Ok(results) => {
             match results {

@@ -62,6 +62,8 @@ templates:
       name: My first badge
       description: The best badge of all
       icon: badge-1.png
+  assets:
+    - assets/*
 
 state:
   remote:

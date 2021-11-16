@@ -7,9 +7,9 @@ use crate::{
     resources::ResourceManager,
     roblox_api::{
         CreateBadgeResponse, CreateDeveloperProductResponse, CreateExperienceResponse,
-        CreateGamePassResponse, CreatePlaceResponse, ExperienceConfigurationModel,
-        GetDeveloperProductResponse, GetExperienceResponse, GetPlaceResponse,
-        PlaceConfigurationModel, RobloxApi, UploadImageResponse,
+        CreateGamePassResponse, CreateImageAssetResponse, CreatePlaceResponse,
+        ExperienceConfigurationModel, GetDeveloperProductResponse, GetExperienceResponse,
+        GetPlaceResponse, PlaceConfigurationModel, RobloxApi, UploadImageResponse,
     },
     roblox_auth::RobloxAuth,
 };
@@ -32,6 +32,8 @@ pub mod resource_types {
     pub const GAME_PASS_ICON: &str = "gamePassIcon";
     pub const BADGE: &str = "badge";
     pub const BADGE_ICON: &str = "badgeIcon";
+    pub const ASSET_ALIAS: &str = "assetAlias";
+    pub const IMAGE_ASSET: &str = "imageAsset";
 }
 
 pub const SINGLETON_RESOURCE_ID: &str = "singleton";
@@ -218,6 +220,32 @@ struct BadgeIconInputs {
 #[serde(rename_all = "camelCase")]
 struct BadgeIconOutputs {
     asset_id: AssetId,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct AssetAliasInputs {
+    experience_id: AssetId,
+    asset_id: AssetId,
+    name: String,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct AssetAliasOutputs {
+    name: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ImageAssetInputs {
+    file_path: String,
+    file_hash: String,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ImageAssetOutputs {
+    asset_id: AssetId,
+    decal_asset_id: AssetId,
 }
 
 pub struct RobloxResourceManager {
@@ -504,6 +532,41 @@ impl ResourceManager for RobloxResourceManager {
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
             }
+            resource_types::ASSET_ALIAS => {
+                let inputs = serde_yaml::from_value::<AssetAliasInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                self.roblox_api.create_asset_alias(
+                    inputs.experience_id,
+                    inputs.asset_id,
+                    inputs.name.clone(),
+                )?;
+
+                Ok(Some(
+                    serde_yaml::to_value(AssetAliasOutputs { name: inputs.name })
+                        .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
+            }
+            resource_types::IMAGE_ASSET => {
+                let inputs = serde_yaml::from_value::<ImageAssetInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                let CreateImageAssetResponse {
+                    asset_id,
+                    backing_asset_id,
+                    ..
+                } = self
+                    .roblox_api
+                    .create_image_asset(self.project_path.join(inputs.file_path).as_path())?;
+
+                Ok(Some(
+                    serde_yaml::to_value(ImageAssetOutputs {
+                        asset_id: backing_asset_id,
+                        decal_asset_id: asset_id,
+                    })
+                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
+            }
             _ => panic!(
                 "Create not implemented for resource type: {}",
                 resource_type
@@ -616,6 +679,25 @@ impl ResourceManager for RobloxResourceManager {
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
             }
+            resource_types::ASSET_ALIAS => {
+                let inputs = serde_yaml::from_value::<AssetAliasInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let outputs = serde_yaml::from_value::<AssetAliasOutputs>(resource_outputs)
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                self.roblox_api.update_asset_alias(
+                    inputs.experience_id,
+                    inputs.asset_id,
+                    outputs.name,
+                    inputs.name.clone(),
+                )?;
+
+                Ok(Some(
+                    serde_yaml::to_value(AssetAliasOutputs { name: inputs.name })
+                        .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
+            }
+            resource_types::IMAGE_ASSET => self.create(resource_type, resource_inputs),
             _ => panic!(
                 "Update not implemented for resource type: {}",
                 resource_type
@@ -772,6 +854,25 @@ impl ResourceManager for RobloxResourceManager {
                 Ok(())
             }
             resource_types::BADGE_ICON => Ok(()),
+            resource_types::ASSET_ALIAS => {
+                let inputs = serde_yaml::from_value::<AssetAliasInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let outputs = serde_yaml::from_value::<AssetAliasOutputs>(resource_outputs)
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                self.roblox_api
+                    .delete_asset_alias(inputs.experience_id, outputs.name)?;
+
+                Ok(())
+            }
+            resource_types::IMAGE_ASSET => {
+                let outputs = serde_yaml::from_value::<ImageAssetOutputs>(resource_outputs)
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                self.roblox_api.archive_asset(outputs.decal_asset_id)?;
+
+                Ok(())
+            }
             _ => panic!(
                 "Delete not implemented for resource type: {}",
                 resource_type

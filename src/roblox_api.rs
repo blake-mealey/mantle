@@ -97,6 +97,14 @@ pub struct CreateBadgeResponse {
     pub icon_image_id: AssetId,
 }
 
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "PascalCase")]
+pub struct CreateImageAssetResponse {
+    pub success: bool,
+    pub asset_id: AssetId,
+    pub backing_asset_id: AssetId,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub enum ExperienceGenre {
     All,
@@ -1062,5 +1070,110 @@ impl RobloxApi {
             .map_err(|e| format!("Failed to deserialize upload image response: {}", e))?;
 
         Ok(model)
+    }
+
+    pub fn create_asset_alias(
+        &mut self,
+        experience_id: AssetId,
+        asset_id: AssetId,
+        name: String,
+    ) -> Result<(), String> {
+        let res = ureq::post(&format!(
+            "https://develop.roblox.com/v1/universes/{}/aliases",
+            experience_id
+        ))
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .send_json(json!({
+            "name": name,
+            "type": "1",
+            "targetId": asset_id,
+        }));
+
+        Self::handle_response(res)?;
+
+        Ok(())
+    }
+
+    pub fn update_asset_alias(
+        &mut self,
+        experience_id: AssetId,
+        asset_id: AssetId,
+        previous_name: String,
+        name: String,
+    ) -> Result<(), String> {
+        let res = ureq::post("https://api.roblox.com/universes/update-alias-v2")
+            .query("universeId", &experience_id.to_string())
+            .query("oldName", &previous_name)
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_json(json!({
+                "name": name,
+                "type": "1",
+                "targetId": asset_id,
+            }));
+
+        Self::handle_response(res)?;
+
+        Ok(())
+    }
+
+    pub fn delete_asset_alias(
+        &mut self,
+        experience_id: AssetId,
+        name: String,
+    ) -> Result<(), String> {
+        let res = ureq::post("https://api.roblox.com/universes/delete-alias")
+            .query("universeId", &experience_id.to_string())
+            .query("name", &name)
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_string("");
+
+        Self::handle_response(res)?;
+
+        Ok(())
+    }
+
+    pub fn create_image_asset(
+        &mut self,
+        file_path: &Path,
+    ) -> Result<CreateImageAssetResponse, String> {
+        let data = fs::read(file_path).map_err(|e| {
+            format!(
+                "Unable to read image asset file: {}\n\t{}",
+                file_path.display(),
+                e
+            )
+        })?;
+
+        let file_name = format!(
+            "Images/{}",
+            file_path.file_stem().map(OsStr::to_str).flatten().unwrap()
+        );
+        let res = ureq::post("https://data.roblox.com/data/upload/json")
+            .query("assetTypeId", "13")
+            .query("name", &file_name)
+            .query("description", "madewithrocat")
+            .set("Content-Type", "*/*")
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_bytes(&data);
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<CreateImageAssetResponse>()
+            .map_err(|e| format!("Failed to deserialize create image asset response: {}", e))?;
+
+        Ok(model)
+    }
+
+    pub fn archive_asset(&mut self, asset_id: AssetId) -> Result<(), String> {
+        let res = ureq::post(&format!(
+            "https://develop.roblox.com/v1/assets/{}/archive",
+            asset_id
+        ))
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .send_string("");
+
+        Self::handle_response(res)?;
+
+        Ok(())
     }
 }

@@ -47,9 +47,9 @@ struct ExperienceInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct ExperienceOutputs {
-    asset_id: AssetId,
-    start_place_id: AssetId,
+pub struct ExperienceOutputs {
+    pub asset_id: AssetId,
+    pub start_place_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -329,7 +329,7 @@ impl ResourceManager for RobloxResourceManager {
 
                 let outputs = match inputs.asset_id {
                     Some(asset_id) => {
-                        let GetExperienceResponse { root_place_id } =
+                        let GetExperienceResponse { root_place_id, .. } =
                             self.roblox_api.get_experience(asset_id)?;
                         ExperienceOutputs {
                             asset_id,

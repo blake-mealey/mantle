@@ -37,6 +37,7 @@ pub struct CreateExperienceResponse {
 #[serde(rename_all = "camelCase")]
 pub struct GetExperienceResponse {
     pub root_place_id: AssetId,
+    pub is_active: bool,
 }
 
 #[derive(Deserialize)]
@@ -141,7 +142,7 @@ pub enum ExperienceGenre {
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub enum ExperiencePlayableDevice {
     Computer,
     Phone,
@@ -157,14 +158,14 @@ pub enum ExperienceAvatarType {
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub enum ExperienceAnimationType {
     Standard,
     PlayerChoice,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub enum ExperienceCollisionType {
     OuterBox,
     InnerBox,
@@ -397,6 +398,30 @@ impl RobloxApi {
         let model = response
             .into_json::<GetExperienceResponse>()
             .map_err(|e| format!("Failed to deserialize get experience response: {}", e))?;
+
+        Ok(model)
+    }
+
+    pub fn get_experience_configuration(
+        &mut self,
+        experience_id: AssetId,
+    ) -> Result<ExperienceConfigurationModel, String> {
+        let res = ureq::get(&format!(
+            "https://develop.roblox.com/v1/universes/{}/configuration",
+            experience_id
+        ))
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .call();
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<ExperienceConfigurationModel>()
+            .map_err(|e| {
+                format!(
+                    "Failed to deserialize get experience configuration response: {}",
+                    e
+                )
+            })?;
 
         Ok(model)
     }

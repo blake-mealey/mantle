@@ -61,8 +61,10 @@ pub struct DeploymentConfig {
     #[serde(default)]
     pub tag_commit: bool,
 
+    // TODO: remove
     pub experience_id: Option<u64>,
 
+    // TODO: remove
     #[serde(default = "HashMap::new")]
     pub place_ids: HashMap<String, u64>,
 
@@ -121,6 +123,29 @@ pub enum AvatarTypeConfig {
     PlayerChoice,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum PlayableDeviceConfig {
+    Computer,
+    Phone,
+    Tablet,
+    Console,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum AnimationTypeConfig {
+    Standard,
+    PlayerChoice,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum CollisionTypeConfig {
+    OuterBox,
+    InnerBox,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DeveloperProductConifg {
@@ -160,7 +185,7 @@ pub enum AssetConfig {
 pub struct ExperienceTemplateConfig {
     // basic info
     pub genre: Option<GenreConfig>,
-    pub playable_devices: Option<Vec<ExperiencePlayableDevice>>,
+    pub playable_devices: Option<Vec<PlayableDeviceConfig>>,
     pub icon: Option<String>,
     pub thumbnails: Option<Vec<String>>,
 
@@ -182,8 +207,8 @@ pub struct ExperienceTemplateConfig {
 
     // avatar
     pub avatar_type: Option<AvatarTypeConfig>,
-    pub avatar_animation_type: Option<ExperienceAnimationType>,
-    pub avatar_collision_type: Option<ExperienceCollisionType>,
+    pub avatar_animation_type: Option<AnimationTypeConfig>,
+    pub avatar_collision_type: Option<CollisionTypeConfig>,
     // avatar_asset_overrides: Option<HashMap<String, u64>>,    // TODO: figure out api
     // avatar_scale_constraints: Option<HashMap<String, (f32, f32)>>,   // TODO: figure out api
 }
@@ -209,10 +234,17 @@ impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
                 Some(GenreConfig::Western) => Some(ExperienceGenre::WildWest),
                 None => None,
             },
-            playable_devices: config
-                .playable_devices
-                .as_ref()
-                .map(|devices| devices.to_vec()),
+            playable_devices: config.playable_devices.as_ref().map(|devices| {
+                devices
+                    .iter()
+                    .map(|d| match d {
+                        PlayableDeviceConfig::Computer => ExperiencePlayableDevice::Computer,
+                        PlayableDeviceConfig::Console => ExperiencePlayableDevice::Console,
+                        PlayableDeviceConfig::Phone => ExperiencePlayableDevice::Phone,
+                        PlayableDeviceConfig::Tablet => ExperiencePlayableDevice::Tablet,
+                    })
+                    .collect()
+            }),
 
             is_friends_only: match config.playability {
                 Some(PlayabilityConfig::Friends) => Some(true),
@@ -251,8 +283,18 @@ impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
                 Some(AvatarTypeConfig::PlayerChoice) => Some(ExperienceAvatarType::PlayerChoice),
                 None => None,
             },
-            universe_animation_type: config.avatar_animation_type,
-            universe_collision_type: config.avatar_collision_type,
+            universe_animation_type: match config.avatar_animation_type {
+                Some(AnimationTypeConfig::Standard) => Some(ExperienceAnimationType::Standard),
+                Some(AnimationTypeConfig::PlayerChoice) => {
+                    Some(ExperienceAnimationType::PlayerChoice)
+                }
+                None => None,
+            },
+            universe_collision_type: match config.avatar_collision_type {
+                Some(CollisionTypeConfig::InnerBox) => Some(ExperienceCollisionType::InnerBox),
+                Some(CollisionTypeConfig::OuterBox) => Some(ExperienceCollisionType::OuterBox),
+                None => None,
+            },
 
             is_archived: None,
         }

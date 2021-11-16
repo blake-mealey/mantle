@@ -17,9 +17,11 @@ use crate::{
         TemplateConfig,
     },
     logger,
-    resource_manager::{resource_types, SINGLETON_RESOURCE_ID},
+    resource_manager::{resource_types, AssetId, ExperienceOutputs, SINGLETON_RESOURCE_ID},
     resources::{InputRef, Resource, ResourceGraph},
-    roblox_api::{ExperienceConfigurationModel, PlaceConfigurationModel},
+    roblox_api::{
+        ExperienceConfigurationModel, GetExperienceResponse, PlaceConfigurationModel, RobloxApi,
+    },
 };
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -456,6 +458,48 @@ pub fn get_desired_graph(
             }
         }
     }
+
+    Ok(ResourceGraph::new(&resources))
+}
+
+pub fn import_graph(
+    roblox_api: &mut RobloxApi,
+    experience_id: AssetId,
+) -> Result<ResourceGraph, String> {
+    let mut resources: Vec<Resource> = Vec::new();
+
+    let GetExperienceResponse {
+        root_place_id: start_place_id,
+        is_active: is_experience_active,
+    } = roblox_api.get_experience(experience_id)?;
+
+    let experience_resource = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
+        .set_outputs(ExperienceOutputs {
+            asset_id: experience_id,
+            start_place_id,
+        })?
+        .clone();
+    let experience_asset_id_ref = experience_resource.get_input_ref("assetId");
+    let experience_start_place_id_ref = experience_resource.get_input_ref("startPlaceId");
+    resources.push(experience_resource);
+
+    resources.push(
+        Resource::new(resource_types::EXPERIENCE_ACTIVATION, SINGLETON_RESOURCE_ID)
+            .add_ref_input("experienceId", &experience_asset_id_ref)
+            .add_value_input("isActive", &is_experience_active)?
+            .clone(),
+    );
+
+    let experience_configuration = roblox_api.get_experience_configuration(experience_id)?;
+    resources.push(
+        Resource::new(
+            resource_types::EXPERIENCE_CONFIGURATION,
+            SINGLETON_RESOURCE_ID,
+        )
+        .add_ref_input("experienceId", &experience_asset_id_ref)
+        .add_value_input("configuration", &experience_configuration)?
+        .clone(),
+    );
 
     Ok(ResourceGraph::new(&resources))
 }

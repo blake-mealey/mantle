@@ -6,7 +6,7 @@ use yansi::Paint;
 
 use crate::logger;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Resource {
     pub resource_type: String,
@@ -52,6 +52,19 @@ impl Resource {
         self.inputs
             .insert(name.to_owned(), Input::RefList(input_ref_list.to_owned()));
         self
+    }
+
+    pub fn set_outputs<T>(&mut self, outputs: T) -> Result<&mut Self, String>
+    where
+        T: serde::Serialize,
+    {
+        let serialized_outputs = serde_yaml::to_value(outputs)
+            .map_err(|e| format!("Failed to serialize outputs:\n\t{}", e))?;
+        let deserialized_outputs =
+            serde_yaml::from_value::<BTreeMap<String, OutputValue>>(serialized_outputs)
+                .map_err(|e| format!("Failed to deserialize outputs:\n\t{}", e))?;
+        self.outputs = Some(deserialized_outputs);
+        Ok(self)
     }
 
     pub fn get_ref(&self) -> ResourceRef {
@@ -102,7 +115,7 @@ pub type InputRef = (String, String, String);
 pub type InputValue = serde_yaml::Value;
 pub type OutputValue = serde_yaml::Value;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum Input {
     Ref(InputRef),

@@ -10,7 +10,7 @@ fn get_app() -> App<'static, 'static> {
         .setting(AppSettings::ArgRequiredElseHelp)
         .subcommand(
             SubCommand::with_name("deploy")
-                .about("Deploys a Mantle deployment")
+                .about("Deploys a Mantle deployment.")
                 .arg(
                     Arg::with_name("PROJECT")
                         .index(1)
@@ -31,7 +31,7 @@ fn get_app() -> App<'static, 'static> {
         )
         .subcommand(
             SubCommand::with_name("destroy")
-                .about("Destroys a Mantle deployment")
+                .about("Destroys a Mantle deployment.")
                 .arg(
                     Arg::with_name("PROJECT")
                         .index(1)
@@ -48,7 +48,7 @@ fn get_app() -> App<'static, 'static> {
         )
         .subcommand(
             SubCommand::with_name("outputs")
-                .about("Prints a Mantle deployment's outputs to the console or a file in a machine-readable format")
+                .about("Prints a Mantle deployment's outputs to the console or a file in a machine-readable format.")
                 .arg(
                     Arg::with_name("PROJECT")
                         .index(1)
@@ -79,6 +79,30 @@ fn get_app() -> App<'static, 'static> {
                         .possible_values(&["json","yaml"])
                         .default_value("json"))
         )
+        .subcommand(
+            SubCommand::with_name("import")
+                .about("Imports an existing experience into a Mantle deployment.")
+                .arg(
+                    Arg::with_name("PROJECT")
+                        .index(1)
+                        .help("The Mantle project: either the path to a directory containing a 'mantle.yml' file or the path to a configuration file. Defaults to the current directory.")
+                        .takes_value(true)
+                )
+                .arg(
+                    Arg::with_name("deployment")
+                        .long("deployment")
+                        .short("d")
+                        .help("The deployment to print the outputs of. If not specified, attempts to match the current git branch to each deployment's branches field.")
+                        .value_name("DEPLOYMENT")
+                        .takes_value(true))
+                .arg(
+                    Arg::with_name("experience_id")
+                        .long("experience-id")
+                        .help("The ID of the experience to import.")
+                        .value_name("ID")
+                        .takes_value(true)
+                        .required(true))
+        )
 }
 
 pub async fn run_with(args: Vec<String>) -> i32 {
@@ -106,6 +130,14 @@ pub async fn run_with(args: Vec<String>) -> i32 {
                 outputs_matches.value_of("deployment"),
                 outputs_matches.value_of("output"),
                 outputs_matches.value_of("format").unwrap(),
+            )
+            .await
+        }
+        ("import", Some(import_matches)) => {
+            commands::import::run(
+                import_matches.value_of("PROJECT"),
+                import_matches.value_of("deployment"),
+                import_matches.value_of("experience_id").unwrap(),
             )
             .await
         }

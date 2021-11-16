@@ -42,7 +42,7 @@ impl fmt::Display for RemoteStateConfig {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{}/{}/{}.rocat-state.yml",
+            "{}/{}/{}.mantle-state.yml",
             self.region.name(),
             self.bucket,
             self.key

@@ -1,5 +1,5 @@
 [package]
-name = "rocat"
+name = "mantle"
 version = "0.8.2"
 authors = ["Blake Mealey <blakemealey@gmail.com>"]
 edition = "2018"

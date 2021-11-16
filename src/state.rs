@@ -28,7 +28,7 @@ pub struct ResourceState {
 }
 
 fn get_state_file_path(project_path: &Path) -> PathBuf {
-    project_path.join(".rocat-state.yml")
+    project_path.join(".mantle-state.yml")
 }
 
 fn get_hash(data: &[u8]) -> String {
@@ -89,7 +89,7 @@ async fn get_state_from_remote(
     let object_res = client
         .get_object(rusoto_s3::GetObjectRequest {
             bucket: config.bucket.clone(),
-            key: format!("{}.rocat-state.yml", config.key),
+            key: format!("{}.mantle-state.yml", config.key),
             ..Default::default()
         })
         .await;
@@ -467,7 +467,7 @@ pub async fn save_state_to_remote(config: &RemoteStateConfig, data: &[u8]) -> Re
     let res = client
         .put_object(rusoto_s3::PutObjectRequest {
             bucket: config.bucket.clone(),
-            key: format!("{}.rocat-state.yml", config.key),
+            key: format!("{}.mantle-state.yml", config.key),
             body: Some(rusoto_core::ByteStream::from(data.to_vec())),
             ..Default::default()
         })

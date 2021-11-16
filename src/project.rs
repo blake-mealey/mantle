@@ -18,7 +18,7 @@ fn parse_project(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {
     let project_path = Path::new(project).to_owned();
 
     let (project_dir, config_file) = if project_path.is_dir() {
-        (project_path.clone(), project_path.join("rocat.yml"))
+        (project_path.clone(), project_path.join("mantle.yml"))
     } else if project_path.is_file() {
         (project_path.parent().unwrap().into(), project_path)
     } else {

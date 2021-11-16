@@ -68,5 +68,5 @@ templates:
 state:
   remote:
     region: [us-west-2]
-    bucket: rocat-states
-    key: project-fixtures/single-place
+    bucket: mantle-states
+    key: project-fixtures/dev

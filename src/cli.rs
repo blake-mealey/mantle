@@ -4,17 +4,17 @@ use clap::{crate_version, App, AppSettings, Arg, SubCommand};
 use std::env;
 
 fn get_app() -> App<'static, 'static> {
-    App::new("Rocat")
+    App::new("Mantle")
         .version(crate_version!())
         .about("Manages Roblox deployments")
         .setting(AppSettings::ArgRequiredElseHelp)
         .subcommand(
             SubCommand::with_name("deploy")
-                .about("Deploys a Rocat deployment")
+                .about("Deploys a Mantle deployment")
                 .arg(
                     Arg::with_name("PROJECT")
                         .index(1)
-                        .help("The Rocat project: either the path to a directory containing a 'rocat.yml' file or the path to a configuration file. Defaults to the current directory.")
+                        .help("The Mantle project: either the path to a directory containing a 'mantle.yml' file or the path to a configuration file. Defaults to the current directory.")
                         .takes_value(true)
                 )
                 .arg(
@@ -27,15 +27,15 @@ fn get_app() -> App<'static, 'static> {
                 .arg(
                     Arg::with_name("allow_purchases")
                         .long("allow-purchases")
-                        .help("Gives Rocat permission to make purchases with Robux."))
+                        .help("Gives Mantle permission to make purchases with Robux."))
         )
         .subcommand(
             SubCommand::with_name("destroy")
-                .about("Destroys a Rocat deployment")
+                .about("Destroys a Mantle deployment")
                 .arg(
                     Arg::with_name("PROJECT")
                         .index(1)
-                        .help("The Rocat project: either the path to a directory containing a 'rocat.yml' file or the path to a configuration file. Defaults to the current directory.")
+                        .help("The Mantle project: either the path to a directory containing a 'mantle.yml' file or the path to a configuration file. Defaults to the current directory.")
                         .takes_value(true)
                 )
                 .arg(
@@ -48,11 +48,11 @@ fn get_app() -> App<'static, 'static> {
         )
         .subcommand(
             SubCommand::with_name("outputs")
-                .about("Prints a Rocat deployment's outputs to the console or a file in a machine-readable format")
+                .about("Prints a Mantle deployment's outputs to the console or a file in a machine-readable format")
                 .arg(
                     Arg::with_name("PROJECT")
                         .index(1)
-                        .help("The Rocat project: either the path to a directory containing a 'rocat.yml' file or the path to a configuration file. Defaults to the current directory.")
+                        .help("The Mantle project: either the path to a directory containing a 'mantle.yml' file or the path to a configuration file. Defaults to the current directory.")
                         .takes_value(true)
                 )
                 .arg(

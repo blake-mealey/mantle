@@ -48,7 +48,10 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>, experience_id:
             return 1;
         }
     };
-    logger::log(format!("{:?}", imported_graph.get_resource_list()));
+    logger::log(format!(
+        "{}",
+        serde_yaml::to_string(&imported_graph.get_resource_list()).unwrap()
+    ));
     logger::end_action("Succeeded");
 
     0

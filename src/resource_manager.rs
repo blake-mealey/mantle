@@ -75,8 +75,8 @@ struct ExperienceThumbnailInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct ExperienceThumbnailOutputs {
-    asset_id: AssetId,
+pub struct ExperienceThumbnailOutputs {
+    pub asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -89,8 +89,8 @@ struct ExperienceIconInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct ExperienceIconOutputs {
-    asset_id: AssetId,
+pub struct ExperienceIconOutputs {
+    pub asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -102,8 +102,8 @@ struct ExperienceDeveloperProductIconInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct ExperienceDeveloperProductIconOutputs {
-    asset_id: AssetId,
+pub struct ExperienceDeveloperProductIconOutputs {
+    pub asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -124,10 +124,9 @@ struct ExperienceDeveloperProductInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct ExperienceDeveloperProductOutputs {
-    asset_id: AssetId,
-    product_id: AssetId,
-    shop_id: AssetId,
+pub struct ExperienceDeveloperProductOutputs {
+    pub asset_id: AssetId,
+    pub product_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -175,9 +174,9 @@ struct GamePassInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct GamePassOutputs {
-    asset_id: AssetId,
-    initial_icon_asset_id: AssetId,
+pub struct GamePassOutputs {
+    pub asset_id: AssetId,
+    pub initial_icon_asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -190,8 +189,8 @@ struct GamePassIconInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct GamePassIconOutputs {
-    asset_id: AssetId,
+pub struct GamePassIconOutputs {
+    pub asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -205,9 +204,9 @@ struct BadgeInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct BadgeOutputs {
-    asset_id: AssetId,
-    initial_icon_asset_id: AssetId,
+pub struct BadgeOutputs {
+    pub asset_id: AssetId,
+    pub initial_icon_asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -220,8 +219,8 @@ struct BadgeIconInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct BadgeIconOutputs {
-    asset_id: AssetId,
+pub struct BadgeIconOutputs {
+    pub asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -233,8 +232,8 @@ struct AssetAliasInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct AssetAliasOutputs {
-    name: String,
+pub struct AssetAliasOutputs {
+    pub name: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -245,9 +244,9 @@ struct ImageAssetInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct ImageAssetOutputs {
-    asset_id: AssetId,
-    decal_asset_id: AssetId,
+pub struct ImageAssetOutputs {
+    pub asset_id: AssetId,
+    pub decal_asset_id: Option<AssetId>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -258,8 +257,8 @@ struct AudioAssetInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct AudioAssetOutputs {
-    asset_id: AssetId,
+pub struct AudioAssetOutputs {
+    pub asset_id: AssetId,
 }
 
 pub struct RobloxResourceManager {
@@ -433,7 +432,7 @@ impl ResourceManager for RobloxResourceManager {
                     serde_yaml::from_value::<ExperienceDeveloperProductInputs>(resource_inputs)
                         .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
 
-                let CreateDeveloperProductResponse { id, shop_id } =
+                let CreateDeveloperProductResponse { id } =
                     self.roblox_api.create_developer_product(
                         inputs.experience_id,
                         inputs.name,
@@ -442,10 +441,7 @@ impl ResourceManager for RobloxResourceManager {
                         inputs.icon_asset_id,
                     )?;
 
-                let GetDeveloperProductResponse {
-                    product_id,
-                    developer_product_id: _,
-                } = self
+                let GetDeveloperProductResponse { product_id, .. } = self
                     .roblox_api
                     .find_developer_product_by_id(inputs.experience_id, id)?;
 
@@ -453,7 +449,6 @@ impl ResourceManager for RobloxResourceManager {
                     serde_yaml::to_value(ExperienceDeveloperProductOutputs {
                         asset_id: product_id,
                         product_id: id,
-                        shop_id,
                     })
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
@@ -605,7 +600,7 @@ impl ResourceManager for RobloxResourceManager {
                 Ok(Some(
                     serde_yaml::to_value(ImageAssetOutputs {
                         asset_id: backing_asset_id,
-                        decal_asset_id: asset_id,
+                        decal_asset_id: Some(asset_id),
                     })
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
@@ -926,7 +921,9 @@ impl ResourceManager for RobloxResourceManager {
                 let outputs = serde_yaml::from_value::<ImageAssetOutputs>(resource_outputs)
                     .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
 
-                self.roblox_api.archive_asset(outputs.decal_asset_id)?;
+                if let Some(decal_asset_id) = outputs.decal_asset_id {
+                    self.roblox_api.archive_asset(decal_asset_id)?;
+                }
 
                 Ok(())
             }

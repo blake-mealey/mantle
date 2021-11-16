@@ -21,7 +21,7 @@ use crate::{
         resource_types, AssetAliasOutputs, AssetId, AudioAssetOutputs, BadgeIconOutputs,
         BadgeOutputs, ExperienceDeveloperProductIconOutputs, ExperienceDeveloperProductOutputs,
         ExperienceIconOutputs, ExperienceOutputs, ExperienceThumbnailOutputs, GamePassIconOutputs,
-        GamePassOutputs, ImageAssetOutputs, SINGLETON_RESOURCE_ID,
+        GamePassOutputs, ImageAssetOutputs, PlaceFileOutputs, PlaceOutputs, SINGLETON_RESOURCE_ID,
     },
     resources::{InputRef, Resource, ResourceGraph},
     roblox_api::{
@@ -552,6 +552,38 @@ pub fn import_graph(
             .add_ref_input("experienceId", &experience_asset_id_ref)
             .add_ref_input_list("assetIds", &thumbnail_asset_id_refs)
             .clone(),
+        );
+    }
+
+    let places = roblox_api.get_all_places(experience_id)?;
+    for place in places {
+        let place_resource = Resource::new(resource_types::PLACE, &place.id.to_string())
+            .add_ref_input("experienceId", &experience_asset_id_ref)
+            .add_ref_input("startPlaceId", &experience_start_place_id_ref)
+            .add_value_input("assetId", &Some(place.id))?
+            .add_value_input("isStart", &place.is_root_place)?
+            .set_outputs(PlaceOutputs { asset_id: place.id })?
+            .clone();
+        let place_asset_id_ref = place_resource.get_input_ref("assetId");
+        resources.push(place_resource);
+
+        resources.push(
+            Resource::new(resource_types::PLACE_FILE, &place.id.to_string())
+                .add_ref_input("assetId", &place_asset_id_ref)
+                // TODO: should we get legit values?
+                .add_value_input("filePath", &"fake_file")?
+                .add_value_input("fileHash", &"fake_hash")?
+                .set_outputs(PlaceFileOutputs {
+                    version: place.current_saved_version,
+                })?
+                .clone(),
+        );
+
+        resources.push(
+            Resource::new(resource_types::PLACE_CONFIGURATION, &place.id.to_string())
+                .add_ref_input("assetId", &place_asset_id_ref)
+                .add_value_input::<PlaceConfigurationModel>("configuration", &place.into())?
+                .clone(),
         );
     }
 

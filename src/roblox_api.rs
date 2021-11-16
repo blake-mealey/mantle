@@ -50,13 +50,47 @@ pub struct CreatePlaceResponse {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetPlaceResponse {
+    pub id: AssetId,
     pub current_saved_version: u32,
+    pub name: String,
+    pub description: String,
+    pub max_player_count: u32,
+    pub allow_copying: bool,
+    pub social_slot_type: SocialSlotType,
+    pub custom_social_slots_count: u32,
+    pub is_root_place: bool,
+}
+
+impl From<GetPlaceResponse> for PlaceConfigurationModel {
+    fn from(response: GetPlaceResponse) -> Self {
+        PlaceConfigurationModel {
+            name: Some(response.name),
+            description: Some(response.description),
+            max_player_count: Some(response.max_player_count),
+            allow_copying: Some(response.allow_copying),
+            social_slot_type: Some(response.social_slot_type),
+            custom_social_slot_count: Some(response.custom_social_slots_count),
+        }
+    }
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RemovePlaceResponse {
     pub success: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListPlacesResponse {
+    pub next_page_cursor: Option<String>,
+    pub data: Vec<ListPlaceResponse>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ListPlaceResponse {
+    pub id: AssetId,
 }
 
 #[derive(Deserialize)]
@@ -430,6 +464,54 @@ impl RobloxApi {
             .map_err(|e| format!("Failed to deserialize get place response: {}", e))?;
 
         Ok(model)
+    }
+
+    pub fn list_places(
+        &mut self,
+        experience_id: AssetId,
+        page_cursor: Option<String>,
+    ) -> Result<ListPlacesResponse, String> {
+        let mut req = ureq::get(&format!(
+            "https://develop.roblox.com/v1/universes/{}/places",
+            experience_id
+        ));
+        if let Some(page_cursor) = page_cursor {
+            req = req.query("cursor", &page_cursor);
+        }
+        let res = req
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .call();
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<ListPlacesResponse>()
+            .map_err(|e| format!("Failed to deserialize list places response: {}", e))?;
+
+        Ok(model)
+    }
+
+    pub fn get_all_places(
+        &mut self,
+        experience_id: AssetId,
+    ) -> Result<Vec<GetPlaceResponse>, String> {
+        let mut all_places = Vec::new();
+
+        let mut page_cursor: Option<String> = None;
+        loop {
+            let res = self.list_places(experience_id, page_cursor)?;
+            for ListPlaceResponse { id } in res.data {
+                let place = self.get_place(id)?;
+                all_places.push(place);
+            }
+
+            if res.next_page_cursor.is_none() {
+                break;
+            }
+
+            page_cursor = res.next_page_cursor;
+        }
+
+        Ok(all_places)
     }
 
     pub fn remove_place_from_experience(

@@ -139,8 +139,8 @@ struct PlaceInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct PlaceOutputs {
-    asset_id: AssetId,
+pub struct PlaceOutputs {
+    pub asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -152,15 +152,15 @@ struct PlaceFileInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct PlaceFileOutputs {
-    version: u32,
+pub struct PlaceFileOutputs {
+    pub version: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct PlaceConfigurationInputs {
-    asset_id: AssetId,
-    configuration: PlaceConfigurationModel,
+pub struct PlaceConfigurationInputs {
+    pub asset_id: AssetId,
+    pub configuration: PlaceConfigurationModel,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -483,6 +483,7 @@ impl ResourceManager for RobloxResourceManager {
                 )?;
                 let GetPlaceResponse {
                     current_saved_version,
+                    ..
                 } = self.roblox_api.get_place(inputs.asset_id)?;
 
                 Ok(Some(

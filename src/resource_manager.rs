@@ -697,6 +697,7 @@ impl ResourceManager for RobloxResourceManager {
                         .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
             }
+            resource_types::IMAGE_ASSET => self.create(resource_type, resource_inputs),
             _ => panic!(
                 "Update not implemented for resource type: {}",
                 resource_type
@@ -853,6 +854,25 @@ impl ResourceManager for RobloxResourceManager {
                 Ok(())
             }
             resource_types::BADGE_ICON => Ok(()),
+            resource_types::ASSET_ALIAS => {
+                let inputs = serde_yaml::from_value::<AssetAliasInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let outputs = serde_yaml::from_value::<AssetAliasOutputs>(resource_outputs)
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                self.roblox_api
+                    .delete_asset_alias(inputs.experience_id, outputs.name)?;
+
+                Ok(())
+            }
+            resource_types::IMAGE_ASSET => {
+                let outputs = serde_yaml::from_value::<ImageAssetOutputs>(resource_outputs)
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                self.roblox_api.archive_asset(outputs.decal_asset_id)?;
+
+                Ok(())
+            }
             _ => panic!(
                 "Delete not implemented for resource type: {}",
                 resource_type

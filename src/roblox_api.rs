@@ -1101,19 +1101,31 @@ impl RobloxApi {
         previous_name: String,
         name: String,
     ) -> Result<(), String> {
-        let res = ureq::request(
-            "PATCH",
-            &format!(
-                "https://develop.roblox.com/v1/universes/{}/aliases/{}",
-                experience_id, previous_name
-            ),
-        )
-        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
-        .send_json(json!({
-            "name": name,
-            "type": "1",
-            "targetId": asset_id,
-        }));
+        let res = ureq::post("https://api.roblox.com/universes/update-alias-v2")
+            .query("universeId", &experience_id.to_string())
+            .query("oldName", &previous_name)
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_json(json!({
+                "name": name,
+                "type": "1",
+                "targetId": asset_id,
+            }));
+
+        Self::handle_response(res)?;
+
+        Ok(())
+    }
+
+    pub fn delete_asset_alias(
+        &mut self,
+        experience_id: AssetId,
+        name: String,
+    ) -> Result<(), String> {
+        let res = ureq::post("https://api.roblox.com/universes/delete-alias")
+            .query("universeId", &experience_id.to_string())
+            .query("name", &name)
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_string("");
 
         Self::handle_response(res)?;
 
@@ -1150,5 +1162,18 @@ impl RobloxApi {
             .map_err(|e| format!("Failed to deserialize create image asset response: {}", e))?;
 
         Ok(model)
+    }
+
+    pub fn archive_asset(&mut self, asset_id: AssetId) -> Result<(), String> {
+        let res = ureq::post(&format!(
+            "https://develop.roblox.com/v1/assets/{}/archive",
+            asset_id
+        ))
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .send_string("");
+
+        Self::handle_response(res)?;
+
+        Ok(())
     }
 }

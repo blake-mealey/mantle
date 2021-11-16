@@ -81,6 +81,8 @@ pub struct TemplateConfig {
     pub passes: Option<HashMap<String, PassTemplateConfig>>,
 
     pub badges: Option<HashMap<String, BadgeConfig>>,
+
+    pub assets: Option<Vec<AssetConfig>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -144,6 +146,13 @@ pub struct BadgeConfig {
     pub description: Option<String>,
     pub icon: Option<String>,
     pub enabled: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", untagged)]
+pub enum AssetConfig {
+    File(String),
+    FileWithAlias { file: String, name: String },
 }
 
 #[derive(Serialize, Deserialize, Clone)]

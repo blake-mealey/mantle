@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    ffi::OsStr,
     fs,
     path::{Path, PathBuf},
 };
@@ -12,7 +13,8 @@ use yansi::Paint;
 
 use crate::{
     config::{
-        Config, DeploymentConfig, PlayabilityConfig, RemoteStateConfig, StateConfig, TemplateConfig,
+        AssetConfig, Config, DeploymentConfig, PlayabilityConfig, RemoteStateConfig, StateConfig,
+        TemplateConfig,
     },
     logger,
     resource_manager::{resource_types, SINGLETON_RESOURCE_ID},
@@ -375,6 +377,52 @@ pub fn get_desired_graph(
                         "fileHash",
                         &get_file_hash(project_path.join(&badge_icon_file).as_path())?,
                     )?
+                    .clone(),
+            )
+        }
+    }
+
+    if let Some(assets) = &templates_config.assets {
+        for asset_config in assets {
+            let (file, alias) = match asset_config.clone() {
+                AssetConfig::File(file) => {
+                    // TODO: Add glob support
+                    let name = Path::new(&file)
+                        .file_stem()
+                        .map(OsStr::to_str)
+                        .flatten()
+                        .ok_or(format!("Asset path is not a file: {}", file))?
+                        .to_owned();
+                    (file, name)
+                }
+                AssetConfig::FileWithAlias { file, name } => (file, name),
+            };
+
+            let resource_type = match Path::new(&file).extension().map(OsStr::to_str) {
+                Some(Some("bmp" | "gif" | "jpeg" | "jpg" | "png" | "tga")) => {
+                    resource_types::IMAGE_ASSET
+                }
+                _ => return Err(format!("Unable to determine asset type for file: {}", file)),
+            };
+
+            let alias_folder = match resource_type {
+                resource_types::IMAGE_ASSET => "Images",
+                _ => unreachable!(),
+            };
+
+            let asset_resource = Resource::new(resource_type, &file)
+                .add_value_input("filePath", &file)?
+                .add_value_input(
+                    "fileHash",
+                    &get_file_hash(project_path.join(&file).as_path())?,
+                )?
+                .clone();
+            resources.push(asset_resource.clone());
+            resources.push(
+                Resource::new(resource_types::ASSET_ALIAS, &file)
+                    .add_ref_input("experienceId", &experience_asset_id_ref)
+                    .add_ref_input("assetId", &asset_resource.get_input_ref("assetId"))
+                    .add_value_input("name", &format!("{}/{}", alias_folder, alias))?
                     .clone(),
             )
         }

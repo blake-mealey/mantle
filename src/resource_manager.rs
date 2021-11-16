@@ -305,6 +305,18 @@ impl ResourceManager for RobloxResourceManager {
         }
     }
 
+    fn get_update_price(
+        &mut self,
+        resource_type: &str,
+        resource_inputs: serde_yaml::Value,
+        _resource_outputs: serde_yaml::Value,
+    ) -> Result<Option<u32>, String> {
+        match resource_type {
+            resource_types::AUDIO_ASSET => self.get_create_price(resource_type, resource_inputs),
+            _ => Ok(None),
+        }
+    }
+
     fn create(
         &mut self,
         resource_type: &str,

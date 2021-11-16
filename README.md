@@ -13,7 +13,7 @@ It is recommended to install with Foreman, with the following config:
 # foreman.toml
 
 [tools]
-rocat = { source = "blake-mealey/rocat", version = "0.8.1" }
+rocat = { source = "blake-mealey/rocat", version = "0.8.2" }
 ```
 
 You can learn more about Foreman including how to install it from [its

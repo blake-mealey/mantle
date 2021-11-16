@@ -105,6 +105,20 @@ pub struct CreateImageAssetResponse {
     pub backing_asset_id: AssetId,
 }
 
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GetCreateAudioAssetPriceResponse {
+    pub price: u32,
+    pub balance: u32,
+    pub can_afford: bool,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "PascalCase")]
+pub struct CreateAudioAssetResponse {
+    pub id: AssetId,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub enum ExperienceGenre {
     All,
@@ -1160,6 +1174,81 @@ impl RobloxApi {
         let model = response
             .into_json::<CreateImageAssetResponse>()
             .map_err(|e| format!("Failed to deserialize create image asset response: {}", e))?;
+
+        if !model.success {
+            return Err("Failed to create image asset (unknown error)".to_owned());
+        }
+
+        Ok(model)
+    }
+
+    pub fn get_create_audio_asset_price(
+        &mut self,
+        file_path: &Path,
+    ) -> Result<GetCreateAudioAssetPriceResponse, String> {
+        let data = fs::read(file_path).map_err(|e| {
+            format!(
+                "Unable to read audio asset file: {}\n\t{}",
+                file_path.display(),
+                e
+            )
+        })?;
+
+        let file_name = format!(
+            "Audio/{}",
+            file_path.file_stem().map(OsStr::to_str).flatten().unwrap()
+        );
+
+        let res = ureq::post("https://publish.roblox.com/v1/audio/verify")
+            .query("name", &file_name)
+            .set("Content-Type", "*/*")
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_json(json!({
+                "name": file_name,
+                "fileSize": data.len(),
+                "file": base64::encode(data)
+            }));
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<GetCreateAudioAssetPriceResponse>()
+            .map_err(|e| {
+                format!(
+                    "Failed to deserialize get create audio asset price response: {}",
+                    e
+                )
+            })?;
+
+        Ok(model)
+    }
+
+    pub fn create_audio_asset(
+        &mut self,
+        file_path: &Path,
+    ) -> Result<CreateAudioAssetResponse, String> {
+        let data = fs::read(file_path).map_err(|e| {
+            format!(
+                "Unable to read audio asset file: {}\n\t{}",
+                file_path.display(),
+                e
+            )
+        })?;
+
+        let file_name = format!(
+            "Audio/{}",
+            file_path.file_stem().map(OsStr::to_str).flatten().unwrap()
+        );
+        let res = ureq::post("https://publish.roblox.com/v1/audio")
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .send_json(json!({
+                "name": file_name,
+                "file": base64::encode(data)
+            }));
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<CreateAudioAssetResponse>()
+            .map_err(|e| format!("Failed to deserialize create audio asset response: {}", e))?;
 
         Ok(model)
     }

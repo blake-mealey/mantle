@@ -428,11 +428,13 @@ pub fn get_desired_graph(
                     Some(Some("bmp" | "gif" | "jpeg" | "jpg" | "png" | "tga")) => {
                         resource_types::IMAGE_ASSET
                     }
+                    Some(Some("ogg" | "mp3")) => resource_types::AUDIO_ASSET,
                     _ => return Err(format!("Unable to determine asset type for file: {}", file)),
                 };
 
                 let alias_folder = match resource_type {
                     resource_types::IMAGE_ASSET => "Images",
+                    resource_types::AUDIO_ASSET => "Audio",
                     _ => unreachable!(),
                 };
 

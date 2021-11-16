@@ -1630,6 +1630,7 @@ dependencies = [
 name = "rocat"
 version = "0.8.1"
 dependencies = [
+ "base64 0.13.0",
  "chrono",
  "clap",
  "difference",

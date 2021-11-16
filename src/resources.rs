@@ -128,6 +128,13 @@ pub trait ResourceManager {
         resource_inputs: serde_yaml::Value,
     ) -> Result<Option<u32>, String>;
 
+    fn get_update_price(
+        &mut self,
+        resource_type: &str,
+        resource_inputs: serde_yaml::Value,
+        resource_outputs: serde_yaml::Value,
+    ) -> Result<Option<u32>, String>;
+
     fn create(
         &mut self,
         resource_type: &str,
@@ -494,6 +501,35 @@ impl ResourceGraph {
                             e
                         ))
                     }
+                };
+
+                match resource_manager.get_update_price(
+                    &resource.resource_type,
+                    inputs.clone(),
+                    outputs.clone(),
+                ) {
+                    Ok(Some(price)) if price > 0 => {
+                        if allow_purchases {
+                            logger::log("");
+                            logger::log(Paint::yellow(format!(
+                                "{} Robux will be charged from your account.",
+                                price
+                            )))
+                        } else {
+                            return OperationResult::Skipped(format!(
+                                "Resource would cost {} Robux to update. Give Rocat permission to make purchases with --allow-purchases.",
+                                price
+                            ));
+                        }
+                    }
+                    Err(e) => {
+                        return OperationResult::Failed(format!(
+                            "Unable to get update price: {}",
+                            e
+                        ))
+                    }
+                    Ok(None) => {}
+                    Ok(Some(_)) => {}
                 };
 
                 match resource_manager.update(&resource.resource_type, inputs, outputs) {

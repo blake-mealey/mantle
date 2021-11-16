@@ -6,10 +6,11 @@ use serde::{Deserialize, Serialize};
 use crate::{
     resources::ResourceManager,
     roblox_api::{
-        CreateBadgeResponse, CreateDeveloperProductResponse, CreateExperienceResponse,
-        CreateGamePassResponse, CreateImageAssetResponse, CreatePlaceResponse,
-        ExperienceConfigurationModel, GetDeveloperProductResponse, GetExperienceResponse,
-        GetPlaceResponse, PlaceConfigurationModel, RobloxApi, UploadImageResponse,
+        CreateAudioAssetResponse, CreateBadgeResponse, CreateDeveloperProductResponse,
+        CreateExperienceResponse, CreateGamePassResponse, CreateImageAssetResponse,
+        CreatePlaceResponse, ExperienceConfigurationModel, GetCreateAudioAssetPriceResponse,
+        GetDeveloperProductResponse, GetExperienceResponse, GetPlaceResponse,
+        PlaceConfigurationModel, RobloxApi, UploadImageResponse,
     },
     roblox_auth::RobloxAuth,
 };
@@ -34,6 +35,7 @@ pub mod resource_types {
     pub const BADGE_ICON: &str = "badgeIcon";
     pub const ASSET_ALIAS: &str = "assetAlias";
     pub const IMAGE_ASSET: &str = "imageAsset";
+    pub const AUDIO_ASSET: &str = "audioAsset";
 }
 
 pub const SINGLETON_RESOURCE_ID: &str = "singleton";
@@ -248,6 +250,18 @@ struct ImageAssetOutputs {
     decal_asset_id: AssetId,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct AudioAssetInputs {
+    file_path: String,
+    file_hash: String,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct AudioAssetOutputs {
+    asset_id: AssetId,
+}
+
 pub struct RobloxResourceManager {
     roblox_api: RobloxApi,
     project_path: PathBuf,
@@ -266,10 +280,27 @@ impl ResourceManager for RobloxResourceManager {
     fn get_create_price(
         &mut self,
         resource_type: &str,
-        _resource_inputs: serde_yaml::Value,
+        resource_inputs: serde_yaml::Value,
     ) -> Result<Option<u32>, String> {
         match resource_type {
             resource_types::BADGE => Ok(Some(100)),
+            resource_types::AUDIO_ASSET => {
+                let inputs = serde_yaml::from_value::<AudioAssetInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                let GetCreateAudioAssetPriceResponse {
+                    price, can_afford, ..
+                } = self.roblox_api.get_create_audio_asset_price(
+                    self.project_path.join(inputs.file_path).as_path(),
+                )?;
+
+                // TODO: Add support for failing early like this for all other resource types (e.g. return the price and current balance from this function)
+                if !can_afford {
+                    return Err(format!("You do not have enough Robux to create an audio asset with the price of {}", price));
+                }
+
+                Ok(Some(price))
+            }
             _ => Ok(None),
         }
     }
@@ -567,6 +598,19 @@ impl ResourceManager for RobloxResourceManager {
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
             }
+            resource_types::AUDIO_ASSET => {
+                let inputs = serde_yaml::from_value::<AudioAssetInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                let CreateAudioAssetResponse { id } = self
+                    .roblox_api
+                    .create_audio_asset(self.project_path.join(inputs.file_path).as_path())?;
+
+                Ok(Some(
+                    serde_yaml::to_value(AudioAssetOutputs { asset_id: id })
+                        .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
+            }
             _ => panic!(
                 "Create not implemented for resource type: {}",
                 resource_type
@@ -698,6 +742,7 @@ impl ResourceManager for RobloxResourceManager {
                 ))
             }
             resource_types::IMAGE_ASSET => self.create(resource_type, resource_inputs),
+            resource_types::AUDIO_ASSET => self.create(resource_type, resource_inputs),
             _ => panic!(
                 "Update not implemented for resource type: {}",
                 resource_type
@@ -870,6 +915,14 @@ impl ResourceManager for RobloxResourceManager {
                     .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
 
                 self.roblox_api.archive_asset(outputs.decal_asset_id)?;
+
+                Ok(())
+            }
+            resource_types::AUDIO_ASSET => {
+                let outputs = serde_yaml::from_value::<AudioAssetOutputs>(resource_outputs)
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                self.roblox_api.archive_asset(outputs.asset_id)?;
 
                 Ok(())
             }

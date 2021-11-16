@@ -63,8 +63,7 @@ templates:
       description: The best badge of all
       icon: badge-1.png
   assets:
-    - asset-image-1.png
-    - asset-image-2.png
+    - asset-*
 
 state:
   remote:

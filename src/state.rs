@@ -384,47 +384,74 @@ pub fn get_desired_graph(
 
     if let Some(assets) = &templates_config.assets {
         for asset_config in assets {
-            let (file, alias) = match asset_config.clone() {
+            let assets = match asset_config.clone() {
                 AssetConfig::File(file) => {
-                    // TODO: Add glob support
-                    let name = Path::new(&file)
-                        .file_stem()
-                        .map(OsStr::to_str)
-                        .flatten()
-                        .ok_or(format!("Asset path is not a file: {}", file))?
-                        .to_owned();
-                    (file, name)
+                    let relative_to_project = project_path.join(file.clone());
+                    let relative_to_project = relative_to_project
+                        .to_str()
+                        .ok_or(format!("Path was invalid: {}", file))?;
+                    let paths = glob::glob(relative_to_project)
+                        .map_err(|e| format!("Glob pattern invalid: {}", e))?;
+
+                    let mut assets = Vec::new();
+                    for path in paths {
+                        let path = path.map_err(|e| format!("Glob pattern invalid: {}", e))?;
+                        let name = path
+                            .file_stem()
+                            .map(OsStr::to_str)
+                            .flatten()
+                            .ok_or(format!("Asset path is not a file: {}", path.display()))?
+                            .to_owned();
+
+                        let relative_file = path.canonicalize();
+                        let relative_file =
+                            relative_file.map_err(|e| format!("Failed to canonizalize: {}", e))?;
+                        let relative_file = relative_file
+                            .strip_prefix(
+                                project_path
+                                    .canonicalize()
+                                    .map_err(|e| format!("Failed to canonizalize: {}", e))?,
+                            )
+                            .map_err(|e| format!("Failed to relativize path: {}", e))?
+                            .to_str()
+                            .ok_or(format!("Path was invalid: {}", path.display()))?;
+
+                        assets.push((relative_file.to_owned(), name));
+                    }
+                    assets
                 }
-                AssetConfig::FileWithAlias { file, name } => (file, name),
+                AssetConfig::FileWithAlias { file, name } => vec![(file, name)],
             };
 
-            let resource_type = match Path::new(&file).extension().map(OsStr::to_str) {
-                Some(Some("bmp" | "gif" | "jpeg" | "jpg" | "png" | "tga")) => {
-                    resource_types::IMAGE_ASSET
-                }
-                _ => return Err(format!("Unable to determine asset type for file: {}", file)),
-            };
+            for (file, alias) in assets {
+                let resource_type = match Path::new(&file).extension().map(OsStr::to_str) {
+                    Some(Some("bmp" | "gif" | "jpeg" | "jpg" | "png" | "tga")) => {
+                        resource_types::IMAGE_ASSET
+                    }
+                    _ => return Err(format!("Unable to determine asset type for file: {}", file)),
+                };
 
-            let alias_folder = match resource_type {
-                resource_types::IMAGE_ASSET => "Images",
-                _ => unreachable!(),
-            };
+                let alias_folder = match resource_type {
+                    resource_types::IMAGE_ASSET => "Images",
+                    _ => unreachable!(),
+                };
 
-            let asset_resource = Resource::new(resource_type, &file)
-                .add_value_input("filePath", &file)?
-                .add_value_input(
-                    "fileHash",
-                    &get_file_hash(project_path.join(&file).as_path())?,
-                )?
-                .clone();
-            resources.push(asset_resource.clone());
-            resources.push(
-                Resource::new(resource_types::ASSET_ALIAS, &file)
-                    .add_ref_input("experienceId", &experience_asset_id_ref)
-                    .add_ref_input("assetId", &asset_resource.get_input_ref("assetId"))
-                    .add_value_input("name", &format!("{}/{}", alias_folder, alias))?
-                    .clone(),
-            )
+                let asset_resource = Resource::new(resource_type, &file)
+                    .add_value_input("filePath", &file)?
+                    .add_value_input(
+                        "fileHash",
+                        &get_file_hash(project_path.join(&file).as_path())?,
+                    )?
+                    .clone();
+                resources.push(asset_resource.clone());
+                resources.push(
+                    Resource::new(resource_types::ASSET_ALIAS, &file)
+                        .add_ref_input("experienceId", &experience_asset_id_ref)
+                        .add_ref_input("assetId", &asset_resource.get_input_ref("assetId"))
+                        .add_value_input("name", &format!("{}/{}", alias_folder, alias))?
+                        .clone(),
+                )
+            }
         }
     }
 

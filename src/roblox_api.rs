@@ -1165,7 +1165,7 @@ impl RobloxApi {
         let res = ureq::post("https://data.roblox.com/data/upload/json")
             .query("assetTypeId", "13")
             .query("name", &file_name)
-            .query("description", "madewithrocat")
+            .query("description", "madewithmantle")
             .set("Content-Type", "*/*")
             .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
             .send_bytes(&data);

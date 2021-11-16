@@ -439,7 +439,7 @@ impl ResourceGraph {
                             )))
                         } else {
                             return OperationResult::Skipped(format!(
-                                "Resource would cost {} Robux to create. Give Rocat permission to make purchases with --allow-purchases.",
+                                "Resource would cost {} Robux to create. Give Mantle permission to make purchases with --allow-purchases.",
                                 price
                             ));
                         }
@@ -517,7 +517,7 @@ impl ResourceGraph {
                             )))
                         } else {
                             return OperationResult::Skipped(format!(
-                                "Resource would cost {} Robux to update. Give Rocat permission to make purchases with --allow-purchases.",
+                                "Resource would cost {} Robux to update. Give Mantle permission to make purchases with --allow-purchases.",
                                 price
                             ));
                         }

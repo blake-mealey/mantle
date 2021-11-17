@@ -61,13 +61,6 @@ pub struct DeploymentConfig {
     #[serde(default)]
     pub tag_commit: bool,
 
-    // TODO: remove
-    pub experience_id: Option<u64>,
-
-    // TODO: remove
-    #[serde(default = "HashMap::new")]
-    pub place_ids: HashMap<String, u64>,
-
     pub overrides: Option<TemplateConfig>,
 }
 

@@ -227,13 +227,13 @@ pub struct GetGameIconsResponse {
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct GetGamesThumbnailsResponse {
-    pub data: Vec<GetGameThumbnailsResponse>,
+    pub data: Vec<GetGameThumbnailResponse>,
 }
 
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct GetGameThumbnailsResponse {
-    pub thumbnails: Vec<GetThumbnailResponse>,
+pub struct GetGameThumbnailResponse {
+    pub id: AssetId,
 }
 
 #[derive(Deserialize, Clone)]
@@ -782,25 +782,6 @@ impl RobloxApi {
         Ok(())
     }
 
-    pub fn get_experience_icon(
-        &mut self,
-        experience_id: AssetId,
-    ) -> Result<Option<GetThumbnailResponse>, String> {
-        let res = ureq::get("https://thumbnails.roblox.com/v1/games/icons")
-            .query("universeIds", &experience_id.to_string())
-            .query("format", "Png")
-            .query("size", "50x50")
-            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
-            .call();
-
-        let response = Self::handle_response(res)?;
-        let model = response
-            .into_json::<GetGameIconsResponse>()
-            .map_err(|e| format!("Failed to deserialize get game icons response: {}", e))?;
-
-        Ok(model.data.first().cloned())
-    }
-
     pub fn upload_thumbnail(
         &mut self,
         experience_id: AssetId,
@@ -834,21 +815,20 @@ impl RobloxApi {
     pub fn get_experience_thumbnails(
         &mut self,
         experience_id: AssetId,
-    ) -> Result<Option<Vec<GetThumbnailResponse>>, String> {
-        let res = ureq::get("https://thumbnails.roblox.com/v1/games/multiget/thumbnails")
-            .query("universeIds", &experience_id.to_string())
-            .query("defaults", "false")
-            .query("format", "Png")
-            .query("size", "768x432")
-            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
-            .call();
+    ) -> Result<Vec<GetGameThumbnailResponse>, String> {
+        let res = ureq::get(&format!(
+            "https://games.roblox.com/v1/games/{}/media",
+            experience_id
+        ))
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .call();
 
         let response = Self::handle_response(res)?;
         let model = response
             .into_json::<GetGamesThumbnailsResponse>()
-            .map_err(|e| format!("Failed to deserialize get game icons response: {}", e))?;
+            .map_err(|e| format!("Failed to deserialize get game thumbnails response: {}", e))?;
 
-        Ok(model.data.first().cloned().map(|x| x.thumbnails))
+        Ok(model.data)
     }
 
     pub fn set_experience_thumbnail_order(

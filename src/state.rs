@@ -20,13 +20,12 @@ use crate::{
     resource_manager::{
         resource_types, AssetAliasOutputs, AssetId, AudioAssetOutputs, BadgeIconOutputs,
         BadgeOutputs, ExperienceDeveloperProductIconOutputs, ExperienceDeveloperProductOutputs,
-        ExperienceIconOutputs, ExperienceOutputs, ExperienceThumbnailOutputs, GamePassIconOutputs,
-        GamePassOutputs, ImageAssetOutputs, PlaceFileOutputs, PlaceOutputs, SINGLETON_RESOURCE_ID,
+        ExperienceOutputs, ExperienceThumbnailOutputs, GamePassIconOutputs, GamePassOutputs,
+        ImageAssetOutputs, PlaceFileOutputs, PlaceOutputs, SINGLETON_RESOURCE_ID,
     },
     resources::{InputRef, Resource, ResourceGraph},
     roblox_api::{
-        ExperienceConfigurationModel, GetExperienceResponse, GetThumbnailResponse,
-        PlaceConfigurationModel, RobloxApi,
+        ExperienceConfigurationModel, GetExperienceResponse, PlaceConfigurationModel, RobloxApi,
     },
 };
 
@@ -153,13 +152,10 @@ pub async fn get_previous_state(
 pub fn get_desired_graph(
     project_path: &Path,
     templates_config: &TemplateConfig,
-    deployment_config: &DeploymentConfig,
 ) -> Result<ResourceGraph, String> {
     let mut resources: Vec<Resource> = Vec::new();
 
-    let experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
-        .add_value_input("assetId", &deployment_config.experience_id.clone())?
-        .clone();
+    let experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID);
     let experience_asset_id_ref = experience.get_input_ref("assetId");
     let experience_start_place_id_ref = experience.get_input_ref("startPlaceId");
     resources.push(experience);
@@ -238,7 +234,6 @@ pub fn get_desired_graph(
         }
 
         for (name, template) in places.iter() {
-            let place_id = deployment_config.place_ids.get(name);
             let place_file = template
                 .file
                 .clone()
@@ -247,7 +242,6 @@ pub fn get_desired_graph(
             let place = Resource::new(resource_types::PLACE, name)
                 .add_ref_input("experienceId", &experience_asset_id_ref)
                 .add_ref_input("startPlaceId", &experience_start_place_id_ref)
-                .add_value_input("assetId", &place_id)?
                 .add_value_input("isStart", &(name == "start"))?
                 .clone();
             let place_asset_id_ref = place.get_input_ref("assetId");
@@ -507,60 +501,47 @@ pub fn import_graph(
         .clone(),
     );
 
-    if let Some(GetThumbnailResponse { target_id: icon_id }) =
-        roblox_api.get_experience_icon(experience_id)?
-    {
-        resources.push(
-            Resource::new(resource_types::EXPERIENCE_ICON, &icon_id.to_string())
-                .add_ref_input("experienceId", &experience_asset_id_ref)
-                .add_ref_input("startPlaceId", &experience_start_place_id_ref)
-                // TODO: should we get legit values? e.g. pass the URL and its real hash?
-                .add_value_input("filePath", &"fake-path")?
-                .add_value_input("fileHash", &"fake-hash")?
-                .set_outputs(ExperienceIconOutputs { asset_id: icon_id })?
-                .clone(),
+    // We intentionally do not import the game icon because we do not know of an API which returns
+    // the correct ID for it to be removed.
+
+    let thumbnails = roblox_api.get_experience_thumbnails(experience_id)?;
+    let mut thumbnail_asset_id_refs: Vec<InputRef> = Vec::new();
+    for thumbnail in thumbnails {
+        let thumbnail_resource = Resource::new(
+            resource_types::EXPERIENCE_THUMBNAIL,
+            &thumbnail.id.to_string(),
         )
+        .add_ref_input("experienceId", &experience_asset_id_ref)
+        // TODO: should we get legit values? e.g. pass the URL and its real hash?
+        .add_value_input("filePath", &"fake-path")?
+        .add_value_input("fileHash", &"fake-hash")?
+        .set_outputs(ExperienceThumbnailOutputs {
+            asset_id: thumbnail.id,
+        })?
+        .clone();
+        thumbnail_asset_id_refs.push(thumbnail_resource.get_input_ref("assetId"));
+        resources.push(thumbnail_resource);
     }
-
-    if let Some(thumbnails) = roblox_api.get_experience_thumbnails(experience_id)? {
-        let mut thumbnail_asset_id_refs: Vec<InputRef> = Vec::new();
-        for GetThumbnailResponse {
-            target_id: thumbnail_id,
-        } in thumbnails
-        {
-            let thumbnail_resource = Resource::new(
-                resource_types::EXPERIENCE_THUMBNAIL,
-                &thumbnail_id.to_string(),
-            )
-            .add_ref_input("experienceId", &experience_asset_id_ref)
-            // TODO: should we get legit values? e.g. pass the URL and its real hash?
-            .add_value_input("filePath", &"fake-path")?
-            .add_value_input("fileHash", &"fake-hash")?
-            .set_outputs(ExperienceThumbnailOutputs {
-                asset_id: thumbnail_id,
-            })?
-            .clone();
-            thumbnail_asset_id_refs.push(thumbnail_resource.get_input_ref("assetId"));
-            resources.push(thumbnail_resource);
-        }
-
-        resources.push(
-            Resource::new(
-                resource_types::EXPERIENCE_THUMBNAIL_ORDER,
-                SINGLETON_RESOURCE_ID,
-            )
-            .add_ref_input("experienceId", &experience_asset_id_ref)
-            .add_ref_input_list("assetIds", &thumbnail_asset_id_refs)
-            .clone(),
-        );
-    }
+    resources.push(
+        Resource::new(
+            resource_types::EXPERIENCE_THUMBNAIL_ORDER,
+            SINGLETON_RESOURCE_ID,
+        )
+        .add_ref_input("experienceId", &experience_asset_id_ref)
+        .add_ref_input_list("assetIds", &thumbnail_asset_id_refs)
+        .clone(),
+    );
 
     let places = roblox_api.get_all_places(experience_id)?;
     for place in places {
-        let place_resource = Resource::new(resource_types::PLACE, &place.id.to_string())
+        let resource_id = if place.is_root_place {
+            "start".to_owned()
+        } else {
+            place.id.to_string()
+        };
+        let place_resource = Resource::new(resource_types::PLACE, &resource_id)
             .add_ref_input("experienceId", &experience_asset_id_ref)
             .add_ref_input("startPlaceId", &experience_start_place_id_ref)
-            .add_value_input("assetId", &Some(place.id))?
             .add_value_input("isStart", &place.is_root_place)?
             .set_outputs(PlaceOutputs { asset_id: place.id })?
             .clone();
@@ -568,7 +549,7 @@ pub fn import_graph(
         resources.push(place_resource);
 
         resources.push(
-            Resource::new(resource_types::PLACE_FILE, &place.id.to_string())
+            Resource::new(resource_types::PLACE_FILE, &resource_id)
                 .add_ref_input("assetId", &place_asset_id_ref)
                 // TODO: should we get legit values?
                 .add_value_input("filePath", &"fake_file")?
@@ -580,7 +561,7 @@ pub fn import_graph(
         );
 
         resources.push(
-            Resource::new(resource_types::PLACE_CONFIGURATION, &place.id.to_string())
+            Resource::new(resource_types::PLACE_CONFIGURATION, &resource_id)
                 .add_ref_input("assetId", &place_asset_id_ref)
                 .add_value_input::<PlaceConfigurationModel>("configuration", &place.into())?
                 .clone(),
@@ -601,8 +582,8 @@ pub fn import_graph(
             product.description.as_ref().unwrap_or(&"".to_owned()),
         )?
         .set_outputs(ExperienceDeveloperProductOutputs {
-            asset_id: product.developer_product_id,
-            product_id: product.product_id,
+            asset_id: product.product_id,
+            product_id: product.developer_product_id,
         })?
         .clone();
         if let Some(icon_id) = product.icon_image_asset_id {

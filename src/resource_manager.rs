@@ -9,8 +9,8 @@ use crate::{
         CreateAudioAssetResponse, CreateBadgeResponse, CreateDeveloperProductResponse,
         CreateExperienceResponse, CreateGamePassResponse, CreateImageAssetResponse,
         CreatePlaceResponse, ExperienceConfigurationModel, GetCreateAudioAssetPriceResponse,
-        GetDeveloperProductResponse, GetExperienceResponse, GetPlaceResponse,
-        PlaceConfigurationModel, RobloxApi, UploadImageResponse,
+        GetDeveloperProductResponse, GetPlaceResponse, PlaceConfigurationModel, RobloxApi,
+        UploadImageResponse,
     },
     roblox_auth::RobloxAuth,
 };
@@ -40,11 +40,6 @@ pub mod resource_types {
 
 pub const SINGLETON_RESOURCE_ID: &str = "singleton";
 
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-struct ExperienceInputs {
-    asset_id: Option<AssetId>,
-}
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ExperienceOutputs {
@@ -134,7 +129,6 @@ pub struct ExperienceDeveloperProductOutputs {
 struct PlaceInputs {
     experience_id: AssetId,
     start_place_id: AssetId,
-    asset_id: Option<AssetId>,
     is_start: bool,
 }
 #[derive(Serialize, Deserialize, Clone)]
@@ -323,33 +317,18 @@ impl ResourceManager for RobloxResourceManager {
     ) -> Result<Option<serde_yaml::Value>, String> {
         match resource_type {
             resource_types::EXPERIENCE => {
-                let inputs = serde_yaml::from_value::<ExperienceInputs>(resource_inputs)
-                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let CreateExperienceResponse {
+                    universe_id,
+                    root_place_id,
+                } = self.roblox_api.create_experience()?;
 
-                let outputs = match inputs.asset_id {
-                    Some(asset_id) => {
-                        let GetExperienceResponse { root_place_id, .. } =
-                            self.roblox_api.get_experience(asset_id)?;
-                        ExperienceOutputs {
-                            asset_id,
-                            start_place_id: root_place_id,
-                        }
-                    }
-                    None => {
-                        let CreateExperienceResponse {
-                            universe_id,
-                            root_place_id,
-                        } = self.roblox_api.create_experience()?;
-                        ExperienceOutputs {
-                            asset_id: universe_id,
-                            start_place_id: root_place_id,
-                        }
-                    }
-                };
-
-                Ok(Some(serde_yaml::to_value(outputs).map_err(|e| {
-                    format!("Failed to serialize outputs: {}", e)
-                })?))
+                Ok(Some(
+                    serde_yaml::to_value(ExperienceOutputs {
+                        asset_id: universe_id,
+                        start_place_id: root_place_id,
+                    })
+                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
             }
             resource_types::EXPERIENCE_CONFIGURATION => {
                 let inputs =
@@ -457,16 +436,15 @@ impl ResourceManager for RobloxResourceManager {
                 let inputs = serde_yaml::from_value::<PlaceInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
 
-                let outputs = match (inputs.is_start, inputs.asset_id) {
-                    (false, None) => {
+                let outputs = match inputs.is_start {
+                    false => {
                         let CreatePlaceResponse { place_id, .. } =
                             self.roblox_api.create_place(inputs.experience_id)?;
                         PlaceOutputs { asset_id: place_id }
                     }
-                    (true, None) => PlaceOutputs {
+                    true => PlaceOutputs {
                         asset_id: inputs.start_place_id,
                     },
-                    (_, Some(asset_id)) => PlaceOutputs { asset_id },
                 };
 
                 Ok(Some(serde_yaml::to_value(outputs).map_err(|e| {
@@ -850,11 +828,10 @@ impl ResourceManager for RobloxResourceManager {
                 let outputs = serde_yaml::from_value::<PlaceOutputs>(resource_outputs)
                     .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
 
-                if inputs.is_start {
-                    return Err("Cannot delete the start place of an experience. Try creating a new experience instead.".to_owned());
+                if !inputs.is_start {
+                    self.roblox_api
+                        .remove_place_from_experience(inputs.experience_id, outputs.asset_id)?;
                 }
-                self.roblox_api
-                    .remove_place_from_experience(inputs.experience_id, outputs.asset_id)?;
 
                 Ok(())
             }

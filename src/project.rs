@@ -171,7 +171,7 @@ pub async fn load_project(
     let previous_graph =
         ResourceGraph::new(state.deployments.get(&deployment_config.name).unwrap());
     let next_graph =
-        get_desired_graph(project_path.as_path(), &templates_config, deployment_config)?;
+        get_desired_graph(project_path.as_path(), &templates_config)?;
 
     Ok(Some(Project {
         project_path,

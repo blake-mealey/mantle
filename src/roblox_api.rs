@@ -37,6 +37,7 @@ pub struct CreateExperienceResponse {
 #[serde(rename_all = "camelCase")]
 pub struct GetExperienceResponse {
     pub root_place_id: AssetId,
+    pub is_active: bool,
 }
 
 #[derive(Deserialize)]
@@ -49,13 +50,47 @@ pub struct CreatePlaceResponse {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetPlaceResponse {
+    pub id: AssetId,
     pub current_saved_version: u32,
+    pub name: String,
+    pub description: String,
+    pub max_player_count: u32,
+    pub allow_copying: bool,
+    pub social_slot_type: SocialSlotType,
+    pub custom_social_slots_count: u32,
+    pub is_root_place: bool,
+}
+
+impl From<GetPlaceResponse> for PlaceConfigurationModel {
+    fn from(response: GetPlaceResponse) -> Self {
+        PlaceConfigurationModel {
+            name: Some(response.name),
+            description: Some(response.description),
+            max_player_count: Some(response.max_player_count),
+            allow_copying: Some(response.allow_copying),
+            social_slot_type: Some(response.social_slot_type),
+            custom_social_slot_count: Some(response.custom_social_slots_count),
+        }
+    }
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RemovePlaceResponse {
     pub success: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListPlacesResponse {
+    pub next_page_cursor: Option<String>,
+    pub data: Vec<ListPlaceResponse>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ListPlaceResponse {
+    pub id: AssetId,
 }
 
 #[derive(Deserialize)]
@@ -68,7 +103,6 @@ pub struct UploadImageResponse {
 #[serde(rename_all = "camelCase")]
 pub struct CreateDeveloperProductResponse {
     pub id: AssetId,
-    pub shop_id: AssetId,
 }
 
 #[derive(Deserialize)]
@@ -83,6 +117,33 @@ pub struct ListDeveloperProductsResponse {
 pub struct GetDeveloperProductResponse {
     pub product_id: AssetId,
     pub developer_product_id: AssetId,
+    pub name: String,
+    pub description: Option<String>,
+    pub icon_image_asset_id: Option<AssetId>,
+    pub price_in_robux: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListGamePassesResponse {
+    pub next_page_cursor: Option<String>,
+    pub data: Vec<ListGamePassResponse>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ListGamePassResponse {
+    pub id: AssetId,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "PascalCase")]
+pub struct GetGamePassResponse {
+    pub target_id: AssetId,
+    pub name: String,
+    pub description: String,
+    pub icon_image_asset_id: AssetId,
+    pub price_in_robux: Option<u32>,
 }
 
 pub struct CreateGamePassResponse {
@@ -95,6 +156,44 @@ pub struct CreateGamePassResponse {
 pub struct CreateBadgeResponse {
     pub id: AssetId,
     pub icon_image_id: AssetId,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListBadgesResponse {
+    pub next_page_cursor: Option<String>,
+    pub data: Vec<ListBadgeResponse>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ListBadgeResponse {
+    pub id: AssetId,
+    pub name: String,
+    pub description: String,
+    pub icon_image_id: AssetId,
+    pub enabled: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct ListAssetAliasesResponse {
+    pub aliases: Vec<GetAssetAliasResponse>,
+    pub final_page: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct GetAssetAliasResponse {
+    pub name: String,
+    pub target_id: AssetId,
+    pub asset: GetAssetResponse,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct GetAssetResponse {
+    pub type_id: u32,
 }
 
 #[derive(Deserialize, Clone)]
@@ -119,6 +218,30 @@ pub struct CreateAudioAssetResponse {
     pub id: AssetId,
 }
 
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GetGameIconsResponse {
+    pub data: Vec<GetThumbnailResponse>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GetGamesThumbnailsResponse {
+    pub data: Vec<GetGameThumbnailResponse>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GetGameThumbnailResponse {
+    pub id: AssetId,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GetThumbnailResponse {
+    pub target_id: AssetId,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub enum ExperienceGenre {
     All,
@@ -141,7 +264,7 @@ pub enum ExperienceGenre {
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub enum ExperiencePlayableDevice {
     Computer,
     Phone,
@@ -157,14 +280,14 @@ pub enum ExperienceAvatarType {
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub enum ExperienceAnimationType {
     Standard,
     PlayerChoice,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub enum ExperienceCollisionType {
     OuterBox,
     InnerBox,
@@ -343,6 +466,54 @@ impl RobloxApi {
         Ok(model)
     }
 
+    pub fn list_places(
+        &mut self,
+        experience_id: AssetId,
+        page_cursor: Option<String>,
+    ) -> Result<ListPlacesResponse, String> {
+        let mut req = ureq::get(&format!(
+            "https://develop.roblox.com/v1/universes/{}/places",
+            experience_id
+        ));
+        if let Some(page_cursor) = page_cursor {
+            req = req.query("cursor", &page_cursor);
+        }
+        let res = req
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .call();
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<ListPlacesResponse>()
+            .map_err(|e| format!("Failed to deserialize list places response: {}", e))?;
+
+        Ok(model)
+    }
+
+    pub fn get_all_places(
+        &mut self,
+        experience_id: AssetId,
+    ) -> Result<Vec<GetPlaceResponse>, String> {
+        let mut all_places = Vec::new();
+
+        let mut page_cursor: Option<String> = None;
+        loop {
+            let res = self.list_places(experience_id, page_cursor)?;
+            for ListPlaceResponse { id } in res.data {
+                let place = self.get_place(id)?;
+                all_places.push(place);
+            }
+
+            if res.next_page_cursor.is_none() {
+                break;
+            }
+
+            page_cursor = res.next_page_cursor;
+        }
+
+        Ok(all_places)
+    }
+
     pub fn remove_place_from_experience(
         &mut self,
         experience_id: AssetId,
@@ -397,6 +568,30 @@ impl RobloxApi {
         let model = response
             .into_json::<GetExperienceResponse>()
             .map_err(|e| format!("Failed to deserialize get experience response: {}", e))?;
+
+        Ok(model)
+    }
+
+    pub fn get_experience_configuration(
+        &mut self,
+        experience_id: AssetId,
+    ) -> Result<ExperienceConfigurationModel, String> {
+        let res = ureq::get(&format!(
+            "https://develop.roblox.com/v1/universes/{}/configuration",
+            experience_id
+        ))
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .call();
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<ExperienceConfigurationModel>()
+            .map_err(|e| {
+                format!(
+                    "Failed to deserialize get experience configuration response: {}",
+                    e
+                )
+            })?;
 
         Ok(model)
     }
@@ -617,6 +812,25 @@ impl RobloxApi {
         Ok(model)
     }
 
+    pub fn get_experience_thumbnails(
+        &mut self,
+        experience_id: AssetId,
+    ) -> Result<Vec<GetGameThumbnailResponse>, String> {
+        let res = ureq::get(&format!(
+            "https://games.roblox.com/v1/games/{}/media",
+            experience_id
+        ))
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .call();
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<GetGamesThumbnailsResponse>()
+            .map_err(|e| format!("Failed to deserialize get game thumbnails response: {}", e))?;
+
+        Ok(model.data)
+    }
+
     pub fn set_experience_thumbnail_order(
         &mut self,
         experience_id: AssetId,
@@ -748,6 +962,71 @@ impl RobloxApi {
         Ok(model)
     }
 
+    pub fn list_game_passes(
+        &mut self,
+        experience_id: AssetId,
+        page_cursor: Option<String>,
+    ) -> Result<ListGamePassesResponse, String> {
+        let mut req = ureq::get(&format!(
+            "https://games.roblox.com/v1/games/{}/game-passes",
+            experience_id
+        ));
+        if let Some(page_cursor) = page_cursor {
+            req = req.query("cursor", &page_cursor);
+        }
+        let res = req
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .call();
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<ListGamePassesResponse>()
+            .map_err(|e| format!("Failed to deserialize list game passes response: {}", e))?;
+
+        Ok(model)
+    }
+
+    pub fn get_game_pass(&mut self, game_pass_id: AssetId) -> Result<GetGamePassResponse, String> {
+        let res = ureq::get("https://api.roblox.com/marketplace/game-pass-product-info")
+            .query("gamePassId", &game_pass_id.to_string())
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .call();
+
+        let response = Self::handle_response(res)?;
+        let mut model = response
+            .into_json::<GetGamePassResponse>()
+            .map_err(|e| format!("Failed to deserialize get game pass response: {}", e))?;
+        if model.target_id == 0 {
+            model.target_id = game_pass_id;
+        }
+
+        Ok(model)
+    }
+
+    pub fn get_all_game_passes(
+        &mut self,
+        experience_id: AssetId,
+    ) -> Result<Vec<GetGamePassResponse>, String> {
+        let mut all_games = Vec::new();
+
+        let mut page_cursor: Option<String> = None;
+        loop {
+            let res = self.list_game_passes(experience_id, page_cursor)?;
+            for ListGamePassResponse { id } in res.data {
+                let game_pass = self.get_game_pass(id)?;
+                all_games.push(game_pass);
+            }
+
+            if res.next_page_cursor.is_none() {
+                break;
+            }
+
+            page_cursor = res.next_page_cursor;
+        }
+
+        Ok(all_games)
+    }
+
     pub fn list_developer_products(
         &mut self,
         experience_id: AssetId,
@@ -770,6 +1049,27 @@ impl RobloxApi {
             })?;
 
         Ok(model)
+    }
+
+    pub fn get_all_developer_products(
+        &mut self,
+        experience_id: AssetId,
+    ) -> Result<Vec<GetDeveloperProductResponse>, String> {
+        let mut all_products = Vec::new();
+
+        let mut page: u32 = 1;
+        loop {
+            let res = self.list_developer_products(experience_id, page)?;
+            all_products.extend(res.developer_products);
+
+            if res.final_page {
+                break;
+            }
+
+            page += 1;
+        }
+
+        Ok(all_products)
     }
 
     pub fn find_developer_product_by_id(
@@ -1059,6 +1359,51 @@ impl RobloxApi {
         Ok(())
     }
 
+    pub fn list_badges(
+        &mut self,
+        experience_id: AssetId,
+        page_cursor: Option<String>,
+    ) -> Result<ListBadgesResponse, String> {
+        let mut req = ureq::get(&format!(
+            "https://badges.roblox.com/v1/universes/{}/badges",
+            experience_id
+        ));
+        if let Some(page_cursor) = page_cursor {
+            req = req.query("cursor", &page_cursor);
+        }
+        let res = req
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .call();
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<ListBadgesResponse>()
+            .map_err(|e| format!("Failed to deserialize list badges response: {}", e))?;
+
+        Ok(model)
+    }
+
+    pub fn get_all_badges(
+        &mut self,
+        experience_id: AssetId,
+    ) -> Result<Vec<ListBadgeResponse>, String> {
+        let mut all_badges = Vec::new();
+
+        let mut page_cursor: Option<String> = None;
+        loop {
+            let res = self.list_badges(experience_id, page_cursor)?;
+            all_badges.extend(res.data);
+
+            if res.next_page_cursor.is_none() {
+                break;
+            }
+
+            page_cursor = res.next_page_cursor;
+        }
+
+        Ok(all_badges)
+    }
+
     pub fn update_badge_icon(
         &mut self,
         badge_id: AssetId,
@@ -1144,6 +1489,46 @@ impl RobloxApi {
         Self::handle_response(res)?;
 
         Ok(())
+    }
+
+    pub fn list_asset_aliases(
+        &mut self,
+        experience_id: AssetId,
+        page: u32,
+    ) -> Result<ListAssetAliasesResponse, String> {
+        let res = ureq::get(&"https://api.roblox.com/universes/get-aliases".to_owned())
+            .query("universeId", &experience_id.to_string())
+            .query("page", &page.to_string())
+            .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+            .call();
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<ListAssetAliasesResponse>()
+            .map_err(|e| format!("Failed to deserialize list asset aliases response: {}", e))?;
+
+        Ok(model)
+    }
+
+    pub fn get_all_asset_aliases(
+        &mut self,
+        experience_id: AssetId,
+    ) -> Result<Vec<GetAssetAliasResponse>, String> {
+        let mut all_products = Vec::new();
+
+        let mut page: u32 = 1;
+        loop {
+            let res = self.list_asset_aliases(experience_id, page)?;
+            all_products.extend(res.aliases);
+
+            if res.final_page {
+                break;
+            }
+
+            page += 1;
+        }
+
+        Ok(all_products)
     }
 
     pub fn create_image_asset(

@@ -4,7 +4,7 @@ use serde::de;
 use yansi::Paint;
 
 use crate::{
-    config::DeploymentConfig,
+    config::TemplateConfig,
     logger,
     project::{load_project, Project},
     resource_manager::{resource_types, RobloxResourceManager},
@@ -29,12 +29,12 @@ where
 }
 
 fn tag_commit(
-    deployment_config: &DeploymentConfig,
+    templates_config: &TemplateConfig,
     next_graph: &ResourceGraph,
     previous_graph: &ResourceGraph,
 ) -> Result<u32, String> {
     let mut tag_count: u32 = 0;
-    for name in deployment_config.place_ids.keys() {
+    for name in templates_config.places.as_ref().unwrap().keys() {
         let input_ref = (
             resource_types::PLACE_FILE.to_owned(),
             name.to_owned(),
@@ -81,7 +81,7 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>, allow_purchase
         mut state,
         deployment_config,
         state_config,
-        ..
+        templates_config,
     } = match load_project(project, deployment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
@@ -128,7 +128,7 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>, allow_purchase
 
     if deployment_config.tag_commit && matches!(results, Ok(_)) {
         logger::start_action("Tagging commit:");
-        match tag_commit(&deployment_config, &next_graph, &previous_graph) {
+        match tag_commit(&templates_config, &next_graph, &previous_graph) {
             Ok(0) => logger::end_action("No tagging required"),
             Ok(tag_count) => {
                 logger::end_action(format!("Succeeded in pushing {} tag(s)", tag_count))

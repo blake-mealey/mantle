@@ -9,8 +9,8 @@ use crate::{
         CreateAudioAssetResponse, CreateBadgeResponse, CreateDeveloperProductResponse,
         CreateExperienceResponse, CreateGamePassResponse, CreateImageAssetResponse,
         CreatePlaceResponse, ExperienceConfigurationModel, GetCreateAudioAssetPriceResponse,
-        GetDeveloperProductResponse, GetExperienceResponse, GetPlaceResponse,
-        PlaceConfigurationModel, RobloxApi, UploadImageResponse,
+        GetDeveloperProductResponse, GetPlaceResponse, PlaceConfigurationModel, RobloxApi,
+        UploadImageResponse,
     },
     roblox_auth::RobloxAuth,
 };
@@ -42,14 +42,9 @@ pub const SINGLETON_RESOURCE_ID: &str = "singleton";
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct ExperienceInputs {
-    asset_id: Option<AssetId>,
-}
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-struct ExperienceOutputs {
-    asset_id: AssetId,
-    start_place_id: AssetId,
+pub struct ExperienceOutputs {
+    pub asset_id: AssetId,
+    pub start_place_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -75,8 +70,8 @@ struct ExperienceThumbnailInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct ExperienceThumbnailOutputs {
-    asset_id: AssetId,
+pub struct ExperienceThumbnailOutputs {
+    pub asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -89,8 +84,8 @@ struct ExperienceIconInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct ExperienceIconOutputs {
-    asset_id: AssetId,
+pub struct ExperienceIconOutputs {
+    pub asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -102,8 +97,8 @@ struct ExperienceDeveloperProductIconInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct ExperienceDeveloperProductIconOutputs {
-    asset_id: AssetId,
+pub struct ExperienceDeveloperProductIconOutputs {
+    pub asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -124,10 +119,9 @@ struct ExperienceDeveloperProductInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct ExperienceDeveloperProductOutputs {
-    asset_id: AssetId,
-    product_id: AssetId,
-    shop_id: AssetId,
+pub struct ExperienceDeveloperProductOutputs {
+    pub asset_id: AssetId,
+    pub product_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -135,13 +129,12 @@ struct ExperienceDeveloperProductOutputs {
 struct PlaceInputs {
     experience_id: AssetId,
     start_place_id: AssetId,
-    asset_id: Option<AssetId>,
     is_start: bool,
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct PlaceOutputs {
-    asset_id: AssetId,
+pub struct PlaceOutputs {
+    pub asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -153,15 +146,15 @@ struct PlaceFileInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct PlaceFileOutputs {
-    version: u32,
+pub struct PlaceFileOutputs {
+    pub version: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct PlaceConfigurationInputs {
-    asset_id: AssetId,
-    configuration: PlaceConfigurationModel,
+pub struct PlaceConfigurationInputs {
+    pub asset_id: AssetId,
+    pub configuration: PlaceConfigurationModel,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -175,9 +168,9 @@ struct GamePassInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct GamePassOutputs {
-    asset_id: AssetId,
-    initial_icon_asset_id: AssetId,
+pub struct GamePassOutputs {
+    pub asset_id: AssetId,
+    pub initial_icon_asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -190,8 +183,8 @@ struct GamePassIconInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct GamePassIconOutputs {
-    asset_id: AssetId,
+pub struct GamePassIconOutputs {
+    pub asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -205,9 +198,9 @@ struct BadgeInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct BadgeOutputs {
-    asset_id: AssetId,
-    initial_icon_asset_id: AssetId,
+pub struct BadgeOutputs {
+    pub asset_id: AssetId,
+    pub initial_icon_asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -220,8 +213,8 @@ struct BadgeIconInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct BadgeIconOutputs {
-    asset_id: AssetId,
+pub struct BadgeIconOutputs {
+    pub asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -233,8 +226,8 @@ struct AssetAliasInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct AssetAliasOutputs {
-    name: String,
+pub struct AssetAliasOutputs {
+    pub name: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -245,9 +238,9 @@ struct ImageAssetInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct ImageAssetOutputs {
-    asset_id: AssetId,
-    decal_asset_id: AssetId,
+pub struct ImageAssetOutputs {
+    pub asset_id: AssetId,
+    pub decal_asset_id: Option<AssetId>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -258,8 +251,8 @@ struct AudioAssetInputs {
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct AudioAssetOutputs {
-    asset_id: AssetId,
+pub struct AudioAssetOutputs {
+    pub asset_id: AssetId,
 }
 
 pub struct RobloxResourceManager {
@@ -324,33 +317,18 @@ impl ResourceManager for RobloxResourceManager {
     ) -> Result<Option<serde_yaml::Value>, String> {
         match resource_type {
             resource_types::EXPERIENCE => {
-                let inputs = serde_yaml::from_value::<ExperienceInputs>(resource_inputs)
-                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let CreateExperienceResponse {
+                    universe_id,
+                    root_place_id,
+                } = self.roblox_api.create_experience()?;
 
-                let outputs = match inputs.asset_id {
-                    Some(asset_id) => {
-                        let GetExperienceResponse { root_place_id } =
-                            self.roblox_api.get_experience(asset_id)?;
-                        ExperienceOutputs {
-                            asset_id,
-                            start_place_id: root_place_id,
-                        }
-                    }
-                    None => {
-                        let CreateExperienceResponse {
-                            universe_id,
-                            root_place_id,
-                        } = self.roblox_api.create_experience()?;
-                        ExperienceOutputs {
-                            asset_id: universe_id,
-                            start_place_id: root_place_id,
-                        }
-                    }
-                };
-
-                Ok(Some(serde_yaml::to_value(outputs).map_err(|e| {
-                    format!("Failed to serialize outputs: {}", e)
-                })?))
+                Ok(Some(
+                    serde_yaml::to_value(ExperienceOutputs {
+                        asset_id: universe_id,
+                        start_place_id: root_place_id,
+                    })
+                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
             }
             resource_types::EXPERIENCE_CONFIGURATION => {
                 let inputs =
@@ -433,7 +411,7 @@ impl ResourceManager for RobloxResourceManager {
                     serde_yaml::from_value::<ExperienceDeveloperProductInputs>(resource_inputs)
                         .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
 
-                let CreateDeveloperProductResponse { id, shop_id } =
+                let CreateDeveloperProductResponse { id } =
                     self.roblox_api.create_developer_product(
                         inputs.experience_id,
                         inputs.name,
@@ -442,10 +420,7 @@ impl ResourceManager for RobloxResourceManager {
                         inputs.icon_asset_id,
                     )?;
 
-                let GetDeveloperProductResponse {
-                    product_id,
-                    developer_product_id: _,
-                } = self
+                let GetDeveloperProductResponse { product_id, .. } = self
                     .roblox_api
                     .find_developer_product_by_id(inputs.experience_id, id)?;
 
@@ -453,7 +428,6 @@ impl ResourceManager for RobloxResourceManager {
                     serde_yaml::to_value(ExperienceDeveloperProductOutputs {
                         asset_id: product_id,
                         product_id: id,
-                        shop_id,
                     })
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
@@ -462,16 +436,15 @@ impl ResourceManager for RobloxResourceManager {
                 let inputs = serde_yaml::from_value::<PlaceInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
 
-                let outputs = match (inputs.is_start, inputs.asset_id) {
-                    (false, None) => {
+                let outputs = match inputs.is_start {
+                    false => {
                         let CreatePlaceResponse { place_id, .. } =
                             self.roblox_api.create_place(inputs.experience_id)?;
                         PlaceOutputs { asset_id: place_id }
                     }
-                    (true, None) => PlaceOutputs {
+                    true => PlaceOutputs {
                         asset_id: inputs.start_place_id,
                     },
-                    (_, Some(asset_id)) => PlaceOutputs { asset_id },
                 };
 
                 Ok(Some(serde_yaml::to_value(outputs).map_err(|e| {
@@ -488,6 +461,7 @@ impl ResourceManager for RobloxResourceManager {
                 )?;
                 let GetPlaceResponse {
                     current_saved_version,
+                    ..
                 } = self.roblox_api.get_place(inputs.asset_id)?;
 
                 Ok(Some(
@@ -605,7 +579,7 @@ impl ResourceManager for RobloxResourceManager {
                 Ok(Some(
                     serde_yaml::to_value(ImageAssetOutputs {
                         asset_id: backing_asset_id,
-                        decal_asset_id: asset_id,
+                        decal_asset_id: Some(asset_id),
                     })
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
@@ -854,11 +828,10 @@ impl ResourceManager for RobloxResourceManager {
                 let outputs = serde_yaml::from_value::<PlaceOutputs>(resource_outputs)
                     .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
 
-                if inputs.is_start {
-                    return Err("Cannot delete the start place of an experience. Try creating a new experience instead.".to_owned());
+                if !inputs.is_start {
+                    self.roblox_api
+                        .remove_place_from_experience(inputs.experience_id, outputs.asset_id)?;
                 }
-                self.roblox_api
-                    .remove_place_from_experience(inputs.experience_id, outputs.asset_id)?;
 
                 Ok(())
             }
@@ -926,7 +899,9 @@ impl ResourceManager for RobloxResourceManager {
                 let outputs = serde_yaml::from_value::<ImageAssetOutputs>(resource_outputs)
                     .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
 
-                self.roblox_api.archive_asset(outputs.decal_asset_id)?;
+                if let Some(decal_asset_id) = outputs.decal_asset_id {
+                    self.roblox_api.archive_asset(decal_asset_id)?;
+                }
 
                 Ok(())
             }

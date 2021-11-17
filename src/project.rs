@@ -6,7 +6,9 @@ use std::{
 use yansi::Paint;
 
 use crate::{
-    config::{load_config_file, EnvironmentConfig, StateConfig, TemplateConfig},
+    config::{
+        load_config_file, EnvironmentConfig, ExperienceTargetConfig, StateConfig, TargetConfig,
+    },
     logger,
     resources::ResourceGraph,
     state::{get_desired_graph, get_previous_state, ResourceStateV2},
@@ -84,17 +86,22 @@ fn override_yaml(a: &mut serde_yaml::Value, b: serde_yaml::Value) {
     }
 }
 
-fn get_templates_config(
-    templates: TemplateConfig,
-    overrides: TemplateConfig,
-) -> Result<TemplateConfig, String> {
-    let mut templates_value = serde_yaml::to_value(templates)
-        .map_err(|e| format!("Failed to serialize templates: {}", e))?;
-    let overrides_value = serde_yaml::to_value(overrides)
-        .map_err(|e| format!("Failed to serialize overrides: {}", e))?;
-    override_yaml(&mut templates_value, overrides_value);
-    serde_yaml::from_value::<TemplateConfig>(templates_value)
-        .map_err(|e| format!("Failed to deserialize templates: {}", e))
+fn get_target_config(
+    target: TargetConfig,
+    overrides: serde_yaml::Value,
+) -> Result<TargetConfig, String> {
+    let target = match target {
+        TargetConfig::Experience(experience) => {
+            let mut as_value = serde_yaml::to_value(experience)
+                .map_err(|e| format!("Failed to serialize target: {}", e))?;
+            override_yaml(&mut as_value, overrides);
+            TargetConfig::Experience(
+                serde_yaml::from_value::<ExperienceTargetConfig>(as_value)
+                    .map_err(|e| format!("Failed to deserialize target: {}", e))?,
+            )
+        }
+    };
+    Ok(target)
 }
 
 pub struct Project {
@@ -103,7 +110,7 @@ pub struct Project {
     pub previous_graph: ResourceGraph,
     pub state: ResourceStateV2,
     pub environment_config: EnvironmentConfig,
-    pub templates_config: TemplateConfig,
+    pub target_config: TargetConfig,
     pub state_config: StateConfig,
 }
 
@@ -159,9 +166,9 @@ pub async fn load_project(
         }
     };
 
-    let templates_config = match &environment_config.overrides {
-        Some(overrides) => get_templates_config(config.templates.clone(), overrides.clone())?,
-        None => config.templates.clone(),
+    let target_config = match &environment_config.overrides {
+        Some(overrides) => get_target_config(config.target.clone(), overrides.clone())?,
+        None => config.target.clone(),
     };
 
     // Get previous state
@@ -170,7 +177,7 @@ pub async fn load_project(
     // Get our resource graphs
     let previous_graph =
         ResourceGraph::new(state.environments.get(&environment_config.name).unwrap());
-    let next_graph = get_desired_graph(project_path.as_path(), &templates_config)?;
+    let next_graph = get_desired_graph(project_path.as_path(), &target_config)?;
 
     Ok(Some(Project {
         project_path,
@@ -178,7 +185,7 @@ pub async fn load_project(
         previous_graph,
         state,
         environment_config: environment_config.clone(),
-        templates_config,
+        target_config,
         state_config: config.state.clone(),
     }))
 }

@@ -13,8 +13,8 @@ use yansi::Paint;
 
 use crate::{
     config::{
-        AssetConfig, Config, EnvironmentConfig, PlayabilityConfig, RemoteStateConfig, StateConfig,
-        TemplateConfig,
+        AssetConfig, Config, EnvironmentConfig, ExperienceTargetConfig, PlayabilityConfig,
+        RemoteStateConfig, StateConfig, TargetConfig,
     },
     logger,
     resource_manager::{
@@ -207,9 +207,9 @@ pub async fn get_previous_state(
     Ok(state)
 }
 
-pub fn get_desired_graph(
+fn get_desired_experience_graph(
     project_path: &Path,
-    templates_config: &TemplateConfig,
+    target_config: &ExperienceTargetConfig,
 ) -> Result<ResourceGraph, String> {
     let mut resources: Vec<Resource> = Vec::new();
 
@@ -218,7 +218,7 @@ pub fn get_desired_graph(
     let experience_start_place_id_ref = experience.get_input_ref("startPlaceId");
     resources.push(experience);
 
-    if let Some(experience_configuration) = &templates_config.experience {
+    if let Some(experience_configuration) = &target_config.experience {
         resources.push(
             Resource::new(
                 resource_types::EXPERIENCE_CONFIGURATION,
@@ -286,13 +286,13 @@ pub fn get_desired_graph(
         }
     }
 
-    if let Some(places) = &templates_config.places {
+    if let Some(places) = &target_config.places {
         if !places.keys().any(|n| n == "start") {
             return Err("No start place defined".to_owned());
         }
 
-        for (name, template) in places.iter() {
-            let place_file = template
+        for (name, target) in places.iter() {
+            let place_file = target
                 .file
                 .clone()
                 .ok_or(format!("Missing required field file for place {}", name))?;
@@ -321,7 +321,7 @@ pub fn get_desired_graph(
                     .add_ref_input("assetId", &place_asset_id_ref)
                     .add_value_input::<PlaceConfigurationModel>(
                         "configuration",
-                        &template.clone().into(),
+                        &target.clone().into(),
                     )?
                     .clone(),
             );
@@ -330,7 +330,7 @@ pub fn get_desired_graph(
         return Err("No start place defined".to_owned());
     }
 
-    if let Some(developer_products) = &templates_config.products {
+    if let Some(developer_products) = &target_config.products {
         for (name, developer_product) in developer_products {
             let product_name = developer_product
                 .name
@@ -370,7 +370,7 @@ pub fn get_desired_graph(
         }
     }
 
-    if let Some(passes) = &templates_config.passes {
+    if let Some(passes) = &target_config.passes {
         for (name, pass_config) in passes {
             let pass_icon_file = pass_config
                 .icon
@@ -406,7 +406,7 @@ pub fn get_desired_graph(
         }
     }
 
-    if let Some(badges) = &templates_config.badges {
+    if let Some(badges) = &target_config.badges {
         for (name, badge_config) in badges {
             let badge_icon_file = badge_config
                 .icon
@@ -442,7 +442,7 @@ pub fn get_desired_graph(
         }
     }
 
-    if let Some(assets) = &templates_config.assets {
+    if let Some(assets) = &target_config.assets {
         for asset_config in assets {
             let assets = match asset_config.clone() {
                 AssetConfig::File(file) => {
@@ -518,6 +518,17 @@ pub fn get_desired_graph(
     }
 
     Ok(ResourceGraph::new(&resources))
+}
+
+pub fn get_desired_graph(
+    project_path: &Path,
+    target_config: &TargetConfig,
+) -> Result<ResourceGraph, String> {
+    match target_config {
+        TargetConfig::Experience(experience_target_config) => {
+            get_desired_experience_graph(project_path, experience_target_config)
+        }
+    }
 }
 
 pub fn import_graph(

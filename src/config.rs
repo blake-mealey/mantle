@@ -13,7 +13,7 @@ pub struct Config {
     #[serde(default = "Vec::new")]
     pub environments: Vec<EnvironmentConfig>,
 
-    pub templates: TemplateConfig,
+    pub target: TargetConfig,
 
     #[serde(default)]
     pub state: StateConfig,
@@ -61,12 +61,18 @@ pub struct EnvironmentConfig {
     #[serde(default)]
     pub tag_commit: bool,
 
-    pub overrides: Option<TemplateConfig>,
+    pub overrides: Option<serde_yaml::Value>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct TemplateConfig {
+pub enum TargetConfig {
+    Experience(ExperienceTargetConfig),
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ExperienceTargetConfig {
     pub experience: Option<ExperienceTemplateConfig>,
 
     pub places: Option<HashMap<String, PlaceTemplateConfig>>,

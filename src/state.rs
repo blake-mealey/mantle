@@ -214,7 +214,7 @@ fn get_desired_experience_graph(
 
     let group_id = match owner_config {
         OwnerConfig::Personal => None,
-        OwnerConfig::Group(group_id) => Some(group_id.clone()),
+        OwnerConfig::Group(group_id) => Some(*group_id),
     };
 
     let experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)

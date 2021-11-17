@@ -182,7 +182,9 @@ pub async fn load_project(
         PaymentsConfig::Personal => CreatorType::User,
         PaymentsConfig::Group => match config.owner {
             OwnerConfig::Personal => {
-                return Err("Cannot specify `payments: group` when owner is not a group.".to_owned())
+                return Err(
+                    "Cannot specify `payments: group` when owner is not a group.".to_owned(),
+                )
             }
             OwnerConfig::Group(_) => CreatorType::Group,
         },

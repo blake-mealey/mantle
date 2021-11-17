@@ -83,8 +83,9 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
         previous_graph,
         mut state,
         environment_config,
-        state_config,
         target_config,
+        payment_source,
+        state_config,
     } = match load_project(project, environment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
@@ -98,7 +99,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
     };
     logger::end_action("Succeeded");
 
-    let mut resource_manager = RobloxResourceManager::new(&project_path);
+    let mut resource_manager = RobloxResourceManager::new(&project_path, payment_source);
 
     logger::start_action("Deploying resources:");
     let results = next_graph.evaluate(&previous_graph, &mut resource_manager, allow_purchases);

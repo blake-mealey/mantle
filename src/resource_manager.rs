@@ -8,9 +8,9 @@ use crate::{
     roblox_api::{
         CreateAudioAssetResponse, CreateBadgeResponse, CreateDeveloperProductResponse,
         CreateExperienceResponse, CreateGamePassResponse, CreateImageAssetResponse,
-        CreatePlaceResponse, ExperienceConfigurationModel, GetCreateAudioAssetPriceResponse,
-        GetDeveloperProductResponse, GetPlaceResponse, PlaceConfigurationModel, RobloxApi,
-        UploadImageResponse,
+        CreatePlaceResponse, CreatorType, ExperienceConfigurationModel,
+        GetCreateAudioAssetPriceResponse, GetDeveloperProductResponse, GetPlaceResponse,
+        PlaceConfigurationModel, RobloxApi, UploadImageResponse,
     },
     roblox_auth::RobloxAuth,
 };
@@ -266,13 +266,15 @@ pub struct AudioAssetOutputs {
 pub struct RobloxResourceManager {
     roblox_api: RobloxApi,
     project_path: PathBuf,
+    payment_source: CreatorType,
 }
 
 impl RobloxResourceManager {
-    pub fn new(project_path: &Path) -> Self {
+    pub fn new(project_path: &Path, payment_source: CreatorType) -> Self {
         Self {
             roblox_api: RobloxApi::new(RobloxAuth::new()),
             project_path: project_path.to_path_buf(),
+            payment_source,
         }
     }
 }
@@ -541,6 +543,7 @@ impl ResourceManager for RobloxResourceManager {
                     inputs.name,
                     inputs.description,
                     self.project_path.join(inputs.icon_file_path).as_path(),
+                    self.payment_source.clone(),
                 )?;
 
                 Ok(Some(
@@ -605,6 +608,7 @@ impl ResourceManager for RobloxResourceManager {
                 let CreateAudioAssetResponse { id } = self.roblox_api.create_audio_asset(
                     self.project_path.join(inputs.file_path).as_path(),
                     inputs.group_id,
+                    self.payment_source.clone(),
                 )?;
 
                 Ok(Some(

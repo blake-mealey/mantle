@@ -17,6 +17,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>) -> i32 {
         previous_graph,
         mut state,
         environment_config,
+        payment_source,
         state_config,
         ..
     } = match load_project(project, environment).await {
@@ -32,7 +33,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>) -> i32 {
     };
     logger::end_action("Succeeded");
 
-    let mut resource_manager = RobloxResourceManager::new(&project_path);
+    let mut resource_manager = RobloxResourceManager::new(&project_path, payment_source);
 
     logger::start_action("Destroying resources:");
     let mut next_graph = ResourceGraph::new(&Vec::new());

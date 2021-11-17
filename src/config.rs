@@ -16,6 +16,9 @@ pub struct Config {
     #[serde(default)]
     pub owner: OwnerConfig,
 
+    #[serde(default)]
+    pub payments: PaymentsConfig,
+
     #[serde(default = "Vec::new")]
     pub environments: Vec<EnvironmentConfig>,
 
@@ -34,6 +37,19 @@ pub enum OwnerConfig {
 impl default::Default for OwnerConfig {
     fn default() -> Self {
         OwnerConfig::Personal
+    }
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub enum PaymentsConfig {
+    Owner,
+    Personal,
+    Group,
+}
+impl default::Default for PaymentsConfig {
+    fn default() -> Self {
+        PaymentsConfig::Owner
     }
 }
 

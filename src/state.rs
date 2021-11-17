@@ -25,8 +25,8 @@ use crate::{
     },
     resources::{InputRef, Resource, ResourceGraph},
     roblox_api::{
-        ExperienceConfigurationModel, ExperienceCreatorType, GetExperienceResponse,
-        PlaceConfigurationModel, RobloxApi,
+        CreatorType, ExperienceConfigurationModel, GetExperienceResponse, PlaceConfigurationModel,
+        RobloxApi,
     },
 };
 
@@ -526,8 +526,8 @@ pub fn import_graph(
     } = roblox_api.get_experience(experience_id)?;
 
     let group_id = match creator_type {
-        ExperienceCreatorType::User => None,
-        ExperienceCreatorType::Group => Some(creator_target_id),
+        CreatorType::User => None,
+        CreatorType::Group => Some(creator_target_id),
     };
 
     let experience_resource = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)

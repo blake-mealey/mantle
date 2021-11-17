@@ -7,10 +7,12 @@ use yansi::Paint;
 
 use crate::{
     config::{
-        load_config_file, EnvironmentConfig, ExperienceTargetConfig, StateConfig, TargetConfig,
+        load_config_file, EnvironmentConfig, ExperienceTargetConfig, OwnerConfig, PaymentsConfig,
+        StateConfig, TargetConfig,
     },
     logger,
     resources::ResourceGraph,
+    roblox_api::CreatorType,
     state::{get_desired_graph, get_previous_state, ResourceStateV2},
     util::run_command,
 };
@@ -111,6 +113,7 @@ pub struct Project {
     pub state: ResourceStateV2,
     pub environment_config: EnvironmentConfig,
     pub target_config: TargetConfig,
+    pub payment_source: CreatorType,
     pub state_config: StateConfig,
 }
 
@@ -171,6 +174,20 @@ pub async fn load_project(
         None => config.target.clone(),
     };
 
+    let payment_source = match config.payments {
+        PaymentsConfig::Owner => match config.owner {
+            OwnerConfig::Personal => CreatorType::User,
+            OwnerConfig::Group(_) => CreatorType::Group,
+        },
+        PaymentsConfig::Personal => CreatorType::User,
+        PaymentsConfig::Group => match config.owner {
+            OwnerConfig::Personal => {
+                return Err("Cannot specify `payments: group` when owner is not a group.".to_owned())
+            }
+            OwnerConfig::Group(_) => CreatorType::Group,
+        },
+    };
+
     // Get previous state
     let state = get_previous_state(project_path.as_path(), &config, environment_config).await?;
 
@@ -186,6 +203,7 @@ pub async fn load_project(
         state,
         environment_config: environment_config.clone(),
         target_config,
+        payment_source,
         state_config: config.state.clone(),
     }))
 }

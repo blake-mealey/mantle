@@ -2,7 +2,7 @@ use multipart::client::lazy::{Multipart, PreparedFields};
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{clone::Clone, collections::HashMap, ffi::OsStr, fs, path::Path};
+use std::{clone::Clone, collections::HashMap, ffi::OsStr, fmt, fs, path::Path};
 use ureq::{Cookie, Response};
 use url::Url;
 
@@ -33,11 +33,19 @@ pub struct CreateExperienceResponse {
     pub root_place_id: AssetId,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "PascalCase")]
-pub enum ExperienceCreatorType {
+pub enum CreatorType {
     User,
     Group,
+}
+impl fmt::Display for CreatorType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            CreatorType::User => write!(f, "User"),
+            CreatorType::Group => write!(f, "Group"),
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -45,7 +53,7 @@ pub enum ExperienceCreatorType {
 pub struct GetExperienceResponse {
     pub root_place_id: AssetId,
     pub is_active: bool,
-    pub creator_type: ExperienceCreatorType,
+    pub creator_type: CreatorType,
     pub creator_target_id: AssetId,
 }
 
@@ -1317,13 +1325,17 @@ impl RobloxApi {
         name: String,
         description: Option<String>,
         icon_file_path: &Path,
+        payment_source: CreatorType,
     ) -> Result<CreateBadgeResponse, String> {
         let mut text_fields = HashMap::new();
         text_fields.insert("request.name".to_owned(), name);
         if let Some(description) = description {
             text_fields.insert("request.description".to_owned(), description);
         }
-        text_fields.insert("request.paymentSourceType".to_owned(), "User".to_owned());
+        text_fields.insert(
+            "request.paymentSourceType".to_owned(),
+            payment_source.to_string(),
+        );
         let multipart = Self::create_multipart_form_from_file(
             "request.files".to_owned(),
             icon_file_path,
@@ -1631,6 +1643,7 @@ impl RobloxApi {
         &mut self,
         file_path: &Path,
         group_id: Option<AssetId>,
+        payment_source: CreatorType,
     ) -> Result<CreateAudioAssetResponse, String> {
         let data = fs::read(file_path).map_err(|e| {
             format!(
@@ -1650,6 +1663,7 @@ impl RobloxApi {
                 "name": file_name,
                 "file": base64::encode(data),
                 "groupId": group_id,
+                "paymentSource": payment_source
             }));
 
         let response = Self::handle_response(res)?;

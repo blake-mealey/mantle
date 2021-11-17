@@ -23,7 +23,7 @@ use crate::{
         ExperienceOutputs, ExperienceThumbnailOutputs, GamePassIconOutputs, GamePassOutputs,
         ImageAssetOutputs, PlaceFileOutputs, PlaceOutputs, SINGLETON_RESOURCE_ID,
     },
-    resources::{InputRef, Resource, ResourceGraph},
+    resources::{Input, InputRef, Resource, ResourceGraph},
     roblox_api::{
         CreatorType, ExperienceConfigurationModel, GetExperienceResponse, PlaceConfigurationModel,
         RobloxApi,
@@ -57,34 +57,31 @@ pub struct ResourceStateV1 {
 }
 impl From<ResourceStateV1> for ResourceStateV2 {
     fn from(state: ResourceStateV1) -> Self {
-        // In this version, we removed the assetId inputs from the experience and place resource
-        // types. If we leave the old inputs in, the new version will re-create all experience and
-        // place resources since it will consider it a change in inputs. We can easily fix this by
-        // removing the assetId inputs from the experience and place resource types.
-
-        let mut environments = HashMap::new();
-        for (environment_name, resources) in state.deployments {
-            let mut new_resources = Vec::new();
+        // State format change: "deployments" -> "environments"
+        let mut environments = state.deployments;
+        for (_, resources) in environments.iter_mut() {
             for resource in resources {
-                if let resource_types::EXPERIENCE | resource_types::PLACE =
-                    resource.resource_type.as_str()
-                {
-                    new_resources.push(Resource {
-                        inputs: resource
-                            .inputs
-                            .iter()
-                            .filter_map(|(name, value)| match name.as_str() {
-                                "assetId" => None,
-                                _ => Some((name.clone(), value.clone())),
-                            })
-                            .collect(),
-                        ..resource
-                    });
-                } else {
-                    new_resources.push(resource);
+                let r_type = resource.resource_type.as_str();
+
+                // Resources format change: remove assetId input from experience and place resources
+                // to avoid unnecessary recreation of resources
+                if matches!(r_type, resource_types::EXPERIENCE | resource_types::PLACE) {
+                    resource.inputs.remove("assetId");
+                }
+
+                // Resources format change: add groupId input to experience and asset resources to
+                // avoid unnecessary recreation of resources
+                if matches!(
+                    r_type,
+                    resource_types::EXPERIENCE
+                        | resource_types::IMAGE_ASSET
+                        | resource_types::AUDIO_ASSET
+                ) {
+                    resource
+                        .inputs
+                        .insert("groupId".to_owned(), Input::Value(serde_yaml::Value::Null));
                 }
             }
-            environments.insert(environment_name, new_resources);
         }
 
         ResourceStateV2 { environments }
@@ -531,10 +528,10 @@ pub fn import_graph(
     };
 
     let experience_resource = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
+        .add_value_input("groupId", &group_id)?
         .set_outputs(ExperienceOutputs {
             asset_id: experience_id,
             start_place_id,
-            group_id: group_id.clone(),
         })?
         .clone();
     let experience_asset_id_ref = experience_resource.get_input_ref("assetId");
@@ -740,6 +737,7 @@ pub fn import_graph(
                 // TODO: should we get legit values? e.g. pass the URL and its real hash?
                 .add_value_input("filePath", &"fake_file")?
                 .add_value_input("fileHash", &"fake_hash")?
+                .add_value_input("groupId", &group_id)?
                 .clone();
             match resource_type {
                 resource_types::IMAGE_ASSET => {

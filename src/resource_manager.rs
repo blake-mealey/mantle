@@ -50,7 +50,6 @@ pub struct ExperienceInputs {
 pub struct ExperienceOutputs {
     pub asset_id: AssetId,
     pub start_place_id: AssetId,
-    pub group_id: Option<AssetId>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -340,7 +339,6 @@ impl ResourceManager for RobloxResourceManager {
                     serde_yaml::to_value(ExperienceOutputs {
                         asset_id: universe_id,
                         start_place_id: root_place_id,
-                        group_id: inputs.group_id,
                     })
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
@@ -631,19 +629,8 @@ impl ResourceManager for RobloxResourceManager {
     ) -> Result<Option<serde_yaml::Value>, String> {
         match resource_type {
             resource_types::EXPERIENCE => {
-                let inputs = serde_yaml::from_value::<ExperienceInputs>(resource_inputs.clone())
-                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
-                let outputs = serde_yaml::from_value::<ExperienceOutputs>(resource_outputs.clone())
-                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
-
-                // Our comparison technique considers {} and {groupId: null} to be different but we
-                // don't want to re-create experiences in this case.
-                if inputs.group_id != outputs.group_id {
-                    self.delete(resource_type, resource_inputs.clone(), resource_outputs)?;
-                    self.create(resource_type, resource_inputs)
-                } else {
-                    Ok(Some(resource_outputs))
-                }
+                self.delete(resource_type, resource_inputs.clone(), resource_outputs)?;
+                self.create(resource_type, resource_inputs)
             }
             resource_types::EXPERIENCE_CONFIGURATION => self.create(resource_type, resource_inputs),
             resource_types::EXPERIENCE_ACTIVATION => self.create(resource_type, resource_inputs),

@@ -38,7 +38,7 @@ where
 }
 
 fn get_line_prefix() -> String {
-    format!("{0}|{0}", SPACING).repeat(ACTION_COUNT.load(Ordering::SeqCst).into())
+    format!("{0}│{0}", SPACING).repeat(ACTION_COUNT.load(Ordering::SeqCst).into())
 }
 
 pub fn log<S>(message: S)

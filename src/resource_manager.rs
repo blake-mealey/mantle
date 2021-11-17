@@ -8,9 +8,9 @@ use crate::{
     roblox_api::{
         CreateAudioAssetResponse, CreateBadgeResponse, CreateDeveloperProductResponse,
         CreateExperienceResponse, CreateGamePassResponse, CreateImageAssetResponse,
-        CreatePlaceResponse, ExperienceConfigurationModel, GetCreateAudioAssetPriceResponse,
-        GetDeveloperProductResponse, GetPlaceResponse, PlaceConfigurationModel, RobloxApi,
-        UploadImageResponse,
+        CreatePlaceResponse, CreatorType, ExperienceConfigurationModel,
+        GetCreateAudioAssetPriceResponse, GetDeveloperProductResponse, GetPlaceResponse,
+        PlaceConfigurationModel, RobloxApi, UploadImageResponse,
     },
     roblox_auth::RobloxAuth,
 };
@@ -40,6 +40,11 @@ pub mod resource_types {
 
 pub const SINGLETON_RESOURCE_ID: &str = "singleton";
 
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ExperienceInputs {
+    pub group_id: Option<AssetId>,
+}
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ExperienceOutputs {
@@ -235,6 +240,7 @@ pub struct AssetAliasOutputs {
 struct ImageAssetInputs {
     file_path: String,
     file_hash: String,
+    group_id: Option<AssetId>,
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -248,6 +254,7 @@ pub struct ImageAssetOutputs {
 struct AudioAssetInputs {
     file_path: String,
     file_hash: String,
+    group_id: Option<AssetId>,
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -258,13 +265,15 @@ pub struct AudioAssetOutputs {
 pub struct RobloxResourceManager {
     roblox_api: RobloxApi,
     project_path: PathBuf,
+    payment_source: CreatorType,
 }
 
 impl RobloxResourceManager {
-    pub fn new(project_path: &Path) -> Self {
+    pub fn new(project_path: &Path, payment_source: CreatorType) -> Self {
         Self {
             roblox_api: RobloxApi::new(RobloxAuth::new()),
             project_path: project_path.to_path_buf(),
+            payment_source,
         }
     }
 }
@@ -285,6 +294,7 @@ impl ResourceManager for RobloxResourceManager {
                     price, can_afford, ..
                 } = self.roblox_api.get_create_audio_asset_price(
                     self.project_path.join(inputs.file_path).as_path(),
+                    inputs.group_id,
                 )?;
 
                 // TODO: Add support for failing early like this for all other resource types (e.g. return the price and current balance from this function)
@@ -317,10 +327,13 @@ impl ResourceManager for RobloxResourceManager {
     ) -> Result<Option<serde_yaml::Value>, String> {
         match resource_type {
             resource_types::EXPERIENCE => {
+                let inputs = serde_yaml::from_value::<ExperienceInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
                 let CreateExperienceResponse {
                     universe_id,
                     root_place_id,
-                } = self.roblox_api.create_experience()?;
+                } = self.roblox_api.create_experience(inputs.group_id)?;
 
                 Ok(Some(
                     serde_yaml::to_value(ExperienceOutputs {
@@ -528,6 +541,7 @@ impl ResourceManager for RobloxResourceManager {
                     inputs.name,
                     inputs.description,
                     self.project_path.join(inputs.icon_file_path).as_path(),
+                    self.payment_source.clone(),
                 )?;
 
                 Ok(Some(
@@ -572,9 +586,10 @@ impl ResourceManager for RobloxResourceManager {
                     asset_id,
                     backing_asset_id,
                     ..
-                } = self
-                    .roblox_api
-                    .create_image_asset(self.project_path.join(inputs.file_path).as_path())?;
+                } = self.roblox_api.create_image_asset(
+                    self.project_path.join(inputs.file_path).as_path(),
+                    inputs.group_id,
+                )?;
 
                 Ok(Some(
                     serde_yaml::to_value(ImageAssetOutputs {
@@ -588,9 +603,11 @@ impl ResourceManager for RobloxResourceManager {
                 let inputs = serde_yaml::from_value::<AudioAssetInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
 
-                let CreateAudioAssetResponse { id } = self
-                    .roblox_api
-                    .create_audio_asset(self.project_path.join(inputs.file_path).as_path())?;
+                let CreateAudioAssetResponse { id } = self.roblox_api.create_audio_asset(
+                    self.project_path.join(inputs.file_path).as_path(),
+                    inputs.group_id,
+                    self.payment_source.clone(),
+                )?;
 
                 Ok(Some(
                     serde_yaml::to_value(AudioAssetOutputs { asset_id: id })
@@ -611,7 +628,10 @@ impl ResourceManager for RobloxResourceManager {
         resource_outputs: serde_yaml::Value,
     ) -> Result<Option<serde_yaml::Value>, String> {
         match resource_type {
-            resource_types::EXPERIENCE => self.create(resource_type, resource_inputs),
+            resource_types::EXPERIENCE => {
+                self.delete(resource_type, resource_inputs.clone(), resource_outputs)?;
+                self.create(resource_type, resource_inputs)
+            }
             resource_types::EXPERIENCE_CONFIGURATION => self.create(resource_type, resource_inputs),
             resource_types::EXPERIENCE_ACTIVATION => self.create(resource_type, resource_inputs),
             resource_types::EXPERIENCE_ICON => self.create(resource_type, resource_inputs),

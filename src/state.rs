@@ -13,7 +13,7 @@ use yansi::Paint;
 
 use crate::{
     config::{
-        AssetTargetConfig, Config, EnvironmentConfig, ExperienceTargetConfig,
+        AssetTargetConfig, Config, EnvironmentConfig, ExperienceTargetConfig, OwnerConfig,
         PlayabilityTargetConfig, RemoteStateConfig, StateConfig, TargetConfig,
     },
     logger,
@@ -23,9 +23,10 @@ use crate::{
         ExperienceOutputs, ExperienceThumbnailOutputs, GamePassIconOutputs, GamePassOutputs,
         ImageAssetOutputs, PlaceFileOutputs, PlaceOutputs, SINGLETON_RESOURCE_ID,
     },
-    resources::{InputRef, Resource, ResourceGraph},
+    resources::{Input, InputRef, Resource, ResourceGraph},
     roblox_api::{
-        ExperienceConfigurationModel, GetExperienceResponse, PlaceConfigurationModel, RobloxApi,
+        CreatorType, ExperienceConfigurationModel, GetExperienceResponse, PlaceConfigurationModel,
+        RobloxApi,
     },
 };
 
@@ -56,34 +57,31 @@ pub struct ResourceStateV1 {
 }
 impl From<ResourceStateV1> for ResourceStateV2 {
     fn from(state: ResourceStateV1) -> Self {
-        // In this version, we removed the assetId inputs from the experience and place resource
-        // types. If we leave the old inputs in, the new version will re-create all experience and
-        // place resources since it will consider it a change in inputs. We can easily fix this by
-        // removing the assetId inputs from the experience and place resource types.
-
-        let mut environments = HashMap::new();
-        for (environment_name, resources) in state.deployments {
-            let mut new_resources = Vec::new();
+        // State format change: "deployments" -> "environments"
+        let mut environments = state.deployments;
+        for (_, resources) in environments.iter_mut() {
             for resource in resources {
-                if let resource_types::EXPERIENCE | resource_types::PLACE =
-                    resource.resource_type.as_str()
-                {
-                    new_resources.push(Resource {
-                        inputs: resource
-                            .inputs
-                            .iter()
-                            .filter_map(|(name, value)| match name.as_str() {
-                                "assetId" => None,
-                                _ => Some((name.clone(), value.clone())),
-                            })
-                            .collect(),
-                        ..resource
-                    });
-                } else {
-                    new_resources.push(resource);
+                let r_type = resource.resource_type.as_str();
+
+                // Resources format change: remove assetId input from experience and place resources
+                // to avoid unnecessary recreation of resources
+                if matches!(r_type, resource_types::EXPERIENCE | resource_types::PLACE) {
+                    resource.inputs.remove("assetId");
+                }
+
+                // Resources format change: add groupId input to experience and asset resources to
+                // avoid unnecessary recreation of resources
+                if matches!(
+                    r_type,
+                    resource_types::EXPERIENCE
+                        | resource_types::IMAGE_ASSET
+                        | resource_types::AUDIO_ASSET
+                ) {
+                    resource
+                        .inputs
+                        .insert("groupId".to_owned(), Input::Value(serde_yaml::Value::Null));
                 }
             }
-            environments.insert(environment_name, new_resources);
         }
 
         ResourceStateV2 { environments }
@@ -210,10 +208,18 @@ pub async fn get_previous_state(
 fn get_desired_experience_graph(
     project_path: &Path,
     target_config: &ExperienceTargetConfig,
+    owner_config: &OwnerConfig,
 ) -> Result<ResourceGraph, String> {
     let mut resources: Vec<Resource> = Vec::new();
 
-    let experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID);
+    let group_id = match owner_config {
+        OwnerConfig::Personal => None,
+        OwnerConfig::Group(group_id) => Some(*group_id),
+    };
+
+    let experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
+        .add_value_input("groupId", &group_id)?
+        .clone();
     let experience_asset_id_ref = experience.get_input_ref("assetId");
     let experience_start_place_id_ref = experience.get_input_ref("startPlaceId");
     resources.push(experience);
@@ -474,6 +480,7 @@ fn get_desired_experience_graph(
                         "fileHash",
                         &get_file_hash(project_path.join(&file).as_path())?,
                     )?
+                    .add_value_input("groupId", &group_id)?
                     .clone();
                 resources.push(asset_resource.clone());
                 resources.push(
@@ -493,10 +500,11 @@ fn get_desired_experience_graph(
 pub fn get_desired_graph(
     project_path: &Path,
     target_config: &TargetConfig,
+    owner_config: &OwnerConfig,
 ) -> Result<ResourceGraph, String> {
     match target_config {
         TargetConfig::Experience(experience_target_config) => {
-            get_desired_experience_graph(project_path, experience_target_config)
+            get_desired_experience_graph(project_path, experience_target_config, owner_config)
         }
     }
 }
@@ -510,9 +518,17 @@ pub fn import_graph(
     let GetExperienceResponse {
         root_place_id: start_place_id,
         is_active: is_experience_active,
+        creator_target_id,
+        creator_type,
     } = roblox_api.get_experience(experience_id)?;
 
+    let group_id = match creator_type {
+        CreatorType::User => None,
+        CreatorType::Group => Some(creator_target_id),
+    };
+
     let experience_resource = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
+        .add_value_input("groupId", &group_id)?
         .set_outputs(ExperienceOutputs {
             asset_id: experience_id,
             start_place_id,
@@ -721,6 +737,7 @@ pub fn import_graph(
                 // TODO: should we get legit values? e.g. pass the URL and its real hash?
                 .add_value_input("filePath", &"fake_file")?
                 .add_value_input("fileHash", &"fake_hash")?
+                .add_value_input("groupId", &group_id)?
                 .clone();
             match resource_type {
                 resource_types::IMAGE_ASSET => {

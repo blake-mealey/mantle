@@ -1,7 +1,10 @@
-use crate::roblox_api::{
-    ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
-    ExperienceConfigurationModel, ExperienceGenre, ExperiencePermissionsModel,
-    ExperiencePlayableDevice, PlaceConfigurationModel, SocialSlotType,
+use crate::{
+    resource_manager::AssetId,
+    roblox_api::{
+        ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
+        ExperienceConfigurationModel, ExperienceGenre, ExperiencePermissionsModel,
+        ExperiencePlayableDevice, PlaceConfigurationModel, SocialSlotType,
+    },
 };
 use rusoto_core::Region;
 use serde::{Deserialize, Serialize};
@@ -10,6 +13,12 @@ use std::{collections::HashMap, default, fmt, fs, path::Path, str};
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
+    #[serde(default)]
+    pub owner: OwnerConfig,
+
+    #[serde(default)]
+    pub payments: PaymentsConfig,
+
     #[serde(default = "Vec::new")]
     pub environments: Vec<EnvironmentConfig>,
 
@@ -17,6 +26,31 @@ pub struct Config {
 
     #[serde(default)]
     pub state: StateConfig,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub enum OwnerConfig {
+    Personal,
+    Group(AssetId),
+}
+impl default::Default for OwnerConfig {
+    fn default() -> Self {
+        OwnerConfig::Personal
+    }
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub enum PaymentsConfig {
+    Owner,
+    Personal,
+    Group,
+}
+impl default::Default for PaymentsConfig {
+    fn default() -> Self {
+        PaymentsConfig::Owner
+    }
 }
 
 #[derive(Deserialize, Clone)]

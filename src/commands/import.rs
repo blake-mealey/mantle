@@ -30,7 +30,7 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>, experience_id:
         }
     };
 
-    if previous_graph.get_resource_list().len() > 0 {
+    if !previous_graph.get_resource_list().is_empty() {
         logger::end_action("Deployment already exists: no need to import.");
         return 0;
     }

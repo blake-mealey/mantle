@@ -6,10 +6,10 @@ use std::{
 use yansi::Paint;
 
 use crate::{
-    config::{load_config_file, DeploymentConfig, StateConfig, TemplateConfig},
+    config::{load_config_file, EnvironmentConfig, StateConfig, TemplateConfig},
     logger,
     resources::ResourceGraph,
-    state::{get_desired_graph, get_previous_state, ResourceState},
+    state::{get_desired_graph, get_previous_state, ResourceStateV2},
     util::run_command,
 };
 
@@ -101,15 +101,15 @@ pub struct Project {
     pub project_path: PathBuf,
     pub next_graph: ResourceGraph,
     pub previous_graph: ResourceGraph,
-    pub state: ResourceState,
-    pub deployment_config: DeploymentConfig,
+    pub state: ResourceStateV2,
+    pub environment_config: EnvironmentConfig,
     pub templates_config: TemplateConfig,
     pub state_config: StateConfig,
 }
 
 pub async fn load_project(
     project: Option<&str>,
-    deployment: Option<&str>,
+    environment: Option<&str>,
 ) -> Result<Option<Project>, String> {
     let (project_path, config_file) = parse_project(project)?;
 
@@ -121,29 +121,29 @@ pub async fn load_project(
 
     let current_branch = get_current_branch()?;
 
-    let deployment_config = match deployment {
+    let environment_config = match environment {
         Some(name) => {
-            if let Some(result) = config.deployments.iter().find(|d| d.name == name) {
+            if let Some(result) = config.environments.iter().find(|d| d.name == name) {
                 logger::log(format!(
-                    "Selected provided deployment configuration {}",
+                    "Selected provided environment configuration {}",
                     Paint::cyan(name)
                 ));
                 result
             } else {
                 return Err(format!(
-                    "No deployment configuration found with name {}",
+                    "No environment configuration found with name {}",
                     name
                 ));
             }
         }
         None => {
             if let Some(result) = config
-                .deployments
+                .environments
                 .iter()
-                .find(|deployment| match_branch(&current_branch, &deployment.branches))
+                .find(|environment| match_branch(&current_branch, &environment.branches))
             {
                 logger::log(format!(
-                    "Selected deployment configuration {} because the current branch {} matched one of [{}]",
+                    "Selected environment configuration {} because the current branch {} matched one of [{}]",
                     Paint::cyan(result.name.clone()),
                     Paint::cyan(current_branch),
                     result.branches.iter().map(|b|Paint::cyan(b).to_string()).collect::<Vec<String>>().join(", ")
@@ -151,7 +151,7 @@ pub async fn load_project(
                 result
             } else {
                 logger::log(format!(
-                    "No deployment configuration found for the current branch {}",
+                    "No environment configuration found for the current branch {}",
                     Paint::cyan(current_branch)
                 ));
                 return Ok(None);
@@ -159,17 +159,17 @@ pub async fn load_project(
         }
     };
 
-    let templates_config = match &deployment_config.overrides {
+    let templates_config = match &environment_config.overrides {
         Some(overrides) => get_templates_config(config.templates.clone(), overrides.clone())?,
         None => config.templates.clone(),
     };
 
     // Get previous state
-    let state = get_previous_state(project_path.as_path(), &config, deployment_config).await?;
+    let state = get_previous_state(project_path.as_path(), &config, environment_config).await?;
 
     // Get our resource graphs
     let previous_graph =
-        ResourceGraph::new(state.deployments.get(&deployment_config.name).unwrap());
+        ResourceGraph::new(state.environments.get(&environment_config.name).unwrap());
     let next_graph = get_desired_graph(project_path.as_path(), &templates_config)?;
 
     Ok(Some(Project {
@@ -177,7 +177,7 @@ pub async fn load_project(
         next_graph,
         previous_graph,
         state,
-        deployment_config: deployment_config.clone(),
+        environment_config: environment_config.clone(),
         templates_config,
         state_config: config.state.clone(),
     }))

@@ -10,16 +10,16 @@ use crate::{
     state::save_state,
 };
 
-pub async fn run(project: Option<&str>, deployment: Option<&str>) -> i32 {
+pub async fn run(project: Option<&str>, environment: Option<&str>) -> i32 {
     logger::start_action("Loading project:");
     let Project {
         project_path,
         previous_graph,
         mut state,
-        deployment_config,
+        environment_config,
         state_config,
         ..
-    } = match load_project(project, deployment).await {
+    } = match load_project(project, environment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
             logger::end_action("No deployment necessary");
@@ -54,7 +54,7 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>) -> i32 {
     };
 
     logger::start_action("Saving state:");
-    state.deployments.remove(&deployment_config.name);
+    state.environments.remove(&environment_config.name);
     match save_state(&project_path, &state_config, &state).await {
         Ok(_) => {}
         Err(e) => {

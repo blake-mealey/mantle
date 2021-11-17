@@ -11,7 +11,7 @@ use std::{collections::HashMap, default, fmt, fs, path::Path, str};
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     #[serde(default = "Vec::new")]
-    pub deployments: Vec<DeploymentConfig>,
+    pub environments: Vec<EnvironmentConfig>,
 
     pub templates: TemplateConfig,
 
@@ -52,7 +52,7 @@ impl fmt::Display for RemoteStateConfig {
 
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct DeploymentConfig {
+pub struct EnvironmentConfig {
     pub name: String,
 
     #[serde(default = "Vec::new")]

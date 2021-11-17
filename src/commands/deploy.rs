@@ -72,17 +72,17 @@ fn tag_commit(
     Ok(tag_count)
 }
 
-pub async fn run(project: Option<&str>, deployment: Option<&str>, allow_purchases: bool) -> i32 {
+pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchases: bool) -> i32 {
     logger::start_action("Loading project:");
     let Project {
         project_path,
         mut next_graph,
         previous_graph,
         mut state,
-        deployment_config,
+        environment_config,
         state_config,
         templates_config,
-    } = match load_project(project, deployment).await {
+    } = match load_project(project, environment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
             logger::end_action("No deployment necessary");
@@ -126,7 +126,7 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>, allow_purchase
         }
     };
 
-    if deployment_config.tag_commit && matches!(results, Ok(_)) {
+    if environment_config.tag_commit && matches!(results, Ok(_)) {
         logger::start_action("Tagging commit:");
         match tag_commit(&templates_config, &next_graph, &previous_graph) {
             Ok(0) => logger::end_action("No tagging required"),
@@ -138,8 +138,8 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>, allow_purchase
     }
 
     logger::start_action("Saving state:");
-    state.deployments.insert(
-        deployment_config.name.clone(),
+    state.environments.insert(
+        environment_config.name.clone(),
         next_graph.get_resource_list(),
     );
     match save_state(&project_path, &state_config, &state).await {

@@ -6,7 +6,6 @@ environments:
         start:
           configuration:
             name: Staging - Start name
-      # places.start.configuration.name: Staging - Start name
   - name: production
     branches: [main]
     # tagCommit: true

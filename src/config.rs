@@ -73,22 +73,22 @@ pub enum TargetConfig {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ExperienceTargetConfig {
-    pub experience: Option<ExperienceTemplateConfig>,
+    pub configuration: Option<ExperienceTargetConfigurationConfig>,
 
-    pub places: Option<HashMap<String, PlaceTemplateConfig>>,
+    pub places: Option<HashMap<String, PlaceTargetConfig>>,
 
-    pub products: Option<HashMap<String, DeveloperProductConifg>>,
+    pub products: Option<HashMap<String, ProductTargetConifg>>,
 
-    pub passes: Option<HashMap<String, PassTemplateConfig>>,
+    pub passes: Option<HashMap<String, PassTargetConfig>>,
 
-    pub badges: Option<HashMap<String, BadgeConfig>>,
+    pub badges: Option<HashMap<String, BadgeTargetConfig>>,
 
-    pub assets: Option<Vec<AssetConfig>>,
+    pub assets: Option<Vec<AssetTargetConfig>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub enum GenreConfig {
+pub enum GenreTargetConfig {
     All,
     Adventure,
     Building,
@@ -108,7 +108,7 @@ pub enum GenreConfig {
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
-pub enum PlayabilityConfig {
+pub enum PlayabilityTargetConfig {
     Private,
     Public,
     Friends,
@@ -116,7 +116,7 @@ pub enum PlayabilityConfig {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub enum AvatarTypeConfig {
+pub enum AvatarTypeTargetConfig {
     R6,
     R15,
     PlayerChoice,
@@ -124,7 +124,7 @@ pub enum AvatarTypeConfig {
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
-pub enum PlayableDeviceConfig {
+pub enum PlayableDeviceTargetConfig {
     Computer,
     Phone,
     Tablet,
@@ -133,63 +133,63 @@ pub enum PlayableDeviceConfig {
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
-pub enum AnimationTypeConfig {
+pub enum AnimationTypeTargetConfig {
     Standard,
     PlayerChoice,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
-pub enum CollisionTypeConfig {
+pub enum CollisionTypeTargetConfig {
     OuterBox,
     InnerBox,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct DeveloperProductConifg {
-    pub name: Option<String>,
-    pub price: Option<u32>,
+pub struct ProductTargetConifg {
+    pub name: String,
     pub description: Option<String>,
     pub icon: Option<String>,
+    pub price: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct PassTemplateConfig {
-    pub name: Option<String>,
+pub struct PassTargetConfig {
+    pub name: String,
     pub description: Option<String>,
-    pub icon: Option<String>,
+    pub icon: String,
     pub price: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct BadgeConfig {
-    pub name: Option<String>,
+pub struct BadgeTargetConfig {
+    pub name: String,
     pub description: Option<String>,
-    pub icon: Option<String>,
+    pub icon: String,
     pub enabled: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", untagged)]
-pub enum AssetConfig {
+pub enum AssetTargetConfig {
     File(String),
     FileWithAlias { file: String, name: String },
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct ExperienceTemplateConfig {
+pub struct ExperienceTargetConfigurationConfig {
     // basic info
-    pub genre: Option<GenreConfig>,
-    pub playable_devices: Option<Vec<PlayableDeviceConfig>>,
+    pub genre: Option<GenreTargetConfig>,
+    pub playable_devices: Option<Vec<PlayableDeviceTargetConfig>>,
     pub icon: Option<String>,
     pub thumbnails: Option<Vec<String>>,
 
     // permissions
-    pub playability: Option<PlayabilityConfig>,
+    pub playability: Option<PlayabilityTargetConfig>,
 
     // monetization
     // badges: // TODO: create badges
@@ -205,49 +205,49 @@ pub struct ExperienceTemplateConfig {
     // localization: // TODO: localization
 
     // avatar
-    pub avatar_type: Option<AvatarTypeConfig>,
-    pub avatar_animation_type: Option<AnimationTypeConfig>,
-    pub avatar_collision_type: Option<CollisionTypeConfig>,
+    pub avatar_type: Option<AvatarTypeTargetConfig>,
+    pub avatar_animation_type: Option<AnimationTypeTargetConfig>,
+    pub avatar_collision_type: Option<CollisionTypeTargetConfig>,
     // avatar_asset_overrides: Option<HashMap<String, u64>>,    // TODO: figure out api
     // avatar_scale_constraints: Option<HashMap<String, (f32, f32)>>,   // TODO: figure out api
 }
 
-impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
-    fn from(config: &ExperienceTemplateConfig) -> Self {
+impl From<&ExperienceTargetConfigurationConfig> for ExperienceConfigurationModel {
+    fn from(config: &ExperienceTargetConfigurationConfig) -> Self {
         ExperienceConfigurationModel {
             genre: match config.genre {
-                Some(GenreConfig::All) => Some(ExperienceGenre::All),
-                Some(GenreConfig::Adventure) => Some(ExperienceGenre::Adventure),
-                Some(GenreConfig::Building) => Some(ExperienceGenre::Tutorial),
-                Some(GenreConfig::Comedy) => Some(ExperienceGenre::Funny),
-                Some(GenreConfig::Fighting) => Some(ExperienceGenre::Ninja),
-                Some(GenreConfig::Fps) => Some(ExperienceGenre::Fps),
-                Some(GenreConfig::Horror) => Some(ExperienceGenre::Scary),
-                Some(GenreConfig::Medieval) => Some(ExperienceGenre::Fantasy),
-                Some(GenreConfig::Military) => Some(ExperienceGenre::War),
-                Some(GenreConfig::Naval) => Some(ExperienceGenre::Pirate),
-                Some(GenreConfig::Rpg) => Some(ExperienceGenre::Rpg),
-                Some(GenreConfig::SciFi) => Some(ExperienceGenre::SciFi),
-                Some(GenreConfig::Sports) => Some(ExperienceGenre::Sports),
-                Some(GenreConfig::TownAndCity) => Some(ExperienceGenre::TownAndCity),
-                Some(GenreConfig::Western) => Some(ExperienceGenre::WildWest),
+                Some(GenreTargetConfig::All) => Some(ExperienceGenre::All),
+                Some(GenreTargetConfig::Adventure) => Some(ExperienceGenre::Adventure),
+                Some(GenreTargetConfig::Building) => Some(ExperienceGenre::Tutorial),
+                Some(GenreTargetConfig::Comedy) => Some(ExperienceGenre::Funny),
+                Some(GenreTargetConfig::Fighting) => Some(ExperienceGenre::Ninja),
+                Some(GenreTargetConfig::Fps) => Some(ExperienceGenre::Fps),
+                Some(GenreTargetConfig::Horror) => Some(ExperienceGenre::Scary),
+                Some(GenreTargetConfig::Medieval) => Some(ExperienceGenre::Fantasy),
+                Some(GenreTargetConfig::Military) => Some(ExperienceGenre::War),
+                Some(GenreTargetConfig::Naval) => Some(ExperienceGenre::Pirate),
+                Some(GenreTargetConfig::Rpg) => Some(ExperienceGenre::Rpg),
+                Some(GenreTargetConfig::SciFi) => Some(ExperienceGenre::SciFi),
+                Some(GenreTargetConfig::Sports) => Some(ExperienceGenre::Sports),
+                Some(GenreTargetConfig::TownAndCity) => Some(ExperienceGenre::TownAndCity),
+                Some(GenreTargetConfig::Western) => Some(ExperienceGenre::WildWest),
                 None => None,
             },
             playable_devices: config.playable_devices.as_ref().map(|devices| {
                 devices
                     .iter()
                     .map(|d| match d {
-                        PlayableDeviceConfig::Computer => ExperiencePlayableDevice::Computer,
-                        PlayableDeviceConfig::Console => ExperiencePlayableDevice::Console,
-                        PlayableDeviceConfig::Phone => ExperiencePlayableDevice::Phone,
-                        PlayableDeviceConfig::Tablet => ExperiencePlayableDevice::Tablet,
+                        PlayableDeviceTargetConfig::Computer => ExperiencePlayableDevice::Computer,
+                        PlayableDeviceTargetConfig::Console => ExperiencePlayableDevice::Console,
+                        PlayableDeviceTargetConfig::Phone => ExperiencePlayableDevice::Phone,
+                        PlayableDeviceTargetConfig::Tablet => ExperiencePlayableDevice::Tablet,
                     })
                     .collect()
             }),
 
             is_friends_only: match config.playability {
-                Some(PlayabilityConfig::Friends) => Some(true),
-                Some(PlayabilityConfig::Public) => Some(false),
+                Some(PlayabilityTargetConfig::Friends) => Some(true),
+                Some(PlayabilityTargetConfig::Public) => Some(false),
                 _ => None,
             },
 
@@ -277,21 +277,29 @@ impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
             },
 
             universe_avatar_type: match config.avatar_type {
-                Some(AvatarTypeConfig::R6) => Some(ExperienceAvatarType::MorphToR6),
-                Some(AvatarTypeConfig::R15) => Some(ExperienceAvatarType::MorphToR15),
-                Some(AvatarTypeConfig::PlayerChoice) => Some(ExperienceAvatarType::PlayerChoice),
+                Some(AvatarTypeTargetConfig::R6) => Some(ExperienceAvatarType::MorphToR6),
+                Some(AvatarTypeTargetConfig::R15) => Some(ExperienceAvatarType::MorphToR15),
+                Some(AvatarTypeTargetConfig::PlayerChoice) => {
+                    Some(ExperienceAvatarType::PlayerChoice)
+                }
                 None => None,
             },
             universe_animation_type: match config.avatar_animation_type {
-                Some(AnimationTypeConfig::Standard) => Some(ExperienceAnimationType::Standard),
-                Some(AnimationTypeConfig::PlayerChoice) => {
+                Some(AnimationTypeTargetConfig::Standard) => {
+                    Some(ExperienceAnimationType::Standard)
+                }
+                Some(AnimationTypeTargetConfig::PlayerChoice) => {
                     Some(ExperienceAnimationType::PlayerChoice)
                 }
                 None => None,
             },
             universe_collision_type: match config.avatar_collision_type {
-                Some(CollisionTypeConfig::InnerBox) => Some(ExperienceCollisionType::InnerBox),
-                Some(CollisionTypeConfig::OuterBox) => Some(ExperienceCollisionType::OuterBox),
+                Some(CollisionTypeTargetConfig::InnerBox) => {
+                    Some(ExperienceCollisionType::InnerBox)
+                }
+                Some(CollisionTypeTargetConfig::OuterBox) => {
+                    Some(ExperienceCollisionType::OuterBox)
+                }
                 None => None,
             },
 
@@ -302,7 +310,7 @@ impl From<&ExperienceTemplateConfig> for ExperienceConfigurationModel {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub enum ServerFillConfig {
+pub enum ServerFillTargetConfig {
     RobloxOptimized,
     Maximum,
     ReservedSlots(u32),
@@ -310,30 +318,36 @@ pub enum ServerFillConfig {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct PlaceTemplateConfig {
+pub struct PlaceTargetConfig {
     pub file: Option<String>,
+    pub configuration: Option<PlaceTargetConfigurationConfig>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaceTargetConfigurationConfig {
     pub name: Option<String>,
     pub description: Option<String>,
     pub max_player_count: Option<u32>,
     pub allow_copying: Option<bool>,
-    pub server_fill: Option<ServerFillConfig>,
+    pub server_fill: Option<ServerFillTargetConfig>,
 }
 
-impl From<PlaceTemplateConfig> for PlaceConfigurationModel {
-    fn from(config: PlaceTemplateConfig) -> Self {
+impl From<PlaceTargetConfigurationConfig> for PlaceConfigurationModel {
+    fn from(config: PlaceTargetConfigurationConfig) -> Self {
         PlaceConfigurationModel {
             name: config.name.clone(),
             description: config.description.clone(),
             max_player_count: config.max_player_count,
             allow_copying: config.allow_copying,
             social_slot_type: match config.server_fill {
-                Some(ServerFillConfig::RobloxOptimized) => Some(SocialSlotType::Automatic),
-                Some(ServerFillConfig::Maximum) => Some(SocialSlotType::Empty),
-                Some(ServerFillConfig::ReservedSlots(_)) => Some(SocialSlotType::Custom),
+                Some(ServerFillTargetConfig::RobloxOptimized) => Some(SocialSlotType::Automatic),
+                Some(ServerFillTargetConfig::Maximum) => Some(SocialSlotType::Empty),
+                Some(ServerFillTargetConfig::ReservedSlots(_)) => Some(SocialSlotType::Custom),
                 None => None,
             },
             custom_social_slot_count: match config.server_fill {
-                Some(ServerFillConfig::ReservedSlots(count)) => Some(count),
+                Some(ServerFillTargetConfig::ReservedSlots(count)) => Some(count),
                 _ => None,
             },
         }

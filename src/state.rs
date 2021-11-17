@@ -13,8 +13,8 @@ use yansi::Paint;
 
 use crate::{
     config::{
-        AssetConfig, Config, EnvironmentConfig, ExperienceTargetConfig, PlayabilityConfig,
-        RemoteStateConfig, StateConfig, TargetConfig,
+        AssetTargetConfig, Config, EnvironmentConfig, ExperienceTargetConfig,
+        PlayabilityTargetConfig, RemoteStateConfig, StateConfig, TargetConfig,
     },
     logger,
     resource_manager::{
@@ -218,7 +218,7 @@ fn get_desired_experience_graph(
     let experience_start_place_id_ref = experience.get_input_ref("startPlaceId");
     resources.push(experience);
 
-    if let Some(experience_configuration) = &target_config.experience {
+    if let Some(experience_configuration) = &target_config.configuration {
         resources.push(
             Resource::new(
                 resource_types::EXPERIENCE_CONFIGURATION,
@@ -238,7 +238,7 @@ fn get_desired_experience_graph(
                     "isActive",
                     &!matches!(
                         experience_configuration.playability,
-                        Some(PlayabilityConfig::Private)
+                        Some(PlayabilityTargetConfig::Private)
                     ),
                 )?
                 .add_ref_input("experienceId", &experience_asset_id_ref)
@@ -291,68 +291,56 @@ fn get_desired_experience_graph(
             return Err("No start place defined".to_owned());
         }
 
-        for (name, target) in places.iter() {
-            let place_file = target
-                .file
-                .clone()
-                .ok_or(format!("Missing required field file for place {}", name))?;
-
-            let place = Resource::new(resource_types::PLACE, name)
+        for (name, place) in places.iter() {
+            let place_resource = Resource::new(resource_types::PLACE, name)
                 .add_ref_input("experienceId", &experience_asset_id_ref)
                 .add_ref_input("startPlaceId", &experience_start_place_id_ref)
                 .add_value_input("isStart", &(name == "start"))?
                 .clone();
-            let place_asset_id_ref = place.get_input_ref("assetId");
-            resources.push(place);
+            let place_asset_id_ref = place_resource.get_input_ref("assetId");
+            resources.push(place_resource);
 
-            resources.push(
-                Resource::new(resource_types::PLACE_FILE, name)
-                    .add_ref_input("assetId", &place_asset_id_ref)
-                    .add_value_input("filePath", &place_file)?
-                    .add_value_input(
-                        "fileHash",
-                        &get_file_hash(project_path.join(&place_file).as_path())?,
-                    )?
-                    .clone(),
-            );
+            if let Some(file) = &place.file {
+                resources.push(
+                    Resource::new(resource_types::PLACE_FILE, name)
+                        .add_ref_input("assetId", &place_asset_id_ref)
+                        .add_value_input("filePath", file)?
+                        .add_value_input(
+                            "fileHash",
+                            &get_file_hash(project_path.join(file).as_path())?,
+                        )?
+                        .clone(),
+                );
+            }
 
-            resources.push(
-                Resource::new(resource_types::PLACE_CONFIGURATION, name)
-                    .add_ref_input("assetId", &place_asset_id_ref)
-                    .add_value_input::<PlaceConfigurationModel>(
-                        "configuration",
-                        &target.clone().into(),
-                    )?
-                    .clone(),
-            );
+            if let Some(configuration) = &place.configuration {
+                resources.push(
+                    Resource::new(resource_types::PLACE_CONFIGURATION, name)
+                        .add_ref_input("assetId", &place_asset_id_ref)
+                        .add_value_input::<PlaceConfigurationModel>(
+                            "configuration",
+                            &configuration.clone().into(),
+                        )?
+                        .clone(),
+                );
+            }
         }
     } else {
         return Err("No start place defined".to_owned());
     }
 
-    if let Some(developer_products) = &target_config.products {
-        for (name, developer_product) in developer_products {
-            let product_name = developer_product
-                .name
-                .clone()
-                .ok_or(format!("Missing required field name for product {}", name))?;
-            let product_price = developer_product
-                .price
-                .ok_or(format!("Missing required field price for product {}", name))?;
-
+    if let Some(products) = &target_config.products {
+        for (name, product) in products {
             let mut product_resource = Resource::new(resource_types::DEVELOPER_PRODUCT, name)
                 .add_ref_input("experienceId", &experience_asset_id_ref)
-                .add_value_input("name", &product_name)?
-                .add_value_input("price", &product_price)?
+                .add_value_input("name", &product.name)?
+                .add_value_input("price", &product.price)?
                 .add_value_input(
                     "description",
-                    developer_product
-                        .description
-                        .as_ref()
-                        .unwrap_or(&"".to_owned()),
+                    product.description.as_ref().unwrap_or(&"".to_owned()),
                 )?
                 .clone();
-            if let Some(icon_path) = &developer_product.icon {
+            if let Some(icon_path) = &product.icon {
                 let icon_resource = Resource::new(resource_types::DEVELOPER_PRODUCT_ICON, name)
                     .add_ref_input("experienceId", &experience_asset_id_ref)
                     .add_value_input("filePath", icon_path)?
@@ -371,22 +359,13 @@ fn get_desired_experience_graph(
     }
 
     if let Some(passes) = &target_config.passes {
-        for (name, pass_config) in passes {
-            let pass_icon_file = pass_config
-                .icon
-                .clone()
-                .ok_or(format!("Missing required field icon for pass {}", name))?;
-            let pass_name = pass_config
-                .name
-                .clone()
-                .ok_or(format!("Missing required field name for pass {}", name))?;
-
+        for (name, pass) in passes {
             let pass_resource = Resource::new(resource_types::GAME_PASS, name)
                 .add_ref_input("startPlaceId", &experience_start_place_id_ref)
-                .add_value_input("name", &pass_name)?
-                .add_value_input("description", &pass_config.description)?
-                .add_value_input("price", &pass_config.price)?
-                .add_value_input("iconFilePath", &pass_icon_file)?
+                .add_value_input("name", &pass.name)?
+                .add_value_input("description", &pass.description)?
+                .add_value_input("price", &pass.price)?
+                .add_value_input("iconFilePath", &pass.icon)?
                 .clone();
             resources.push(pass_resource.clone());
             resources.push(
@@ -396,10 +375,10 @@ fn get_desired_experience_graph(
                         "initialAssetId",
                         &pass_resource.get_input_ref("initialIconAssetId"),
                     )
-                    .add_value_input("filePath", &pass_icon_file)?
+                    .add_value_input("filePath", &pass.icon)?
                     .add_value_input(
                         "fileHash",
-                        &get_file_hash(project_path.join(&pass_icon_file).as_path())?,
+                        &get_file_hash(project_path.join(&pass.icon).as_path())?,
                     )?
                     .clone(),
             )
@@ -407,22 +386,13 @@ fn get_desired_experience_graph(
     }
 
     if let Some(badges) = &target_config.badges {
-        for (name, badge_config) in badges {
-            let badge_icon_file = badge_config
-                .icon
-                .clone()
-                .ok_or(format!("Missing required field icon for pass {}", name))?;
-            let badge_name = badge_config
-                .name
-                .clone()
-                .ok_or(format!("Missing required field name for pass {}", name))?;
-
+        for (name, badge) in badges {
             let badge_resource = Resource::new(resource_types::BADGE, name)
                 .add_ref_input("experienceId", &experience_asset_id_ref)
-                .add_value_input("name", &badge_name)?
-                .add_value_input("description", &badge_config.description)?
-                .add_value_input("enabled", &badge_config.enabled.unwrap_or(true))?
-                .add_value_input("iconFilePath", &badge_icon_file)?
+                .add_value_input("name", &badge.name)?
+                .add_value_input("description", &badge.description)?
+                .add_value_input("enabled", &badge.enabled.unwrap_or(true))?
+                .add_value_input("iconFilePath", &badge.icon)?
                 .clone();
             resources.push(badge_resource.clone());
             resources.push(
@@ -432,10 +402,10 @@ fn get_desired_experience_graph(
                         "initialAssetId",
                         &badge_resource.get_input_ref("initialIconAssetId"),
                     )
-                    .add_value_input("filePath", &badge_icon_file)?
+                    .add_value_input("filePath", &badge.icon)?
                     .add_value_input(
                         "fileHash",
-                        &get_file_hash(project_path.join(&badge_icon_file).as_path())?,
+                        &get_file_hash(project_path.join(&badge.icon).as_path())?,
                     )?
                     .clone(),
             )
@@ -445,7 +415,7 @@ fn get_desired_experience_graph(
     if let Some(assets) = &target_config.assets {
         for asset_config in assets {
             let assets = match asset_config.clone() {
-                AssetConfig::File(file) => {
+                AssetTargetConfig::File(file) => {
                     let relative_to_project = project_path.join(file.clone());
                     let relative_to_project = relative_to_project
                         .to_str()
@@ -480,7 +450,7 @@ fn get_desired_experience_graph(
                     }
                     assets
                 }
-                AssetConfig::FileWithAlias { file, name } => vec![(file, name)],
+                AssetTargetConfig::FileWithAlias { file, name } => vec![(file, name)],
             };
 
             for (file, alias) in assets {

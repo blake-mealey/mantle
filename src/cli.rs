@@ -6,11 +6,11 @@ use std::env;
 fn get_app() -> App<'static, 'static> {
     App::new("Mantle")
         .version(crate_version!())
-        .about("Manages Roblox deployments")
+        .about("Infra-as-code and deployment tool for Roblox")
         .setting(AppSettings::ArgRequiredElseHelp)
         .subcommand(
             SubCommand::with_name("deploy")
-                .about("Deploys a Mantle deployment.")
+                .about("Updates a Mantle environment with a project's latest configuration.")
                 .arg(
                     Arg::with_name("PROJECT")
                         .index(1)
@@ -18,11 +18,11 @@ fn get_app() -> App<'static, 'static> {
                         .takes_value(true)
                 )
                 .arg(
-                    Arg::with_name("deployment")
-                        .long("deployment")
-                        .short("d")
-                        .help("The deployment to deploy. If not specified, attempts to match the current git branch to each deployment's branches field.")
-                        .value_name("DEPLOYMENT")
+                    Arg::with_name("environment")
+                        .long("environment")
+                        .short("e")
+                        .help("The environment to deploy to. If not specified, attempts to match the current git branch to each environment's `branches` field.")
+                        .value_name("ENVIRONMENT")
                         .takes_value(true))
                 .arg(
                     Arg::with_name("allow_purchases")
@@ -31,7 +31,7 @@ fn get_app() -> App<'static, 'static> {
         )
         .subcommand(
             SubCommand::with_name("destroy")
-                .about("Destroys a Mantle deployment.")
+                .about("Destroys a Mantle environment.")
                 .arg(
                     Arg::with_name("PROJECT")
                         .index(1)
@@ -39,16 +39,16 @@ fn get_app() -> App<'static, 'static> {
                         .takes_value(true)
                 )
                 .arg(
-                    Arg::with_name("deployment")
-                        .long("deployment")
-                        .short("d")
-                        .help("The deployment to destroy. If not specified, attempts to match the current git branch to each deployment's branches field.")
-                        .value_name("DEPLOYMENT")
+                    Arg::with_name("environment")
+                        .long("environment")
+                        .short("e")
+                        .help("The environment to destroy. If not specified, attempts to match the current git branch to each environment's `branches` field.")
+                        .value_name("ENVIRONMENT")
                         .takes_value(true))
         )
         .subcommand(
             SubCommand::with_name("outputs")
-                .about("Prints a Mantle deployment's outputs to the console or a file in a machine-readable format.")
+                .about("Prints a Mantle environment's outputs to the console or a file in a machine-readable format.")
                 .arg(
                     Arg::with_name("PROJECT")
                         .index(1)
@@ -56,11 +56,11 @@ fn get_app() -> App<'static, 'static> {
                         .takes_value(true)
                 )
                 .arg(
-                    Arg::with_name("deployment")
-                        .long("deployment")
-                        .short("d")
-                        .help("The deployment to print the outputs of. If not specified, attempts to match the current git branch to each deployment's branches field.")
-                        .value_name("DEPLOYMENT")
+                    Arg::with_name("environment")
+                        .long("environment")
+                        .short("e")
+                        .help("The environment to print the outputs of. If not specified, attempts to match the current git branch to each environment's `branches` field.")
+                        .value_name("ENVIRONMENT")
                         .takes_value(true))
                 .arg(
                     Arg::with_name("output")
@@ -81,7 +81,7 @@ fn get_app() -> App<'static, 'static> {
         )
         .subcommand(
             SubCommand::with_name("import")
-                .about("Imports an existing experience into a Mantle deployment.")
+                .about("Imports an existing target into a Mantle environment.")
                 .arg(
                     Arg::with_name("PROJECT")
                         .index(1)
@@ -89,11 +89,11 @@ fn get_app() -> App<'static, 'static> {
                         .takes_value(true)
                 )
                 .arg(
-                    Arg::with_name("deployment")
-                        .long("deployment")
-                        .short("d")
-                        .help("The deployment to print the outputs of. If not specified, attempts to match the current git branch to each deployment's branches field.")
-                        .value_name("DEPLOYMENT")
+                    Arg::with_name("environment")
+                        .long("environment")
+                        .short("e")
+                        .help("The environment to print the outputs of. If not specified, attempts to match the current git branch to each environment's `branches` field.")
+                        .value_name("ENVIRONMENT")
                         .takes_value(true))
                 .arg(
                     Arg::with_name("experience_id")
@@ -112,7 +112,7 @@ pub async fn run_with(args: Vec<String>) -> i32 {
         ("deploy", Some(deploy_matches)) => {
             commands::deploy::run(
                 deploy_matches.value_of("PROJECT"),
-                deploy_matches.value_of("deployment"),
+                deploy_matches.value_of("environment"),
                 deploy_matches.is_present("allow_purchases"),
             )
             .await
@@ -120,14 +120,14 @@ pub async fn run_with(args: Vec<String>) -> i32 {
         ("destroy", Some(destroy_matches)) => {
             commands::destroy::run(
                 destroy_matches.value_of("PROJECT"),
-                destroy_matches.value_of("deployment"),
+                destroy_matches.value_of("environment"),
             )
             .await
         }
         ("outputs", Some(outputs_matches)) => {
             commands::outputs::run(
                 outputs_matches.value_of("PROJECT"),
-                outputs_matches.value_of("deployment"),
+                outputs_matches.value_of("environment"),
                 outputs_matches.value_of("output"),
                 outputs_matches.value_of("format").unwrap(),
             )
@@ -136,7 +136,7 @@ pub async fn run_with(args: Vec<String>) -> i32 {
         ("import", Some(import_matches)) => {
             commands::import::run(
                 import_matches.value_of("PROJECT"),
-                import_matches.value_of("deployment"),
+                import_matches.value_of("environment"),
                 import_matches.value_of("experience_id").unwrap(),
             )
             .await

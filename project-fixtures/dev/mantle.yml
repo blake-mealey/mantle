@@ -1,4 +1,4 @@
-deployments:
+environments:
   - name: staging
     branches: [dev, dev/*]
     overrides:

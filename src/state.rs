@@ -13,7 +13,7 @@ use yansi::Paint;
 
 use crate::{
     config::{
-        AssetConfig, Config, DeploymentConfig, PlayabilityConfig, RemoteStateConfig, StateConfig,
+        AssetConfig, Config, EnvironmentConfig, PlayabilityConfig, RemoteStateConfig, StateConfig,
         TemplateConfig,
     },
     logger,
@@ -30,8 +30,64 @@ use crate::{
 };
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct ResourceState {
+#[serde(untagged)]
+enum ResourceState {
+    Versioned(VersionedResourceState),
+    Unversioned(ResourceStateV1),
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(tag = "version")]
+enum VersionedResourceState {
+    #[serde(rename = "1")]
+    V1(ResourceStateV1),
+    #[serde(rename = "2")]
+    V2(ResourceStateV2),
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ResourceStateV2 {
+    pub environments: HashMap<String, Vec<Resource>>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ResourceStateV1 {
     pub deployments: HashMap<String, Vec<Resource>>,
+}
+impl From<ResourceStateV1> for ResourceStateV2 {
+    fn from(state: ResourceStateV1) -> Self {
+        // In this version, we removed the assetId inputs from the experience and place resource
+        // types. If we leave the old inputs in, the new version will re-create all experience and
+        // place resources since it will consider it a change in inputs. We can easily fix this by
+        // removing the assetId inputs from the experience and place resource types.
+
+        let mut environments = HashMap::new();
+        for (environment_name, resources) in state.deployments {
+            let mut new_resources = Vec::new();
+            for resource in resources {
+                if let resource_types::EXPERIENCE | resource_types::PLACE =
+                    resource.resource_type.as_str()
+                {
+                    new_resources.push(Resource {
+                        inputs: resource
+                            .inputs
+                            .iter()
+                            .filter_map(|(name, value)| match name.as_str() {
+                                "assetId" => None,
+                                _ => Some((name.clone(), value.clone())),
+                            })
+                            .collect(),
+                        ..resource
+                    });
+                } else {
+                    new_resources.push(resource);
+                }
+            }
+            environments.insert(environment_name, new_resources);
+        }
+
+        ResourceStateV2 { environments }
+    }
 }
 
 fn get_state_file_path(project_path: &Path) -> PathBuf {
@@ -122,28 +178,30 @@ async fn get_state_from_remote(
 pub async fn get_previous_state(
     project_path: &Path,
     config: &Config,
-    deployment_config: &DeploymentConfig,
-) -> Result<ResourceState, String> {
+    environment_config: &EnvironmentConfig,
+) -> Result<ResourceStateV2, String> {
     let state = match config.state.clone() {
         StateConfig::Local => get_state_from_file(project_path)?,
         StateConfig::Remote(config) => get_state_from_remote(&config).await?,
     };
 
     let mut state = match state {
-        Some(state) => state,
-        None => ResourceState {
-            deployments: HashMap::new(),
+        Some(ResourceState::Unversioned(state)) => state.into(),
+        Some(ResourceState::Versioned(VersionedResourceState::V1(state))) => state.into(),
+        Some(ResourceState::Versioned(VersionedResourceState::V2(state))) => state,
+        None => ResourceStateV2 {
+            environments: HashMap::new(),
         },
     };
 
-    if state.deployments.get(&deployment_config.name).is_none() {
+    if state.environments.get(&environment_config.name).is_none() {
         logger::log(format!(
-            "No previous state for deployment {}",
-            Paint::cyan(deployment_config.name.clone())
+            "No previous state for environment {}",
+            Paint::cyan(environment_config.name.clone())
         ));
         state
-            .deployments
-            .insert(deployment_config.name.clone(), Vec::new());
+            .environments
+            .insert(environment_config.name.clone(), Vec::new());
     }
 
     Ok(state)
@@ -751,10 +809,12 @@ pub fn save_state_to_file(project_path: &Path, data: &[u8]) -> Result<(), String
 pub async fn save_state(
     project_path: &Path,
     state_config: &StateConfig,
-    state: &ResourceState,
+    state: &ResourceStateV2,
 ) -> Result<(), String> {
-    let data =
-        serde_yaml::to_vec(&state).map_err(|e| format!("Unable to serialize state\n\t{}", e))?;
+    let data = serde_yaml::to_vec(&ResourceState::Versioned(VersionedResourceState::V2(
+        state.to_owned(),
+    )))
+    .map_err(|e| format!("Unable to serialize state\n\t{}", e))?;
 
     match state_config {
         StateConfig::Local => save_state_to_file(project_path, &data),

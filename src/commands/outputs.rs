@@ -10,12 +10,12 @@ use crate::{
 
 pub async fn run(
     project: Option<&str>,
-    deployment: Option<&str>,
+    environment: Option<&str>,
     output: Option<&str>,
     format: &str,
 ) -> i32 {
     logger::start_action("Load outputs:");
-    let Project { previous_graph, .. } = match load_project(project, deployment).await {
+    let Project { previous_graph, .. } = match load_project(project, environment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
             logger::end_action("No outputs available");

@@ -13,7 +13,7 @@ use yansi::Paint;
 
 use crate::{
     config::{
-        AssetTargetConfig, Config, EnvironmentConfig, ExperienceTargetConfig,
+        AssetTargetConfig, Config, EnvironmentConfig, ExperienceTargetConfig, OwnerConfig,
         PlayabilityTargetConfig, RemoteStateConfig, StateConfig, TargetConfig,
     },
     logger,
@@ -25,7 +25,8 @@ use crate::{
     },
     resources::{InputRef, Resource, ResourceGraph},
     roblox_api::{
-        ExperienceConfigurationModel, GetExperienceResponse, PlaceConfigurationModel, RobloxApi,
+        ExperienceConfigurationModel, ExperienceCreatorType, GetExperienceResponse,
+        PlaceConfigurationModel, RobloxApi,
     },
 };
 
@@ -210,10 +211,18 @@ pub async fn get_previous_state(
 fn get_desired_experience_graph(
     project_path: &Path,
     target_config: &ExperienceTargetConfig,
+    owner_config: &OwnerConfig,
 ) -> Result<ResourceGraph, String> {
     let mut resources: Vec<Resource> = Vec::new();
 
-    let experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID);
+    let group_id = match owner_config {
+        OwnerConfig::Personal => None,
+        OwnerConfig::Group(group_id) => Some(group_id.clone()),
+    };
+
+    let experience = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
+        .add_value_input("groupId", &group_id)?
+        .clone();
     let experience_asset_id_ref = experience.get_input_ref("assetId");
     let experience_start_place_id_ref = experience.get_input_ref("startPlaceId");
     resources.push(experience);
@@ -474,6 +483,7 @@ fn get_desired_experience_graph(
                         "fileHash",
                         &get_file_hash(project_path.join(&file).as_path())?,
                     )?
+                    .add_value_input("groupId", &group_id)?
                     .clone();
                 resources.push(asset_resource.clone());
                 resources.push(
@@ -493,10 +503,11 @@ fn get_desired_experience_graph(
 pub fn get_desired_graph(
     project_path: &Path,
     target_config: &TargetConfig,
+    owner_config: &OwnerConfig,
 ) -> Result<ResourceGraph, String> {
     match target_config {
         TargetConfig::Experience(experience_target_config) => {
-            get_desired_experience_graph(project_path, experience_target_config)
+            get_desired_experience_graph(project_path, experience_target_config, owner_config)
         }
     }
 }
@@ -510,12 +521,20 @@ pub fn import_graph(
     let GetExperienceResponse {
         root_place_id: start_place_id,
         is_active: is_experience_active,
+        creator_target_id,
+        creator_type,
     } = roblox_api.get_experience(experience_id)?;
+
+    let group_id = match creator_type {
+        ExperienceCreatorType::User => None,
+        ExperienceCreatorType::Group => Some(creator_target_id),
+    };
 
     let experience_resource = Resource::new(resource_types::EXPERIENCE, SINGLETON_RESOURCE_ID)
         .set_outputs(ExperienceOutputs {
             asset_id: experience_id,
             start_place_id,
+            group_id: group_id.clone(),
         })?
         .clone();
     let experience_asset_id_ref = experience_resource.get_input_ref("assetId");

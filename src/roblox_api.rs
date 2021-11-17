@@ -34,10 +34,19 @@ pub struct CreateExperienceResponse {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum ExperienceCreatorType {
+    User,
+    Group,
+}
+
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetExperienceResponse {
     pub root_place_id: AssetId,
     pub is_active: bool,
+    pub creator_type: ExperienceCreatorType,
+    pub creator_target_id: AssetId,
 }
 
 #[derive(Deserialize)]
@@ -538,11 +547,15 @@ impl RobloxApi {
         Ok(())
     }
 
-    pub fn create_experience(&mut self) -> Result<CreateExperienceResponse, String> {
+    pub fn create_experience(
+        &mut self,
+        group_id: Option<AssetId>,
+    ) -> Result<CreateExperienceResponse, String> {
         let res = ureq::post("https://api.roblox.com/universes/create")
             .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
             .send_json(json!({
-                "templatePlaceIdToUse": 95206881
+                "templatePlaceIdToUse": 95206881,
+                "groupId": group_id
             }));
 
         let response = Self::handle_response(res)?;
@@ -1534,6 +1547,7 @@ impl RobloxApi {
     pub fn create_image_asset(
         &mut self,
         file_path: &Path,
+        group_id: Option<AssetId>,
     ) -> Result<CreateImageAssetResponse, String> {
         let data = fs::read(file_path).map_err(|e| {
             format!(
@@ -1547,10 +1561,14 @@ impl RobloxApi {
             "Images/{}",
             file_path.file_stem().map(OsStr::to_str).flatten().unwrap()
         );
-        let res = ureq::post("https://data.roblox.com/data/upload/json")
+        let mut req = ureq::post("https://data.roblox.com/data/upload/json")
             .query("assetTypeId", "13")
             .query("name", &file_name)
-            .query("description", "madewithmantle")
+            .query("description", "madewithmantle");
+        if let Some(group_id) = group_id {
+            req = req.query("groupId", &group_id.to_string());
+        }
+        let res = req
             .set("Content-Type", "*/*")
             .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
             .send_bytes(&data);
@@ -1570,6 +1588,7 @@ impl RobloxApi {
     pub fn get_create_audio_asset_price(
         &mut self,
         file_path: &Path,
+        group_id: Option<AssetId>,
     ) -> Result<GetCreateAudioAssetPriceResponse, String> {
         let data = fs::read(file_path).map_err(|e| {
             format!(
@@ -1591,7 +1610,8 @@ impl RobloxApi {
             .send_json(json!({
                 "name": file_name,
                 "fileSize": data.len(),
-                "file": base64::encode(data)
+                "file": base64::encode(data),
+                "groupId": group_id,
             }));
 
         let response = Self::handle_response(res)?;
@@ -1610,6 +1630,7 @@ impl RobloxApi {
     pub fn create_audio_asset(
         &mut self,
         file_path: &Path,
+        group_id: Option<AssetId>,
     ) -> Result<CreateAudioAssetResponse, String> {
         let data = fs::read(file_path).map_err(|e| {
             format!(
@@ -1627,7 +1648,8 @@ impl RobloxApi {
             .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
             .send_json(json!({
                 "name": file_name,
-                "file": base64::encode(data)
+                "file": base64::encode(data),
+                "groupId": group_id,
             }));
 
         let response = Self::handle_response(res)?;

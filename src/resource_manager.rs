@@ -42,9 +42,15 @@ pub const SINGLETON_RESOURCE_ID: &str = "singleton";
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct ExperienceInputs {
+    pub group_id: Option<AssetId>,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ExperienceOutputs {
     pub asset_id: AssetId,
     pub start_place_id: AssetId,
+    pub group_id: Option<AssetId>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -235,6 +241,7 @@ pub struct AssetAliasOutputs {
 struct ImageAssetInputs {
     file_path: String,
     file_hash: String,
+    group_id: Option<AssetId>,
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -248,6 +255,7 @@ pub struct ImageAssetOutputs {
 struct AudioAssetInputs {
     file_path: String,
     file_hash: String,
+    group_id: Option<AssetId>,
 }
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -285,6 +293,7 @@ impl ResourceManager for RobloxResourceManager {
                     price, can_afford, ..
                 } = self.roblox_api.get_create_audio_asset_price(
                     self.project_path.join(inputs.file_path).as_path(),
+                    inputs.group_id,
                 )?;
 
                 // TODO: Add support for failing early like this for all other resource types (e.g. return the price and current balance from this function)
@@ -317,15 +326,19 @@ impl ResourceManager for RobloxResourceManager {
     ) -> Result<Option<serde_yaml::Value>, String> {
         match resource_type {
             resource_types::EXPERIENCE => {
+                let inputs = serde_yaml::from_value::<ExperienceInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
                 let CreateExperienceResponse {
                     universe_id,
                     root_place_id,
-                } = self.roblox_api.create_experience()?;
+                } = self.roblox_api.create_experience(inputs.group_id)?;
 
                 Ok(Some(
                     serde_yaml::to_value(ExperienceOutputs {
                         asset_id: universe_id,
                         start_place_id: root_place_id,
+                        group_id: inputs.group_id,
                     })
                     .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
                 ))
@@ -572,9 +585,10 @@ impl ResourceManager for RobloxResourceManager {
                     asset_id,
                     backing_asset_id,
                     ..
-                } = self
-                    .roblox_api
-                    .create_image_asset(self.project_path.join(inputs.file_path).as_path())?;
+                } = self.roblox_api.create_image_asset(
+                    self.project_path.join(inputs.file_path).as_path(),
+                    inputs.group_id,
+                )?;
 
                 Ok(Some(
                     serde_yaml::to_value(ImageAssetOutputs {
@@ -588,9 +602,10 @@ impl ResourceManager for RobloxResourceManager {
                 let inputs = serde_yaml::from_value::<AudioAssetInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
 
-                let CreateAudioAssetResponse { id } = self
-                    .roblox_api
-                    .create_audio_asset(self.project_path.join(inputs.file_path).as_path())?;
+                let CreateAudioAssetResponse { id } = self.roblox_api.create_audio_asset(
+                    self.project_path.join(inputs.file_path).as_path(),
+                    inputs.group_id,
+                )?;
 
                 Ok(Some(
                     serde_yaml::to_value(AudioAssetOutputs { asset_id: id })
@@ -611,7 +626,21 @@ impl ResourceManager for RobloxResourceManager {
         resource_outputs: serde_yaml::Value,
     ) -> Result<Option<serde_yaml::Value>, String> {
         match resource_type {
-            resource_types::EXPERIENCE => self.create(resource_type, resource_inputs),
+            resource_types::EXPERIENCE => {
+                let inputs = serde_yaml::from_value::<ExperienceInputs>(resource_inputs.clone())
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let outputs = serde_yaml::from_value::<ExperienceOutputs>(resource_outputs.clone())
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                // Our comparison technique considers {} and {groupId: null} to be different but we
+                // don't want to re-create experiences in this case.
+                if inputs.group_id != outputs.group_id {
+                    self.delete(resource_type, resource_inputs.clone(), resource_outputs)?;
+                    self.create(resource_type, resource_inputs)
+                } else {
+                    Ok(Some(resource_outputs))
+                }
+            }
             resource_types::EXPERIENCE_CONFIGURATION => self.create(resource_type, resource_inputs),
             resource_types::EXPERIENCE_ACTIVATION => self.create(resource_type, resource_inputs),
             resource_types::EXPERIENCE_ICON => self.create(resource_type, resource_inputs),

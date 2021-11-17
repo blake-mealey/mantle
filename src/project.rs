@@ -177,7 +177,7 @@ pub async fn load_project(
     // Get our resource graphs
     let previous_graph =
         ResourceGraph::new(state.environments.get(&environment_config.name).unwrap());
-    let next_graph = get_desired_graph(project_path.as_path(), &target_config)?;
+    let next_graph = get_desired_graph(project_path.as_path(), &target_config, &config.owner)?;
 
     Ok(Some(Project {
         project_path,

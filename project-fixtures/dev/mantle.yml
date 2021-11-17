@@ -1,3 +1,6 @@
+owner:
+  group: 5723117
+
 environments:
   - name: staging
     branches: [dev, dev/*]
@@ -18,6 +21,7 @@ environments:
         start:
           configuration:
             name: Preview - Start name
+  - name: group
 
 target:
   experience:

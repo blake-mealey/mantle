@@ -4,7 +4,7 @@ use serde::de;
 use yansi::Paint;
 
 use crate::{
-    config::TemplateConfig,
+    config::TargetConfig,
     logger,
     project::{load_project, Project},
     resource_manager::{resource_types, RobloxResourceManager},
@@ -29,38 +29,42 @@ where
 }
 
 fn tag_commit(
-    templates_config: &TemplateConfig,
+    target_config: &TargetConfig,
     next_graph: &ResourceGraph,
     previous_graph: &ResourceGraph,
 ) -> Result<u32, String> {
     let mut tag_count: u32 = 0;
-    for name in templates_config.places.as_ref().unwrap().keys() {
-        let input_ref = (
-            resource_types::PLACE_FILE.to_owned(),
-            name.to_owned(),
-            "version".to_owned(),
-        );
-        let previous_version_output = get_output::<u32>(previous_graph, &input_ref);
-        let next_version_output = get_output::<u32>(next_graph, &input_ref);
 
-        let tag_version = match (previous_version_output, next_version_output) {
-            (None, Some(version)) => Some(version),
-            (Some(previous), Some(next)) if next != previous => Some(next),
-            _ => None,
-        };
+    #[allow(irrefutable_let_patterns)]
+    if let TargetConfig::Experience(target_config) = target_config {
+        for name in target_config.places.as_ref().unwrap().keys() {
+            let input_ref = (
+                resource_types::PLACE_FILE.to_owned(),
+                name.to_owned(),
+                "version".to_owned(),
+            );
+            let previous_version_output = get_output::<u32>(previous_graph, &input_ref);
+            let next_version_output = get_output::<u32>(next_graph, &input_ref);
 
-        if let Some(version) = tag_version {
-            logger::log(format!(
-                "Place {} was updated to version {}",
-                Paint::cyan(name),
-                Paint::cyan(version)
-            ));
-            let tag = format!("{}-v{}", name, version);
-            logger::log(format!("Tagging commit with {}", Paint::cyan(tag.clone())));
+            let tag_version = match (previous_version_output, next_version_output) {
+                (None, Some(version)) => Some(version),
+                (Some(previous), Some(next)) if next != previous => Some(next),
+                _ => None,
+            };
 
-            tag_count += 1;
-            run_command(&format!("git tag {}", tag))
-                .map_err(|e| format!("Unable to tag the current commit\n\t{}", e))?;
+            if let Some(version) = tag_version {
+                logger::log(format!(
+                    "Place {} was updated to version {}",
+                    Paint::cyan(name),
+                    Paint::cyan(version)
+                ));
+                let tag = format!("{}-v{}", name, version);
+                logger::log(format!("Tagging commit with {}", Paint::cyan(tag.clone())));
+
+                tag_count += 1;
+                run_command(&format!("git tag {}", tag))
+                    .map_err(|e| format!("Unable to tag the current commit\n\t{}", e))?;
+            }
         }
     }
 
@@ -68,7 +72,6 @@ fn tag_commit(
         run_command("git push --tags")
             .map_err(|e| format!("Unable to push tags to remote\n\t{}", e))?;
     }
-
     Ok(tag_count)
 }
 
@@ -81,7 +84,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
         mut state,
         environment_config,
         state_config,
-        templates_config,
+        target_config,
     } = match load_project(project, environment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
@@ -128,7 +131,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
 
     if environment_config.tag_commit && matches!(results, Ok(_)) {
         logger::start_action("Tagging commit:");
-        match tag_commit(&templates_config, &next_graph, &previous_graph) {
+        match tag_commit(&target_config, &next_graph, &previous_graph) {
             Ok(0) => logger::end_action("No tagging required"),
             Ok(tag_count) => {
                 logger::end_action(format!("Succeeded in pushing {} tag(s)", tag_count))

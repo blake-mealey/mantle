@@ -4,66 +4,72 @@ environments:
     overrides:
       places:
         start:
-          name: Staging - Start name
+          configuration:
+            name: Staging - Start name
   - name: production
     branches: [main]
     # tagCommit: true
     overrides:
-      experience:
+      configuration:
         playability: friends
   - name: preview
     overrides:
       places:
         start:
-          name: Preview - Start name
+          configuration:
+            name: Preview - Start name
 
-templates:
+target:
   experience:
-    genre: naval
-    playableDevices: [computer]
-    playability: private
-    enableStudioAccessToApis: true
-    avatarType: r15
-    avatarAnimationType: playerChoice
-    avatarCollisionType: outerBox
-    icon: game-icon.png
-    thumbnails:
-      - game-thumbnail-1.png
-      - game-thumbnail-2.png
-      - game-thumbnail-3.png
-  places:
-    start:
-      file: start.rbxlx
-      name: Start name
-      description: Start description
-      maxPlayerCount: 20
-      serverFill: { reservedSlots: 10 }
-      allowCopying: false
-    firstWorld:
-      file: start.rbxlx
-      name: World
-    secondWorld:
-      file: start.rbxlx
-      name: Second World
-  products:
-    myFirstProduct:
-      name: My first product
-      description: With an amazing description
-      price: 50
-      icon: developer-product-1.png
-  passes:
-    myFirstPass:
-      name: My first pass
-      description: With a description!
-      price: 50
-      icon: game-pass-1.png
-  badges:
-    myFirstBadge:
-      name: My first badge
-      description: The best badge of all
-      icon: badge-1.png
-  assets:
-    - assets/*
+    configuration:
+      genre: naval
+      playableDevices: [computer]
+      playability: private
+      enableStudioAccessToApis: true
+      avatarType: r15
+      avatarAnimationType: playerChoice
+      avatarCollisionType: outerBox
+      icon: game-icon.png
+      thumbnails:
+        - game-thumbnail-1.png
+        - game-thumbnail-2.png
+        - game-thumbnail-3.png
+    places:
+      start:
+        file: start.rbxlx
+        configuration:
+          name: Start name
+          description: Start description
+          maxPlayerCount: 20
+          serverFill: { reservedSlots: 10 }
+          allowCopying: false
+      firstWorld:
+        file: start.rbxlx
+        configuration:
+          name: World
+      secondWorld:
+        file: start.rbxlx
+        configuration:
+          name: Second World
+    products:
+      myFirstProduct:
+        name: My first product
+        description: With an amazing description
+        price: 50
+        icon: developer-product-1.png
+    passes:
+      myFirstPass:
+        name: My first pass
+        description: With a description!
+        price: 50
+        icon: game-pass-1.png
+    badges:
+      myFirstBadge:
+        name: My first badge
+        description: The best badge of all
+        icon: badge-1.png
+    assets:
+      - assets/*
 
 state:
   remote:

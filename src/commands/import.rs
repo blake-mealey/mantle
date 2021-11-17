@@ -6,13 +6,16 @@ use crate::{
     resource_manager::AssetId,
     roblox_api::RobloxApi,
     roblox_auth::RobloxAuth,
-    state::import_graph,
+    state::{import_graph, save_state},
 };
 
 pub async fn run(project: Option<&str>, deployment: Option<&str>, experience_id: &str) -> i32 {
     logger::start_action("Loading project:");
     let Project {
+        project_path,
+        previous_graph,
         mut state,
+        deployment_config,
         state_config,
         ..
     } = match load_project(project, deployment).await {
@@ -26,6 +29,12 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>, experience_id:
             return 1;
         }
     };
+
+    if previous_graph.get_resource_list().len() > 0 {
+        logger::end_action("Deployment already exists: no need to import.");
+        return 0;
+    }
+
     logger::end_action("Succeeded");
 
     let experience_id = match experience_id.parse::<AssetId>() {
@@ -48,10 +57,20 @@ pub async fn run(project: Option<&str>, deployment: Option<&str>, experience_id:
             return 1;
         }
     };
-    logger::log(format!(
-        "{}",
-        serde_yaml::to_string(&imported_graph.get_resource_list()).unwrap()
-    ));
+    logger::end_action("Succeeded");
+
+    logger::start_action("Saving state:");
+    state.deployments.insert(
+        deployment_config.name.clone(),
+        imported_graph.get_resource_list(),
+    );
+    match save_state(&project_path, &state_config, &state).await {
+        Ok(_) => {}
+        Err(e) => {
+            logger::end_action(Paint::red(e));
+            return 1;
+        }
+    };
     logger::end_action("Succeeded");
 
     0

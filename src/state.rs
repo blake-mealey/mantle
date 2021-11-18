@@ -21,12 +21,13 @@ use crate::{
         resource_types, AssetAliasOutputs, AssetId, AudioAssetOutputs, BadgeIconOutputs,
         BadgeOutputs, ExperienceDeveloperProductIconOutputs, ExperienceDeveloperProductOutputs,
         ExperienceOutputs, ExperienceThumbnailOutputs, GamePassIconOutputs, GamePassOutputs,
-        ImageAssetOutputs, PlaceFileOutputs, PlaceOutputs, SINGLETON_RESOURCE_ID,
+        ImageAssetOutputs, PlaceFileOutputs, PlaceOutputs, SocialLinkOutputs,
+        SINGLETON_RESOURCE_ID,
     },
     resources::{Input, InputRef, Resource, ResourceGraph},
     roblox_api::{
         CreatorType, ExperienceConfigurationModel, GetExperienceResponse, PlaceConfigurationModel,
-        RobloxApi,
+        RobloxApi, SocialLinkType,
     },
 };
 
@@ -335,6 +336,39 @@ fn get_desired_experience_graph(
         return Err("No start place defined".to_owned());
     }
 
+    if let Some(social_links) = &target_config.social_links {
+        for social_link in social_links {
+            let domain = social_link.url.domain().ok_or(format!(
+                "Unknown social link type for URL {}",
+                social_link.url
+            ))?;
+            let link_type = match domain {
+                "facebook.com" => SocialLinkType::Facebook,
+                "twitter.com" => SocialLinkType::Twitter,
+                "youtube.com" => SocialLinkType::YouTube,
+                "twitch.tv" => SocialLinkType::Twitch,
+                "discord.gg" => SocialLinkType::Discord,
+                "roblox.com" => SocialLinkType::RobloxGroup,
+                "www.roblox.com" => SocialLinkType::RobloxGroup,
+                "guilded.gg" => SocialLinkType::Guilded,
+                domain => {
+                    return Err(format!(
+                        "Unknown social link type for domain name {}",
+                        domain
+                    ))
+                }
+            };
+            resources.push(
+                Resource::new(resource_types::SOCIAL_LINK, domain)
+                    .add_ref_input("experienceId", &experience_asset_id_ref)
+                    .add_value_input("title", &social_link.title)?
+                    .add_value_input("url", &social_link.url)?
+                    .add_value_input("linkType", &link_type)?
+                    .clone(),
+            )
+        }
+    }
+
     if let Some(products) = &target_config.products {
         for (name, product) in products {
             let mut product_resource = Resource::new(resource_types::DEVELOPER_PRODUCT, name)
@@ -619,6 +653,25 @@ pub fn import_graph(
             Resource::new(resource_types::PLACE_CONFIGURATION, &resource_id)
                 .add_ref_input("assetId", &place_asset_id_ref)
                 .add_value_input::<PlaceConfigurationModel>("configuration", &place.into())?
+                .clone(),
+        );
+    }
+
+    let social_links = roblox_api.list_social_links(experience_id)?;
+    for social_link in social_links {
+        let domain = social_link
+            .url
+            .domain()
+            .ok_or_else(|| "Invalid social link URL".to_owned())?;
+        resources.push(
+            Resource::new(resource_types::SOCIAL_LINK, domain)
+                .add_ref_input("experienceId", &experience_asset_id_ref)
+                .add_value_input("title", &social_link.title)?
+                .add_value_input("url", &social_link.url)?
+                .add_value_input("linkType", &social_link.link_type)?
+                .set_outputs(SocialLinkOutputs {
+                    asset_id: social_link.id,
+                })?
                 .clone(),
         );
     }

@@ -308,8 +308,8 @@ impl ResourceGraph {
         serde_yaml::to_string(&inputs).map_err(|e| format!("Failed to compute input hash\n\t{}", e))
     }
 
-    fn get_dependency_graph(&self) -> HashMap<ResourceRef, Vec<ResourceRef>> {
-        let mut dependency_graph = HashMap::new();
+    fn get_dependency_graph(&self) -> BTreeMap<ResourceRef, Vec<ResourceRef>> {
+        let mut dependency_graph = BTreeMap::new();
         for resource in self.resources.values() {
             dependency_graph.insert(resource.get_ref(), resource.get_dependency_refs());
         }
@@ -577,11 +577,57 @@ impl ResourceGraph {
     where
         TManager: ResourceManager,
     {
-        let resource_order = self.get_topological_order()?;
-
         let mut results: EvaluateResults = Default::default();
         let mut failures_count = 0;
 
+        // TODO: improve error handling for deletes too
+        // Iterate over previous resources in reverse order so that leaf resources are removed first
+        let mut previous_resource_order = previous_graph.get_topological_order()?;
+        previous_resource_order.reverse();
+        for resource_ref in previous_resource_order.iter() {
+            let resource = &previous_graph.get_resource_from_ref(resource_ref).unwrap();
+
+            // If the resource is still in the graph, there is no need to delete the resource
+            if self.get_resource_from_ref(resource_ref).is_some() {
+                continue;
+            }
+
+            let resolved_inputs = previous_graph.resolve_inputs(resource)?.unwrap_or_default();
+            let outputs = resource.outputs.clone().unwrap_or_default();
+
+            results.deleted_count += 1;
+            logger::start_action(format!(
+                "{} Deleting: {} {}",
+                Paint::red("-"),
+                resource.resource_type,
+                resource.id
+            ));
+            logger::log_changeset(get_changeset(
+                &previous_graph.get_inputs_hash(&resolved_inputs)?,
+                "",
+            ));
+            let result = resource_manager.delete(
+                &resource.resource_type,
+                serde_yaml::to_value(resolved_inputs)
+                    .map_err(|e| format!("Failed to serialize inputs: {}", e))?,
+                serde_yaml::to_value(outputs)
+                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+            );
+
+            if let Err(error) = result {
+                // An error occurred while deleting the resource. We will copy the old version into
+                // the graph.
+                // TODO: this may need work for formatting
+                logger::end_action(format!("Failed: {}", Paint::red(error)));
+                failures_count += 1;
+                self.resources
+                    .insert(resource_ref.clone(), resource.clone());
+            } else {
+                logger::end_action("Succeeded");
+            }
+        }
+
+        let resource_order = self.get_topological_order()?;
         for resource_ref in resource_order {
             let resource_diff = self.get_resource_diff(previous_graph, &resource_ref)?;
 
@@ -648,54 +694,6 @@ impl ResourceGraph {
                     logger::end_action(format!("Failed: {}", Paint::red(e)));
                 }
             };
-        }
-
-        // Iterate over previous resources in reverse order so that leaf resources are removed first
-        let mut previous_resource_order = previous_graph.get_topological_order()?;
-        previous_resource_order.reverse();
-
-        // TODO: improve error handling for deletes too
-        for resource_ref in previous_resource_order.iter() {
-            let resource = &previous_graph.get_resource_from_ref(resource_ref).unwrap();
-
-            // If the resource is still in the graph, there is no need to delete the resource
-            if self.get_resource_from_ref(resource_ref).is_some() {
-                continue;
-            }
-
-            let resolved_inputs = previous_graph.resolve_inputs(resource)?.unwrap_or_default();
-            let outputs = resource.outputs.clone().unwrap_or_default();
-
-            results.deleted_count += 1;
-            logger::start_action(format!(
-                "{} Deleting: {} {}",
-                Paint::red("-"),
-                resource.resource_type,
-                resource.id
-            ));
-            logger::log_changeset(get_changeset(
-                &previous_graph.get_inputs_hash(&resolved_inputs)?,
-                "",
-            ));
-            let result = resource_manager.delete(
-                &resource.resource_type,
-                serde_yaml::to_value(resolved_inputs)
-                    .map_err(|e| format!("Failed to serialize inputs: {}", e))?,
-                serde_yaml::to_value(outputs)
-                    .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
-            );
-
-            if let Err(error) = result {
-                // An error occurred while deleting the resource. We will copy the old version into
-                // the graph.
-                // TODO: this may need work for formatting
-                logger::end_action(format!("Failed: {}", Paint::red(error)));
-                failures_count += 1;
-                self.resources
-                    .insert(resource_ref.clone(), resource.clone());
-            } else {
-                logger::end_action("Succeeded");
-            }
         }
 
         if failures_count > 0 {

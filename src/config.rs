@@ -8,8 +8,8 @@ use crate::{
     resource_manager::AssetId,
     roblox_api::{
         ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
-        ExperienceConfigurationModel, ExperienceGenre, ExperiencePermissionsModel,
-        ExperiencePlayableDevice, PlaceConfigurationModel, SocialSlotType,
+        ExperienceConfigurationModel, ExperienceGenre, ExperiencePlayableDevice,
+        PlaceConfigurationModel, SocialSlotType,
     },
 };
 
@@ -191,6 +191,23 @@ pub enum CollisionTypeTargetConfig {
     InnerBox,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub struct Constraint {
+    pub min: Option<f32>,
+    pub max: Option<f32>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub struct AvatarScaleConstraintsTargetConfig {
+    pub height: Option<Constraint>,
+    pub width: Option<Constraint>,
+    pub head: Option<Constraint>,
+    pub body_type: Option<Constraint>,
+    pub proportions: Option<Constraint>,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductTargetConifg {
@@ -238,10 +255,8 @@ pub struct ExperienceTargetConfigurationConfig {
     pub playability: Option<PlayabilityTargetConfig>,
 
     // monetization
-    // badges: // TODO: create badges
     pub paid_access_price: Option<u32>,
     pub private_server_price: Option<u32>,
-    // developer products: // TODO: create developer products
 
     // security
     pub enable_studio_access_to_apis: Option<bool>,
@@ -255,102 +270,115 @@ pub struct ExperienceTargetConfigurationConfig {
     pub avatar_animation_type: Option<AnimationTypeTargetConfig>,
     pub avatar_collision_type: Option<CollisionTypeTargetConfig>,
     // avatar_asset_overrides: Option<HashMap<String, u64>>,    // TODO: figure out api
-    // avatar_scale_constraints: Option<HashMap<String, (f32, f32)>>,   // TODO: figure out api
+    pub avatar_scale_constraints: Option<AvatarScaleConstraintsTargetConfig>,
 }
 
 impl From<&ExperienceTargetConfigurationConfig> for ExperienceConfigurationModel {
     fn from(config: &ExperienceTargetConfigurationConfig) -> Self {
-        ExperienceConfigurationModel {
-            genre: match config.genre {
-                Some(GenreTargetConfig::All) => Some(ExperienceGenre::All),
-                Some(GenreTargetConfig::Adventure) => Some(ExperienceGenre::Adventure),
-                Some(GenreTargetConfig::Building) => Some(ExperienceGenre::Tutorial),
-                Some(GenreTargetConfig::Comedy) => Some(ExperienceGenre::Funny),
-                Some(GenreTargetConfig::Fighting) => Some(ExperienceGenre::Ninja),
-                Some(GenreTargetConfig::Fps) => Some(ExperienceGenre::Fps),
-                Some(GenreTargetConfig::Horror) => Some(ExperienceGenre::Scary),
-                Some(GenreTargetConfig::Medieval) => Some(ExperienceGenre::Fantasy),
-                Some(GenreTargetConfig::Military) => Some(ExperienceGenre::War),
-                Some(GenreTargetConfig::Naval) => Some(ExperienceGenre::Pirate),
-                Some(GenreTargetConfig::Rpg) => Some(ExperienceGenre::Rpg),
-                Some(GenreTargetConfig::SciFi) => Some(ExperienceGenre::SciFi),
-                Some(GenreTargetConfig::Sports) => Some(ExperienceGenre::Sports),
-                Some(GenreTargetConfig::TownAndCity) => Some(ExperienceGenre::TownAndCity),
-                Some(GenreTargetConfig::Western) => Some(ExperienceGenre::WildWest),
-                None => None,
-            },
-            playable_devices: config.playable_devices.as_ref().map(|devices| {
-                devices
-                    .iter()
-                    .map(|d| match d {
-                        PlayableDeviceTargetConfig::Computer => ExperiencePlayableDevice::Computer,
-                        PlayableDeviceTargetConfig::Console => ExperiencePlayableDevice::Console,
-                        PlayableDeviceTargetConfig::Phone => ExperiencePlayableDevice::Phone,
-                        PlayableDeviceTargetConfig::Tablet => ExperiencePlayableDevice::Tablet,
-                    })
-                    .collect()
-            }),
-
-            is_friends_only: match config.playability {
-                Some(PlayabilityTargetConfig::Friends) => Some(true),
-                Some(PlayabilityTargetConfig::Public) => Some(false),
-                _ => None,
-            },
-
-            is_for_sale: match config.paid_access_price {
-                Some(_) => Some(true),
-                _ => None,
-            },
-            price: config.paid_access_price,
-            allow_private_servers: match config.private_server_price {
-                Some(_) => Some(true),
-                _ => None,
-            },
-            private_server_price: config.private_server_price,
-
-            studio_access_to_apis_allowed: config.enable_studio_access_to_apis,
-            permissions: match (
-                config.allow_third_party_sales,
-                config.allow_third_party_teleports,
-            ) {
-                (None, None) => None,
-                (allow_third_party_sales, allow_third_party_teleports) => {
-                    Some(ExperiencePermissionsModel {
-                        is_third_party_purchase_allowed: allow_third_party_sales,
-                        is_third_party_teleport_allowed: allow_third_party_teleports,
-                    })
-                }
-            },
-
-            universe_avatar_type: match config.avatar_type {
-                Some(AvatarTypeTargetConfig::R6) => Some(ExperienceAvatarType::MorphToR6),
-                Some(AvatarTypeTargetConfig::R15) => Some(ExperienceAvatarType::MorphToR15),
-                Some(AvatarTypeTargetConfig::PlayerChoice) => {
-                    Some(ExperienceAvatarType::PlayerChoice)
-                }
-                None => None,
-            },
-            universe_animation_type: match config.avatar_animation_type {
-                Some(AnimationTypeTargetConfig::Standard) => {
-                    Some(ExperienceAnimationType::Standard)
-                }
-                Some(AnimationTypeTargetConfig::PlayerChoice) => {
-                    Some(ExperienceAnimationType::PlayerChoice)
-                }
-                None => None,
-            },
-            universe_collision_type: match config.avatar_collision_type {
-                Some(CollisionTypeTargetConfig::InnerBox) => {
-                    Some(ExperienceCollisionType::InnerBox)
-                }
-                Some(CollisionTypeTargetConfig::OuterBox) => {
-                    Some(ExperienceCollisionType::OuterBox)
-                }
-                None => None,
-            },
-
-            is_archived: None,
+        let mut model = ExperienceConfigurationModel::default();
+        if let Some(genre) = &config.genre {
+            model.genre = match genre {
+                GenreTargetConfig::All => ExperienceGenre::All,
+                GenreTargetConfig::Adventure => ExperienceGenre::Adventure,
+                GenreTargetConfig::Building => ExperienceGenre::Tutorial,
+                GenreTargetConfig::Comedy => ExperienceGenre::Funny,
+                GenreTargetConfig::Fighting => ExperienceGenre::Ninja,
+                GenreTargetConfig::Fps => ExperienceGenre::Fps,
+                GenreTargetConfig::Horror => ExperienceGenre::Scary,
+                GenreTargetConfig::Medieval => ExperienceGenre::Fantasy,
+                GenreTargetConfig::Military => ExperienceGenre::War,
+                GenreTargetConfig::Naval => ExperienceGenre::Pirate,
+                GenreTargetConfig::Rpg => ExperienceGenre::Rpg,
+                GenreTargetConfig::SciFi => ExperienceGenre::SciFi,
+                GenreTargetConfig::Sports => ExperienceGenre::Sports,
+                GenreTargetConfig::TownAndCity => ExperienceGenre::TownAndCity,
+                GenreTargetConfig::Western => ExperienceGenre::WildWest,
+            }
         }
+        if let Some(playable_devices) = &config.playable_devices {
+            model.playable_devices = playable_devices
+                .iter()
+                .map(|device| match device {
+                    PlayableDeviceTargetConfig::Computer => ExperiencePlayableDevice::Computer,
+                    PlayableDeviceTargetConfig::Phone => ExperiencePlayableDevice::Phone,
+                    PlayableDeviceTargetConfig::Tablet => ExperiencePlayableDevice::Tablet,
+                    PlayableDeviceTargetConfig::Console => ExperiencePlayableDevice::Console,
+                })
+                .collect();
+        }
+        if let Some(playability) = &config.playability {
+            model.is_friends_only = match playability {
+                PlayabilityTargetConfig::Friends => Some(true),
+                PlayabilityTargetConfig::Public => Some(false),
+                PlayabilityTargetConfig::Private => None,
+            }
+        }
+        model.is_for_sale = config.clone().paid_access_price.is_some();
+        model.price = config.paid_access_price;
+        model.allow_private_servers = config.private_server_price.is_some();
+        model.private_server_price = config.private_server_price;
+        if let Some(enable_studio_access_to_apis) = config.enable_studio_access_to_apis {
+            model.studio_access_to_apis_allowed = enable_studio_access_to_apis;
+        }
+        if let Some(allow_third_party_sales) = config.allow_third_party_sales {
+            model.permissions.is_third_party_purchase_allowed = allow_third_party_sales;
+        }
+        if let Some(allow_third_party_teleports) = config.allow_third_party_teleports {
+            model.permissions.is_third_party_teleport_allowed = allow_third_party_teleports;
+        }
+        if let Some(avatar_type) = &config.avatar_type {
+            model.universe_avatar_type = match avatar_type {
+                AvatarTypeTargetConfig::R6 => ExperienceAvatarType::MorphToR6,
+                AvatarTypeTargetConfig::R15 => ExperienceAvatarType::MorphToR15,
+                AvatarTypeTargetConfig::PlayerChoice => ExperienceAvatarType::PlayerChoice,
+            }
+        }
+        if let Some(avatar_animation_type) = &config.avatar_animation_type {
+            model.universe_animation_type = match avatar_animation_type {
+                AnimationTypeTargetConfig::Standard => ExperienceAnimationType::Standard,
+                AnimationTypeTargetConfig::PlayerChoice => ExperienceAnimationType::PlayerChoice,
+            }
+        }
+        if let Some(avatar_collision_type) = &config.avatar_collision_type {
+            model.universe_collision_type = match avatar_collision_type {
+                CollisionTypeTargetConfig::OuterBox => ExperienceCollisionType::OuterBox,
+                CollisionTypeTargetConfig::InnerBox => ExperienceCollisionType::InnerBox,
+            }
+        }
+        if let Some(constraints) = &config.avatar_scale_constraints {
+            if let Some(height) = constraints.height.and_then(|c| c.min) {
+                model.universe_avatar_min_scales.height = height.to_string();
+            }
+            if let Some(width) = constraints.width.and_then(|c| c.min) {
+                model.universe_avatar_min_scales.width = width.to_string();
+            }
+            if let Some(head) = constraints.head.and_then(|c| c.min) {
+                model.universe_avatar_min_scales.head = head.to_string();
+            }
+            if let Some(body_type) = constraints.body_type.and_then(|c| c.min) {
+                model.universe_avatar_min_scales.body_type = body_type.to_string();
+            }
+            if let Some(proportions) = constraints.proportions.and_then(|c| c.min) {
+                model.universe_avatar_min_scales.proportion = proportions.to_string();
+            }
+
+            if let Some(height) = constraints.height.and_then(|c| c.max) {
+                model.universe_avatar_max_scales.height = height.to_string();
+            }
+            if let Some(width) = constraints.width.and_then(|c| c.max) {
+                model.universe_avatar_max_scales.width = width.to_string();
+            }
+            if let Some(head) = constraints.head.and_then(|c| c.max) {
+                model.universe_avatar_max_scales.head = head.to_string();
+            }
+            if let Some(body_type) = constraints.body_type.and_then(|c| c.max) {
+                model.universe_avatar_max_scales.body_type = body_type.to_string();
+            }
+            if let Some(proportions) = constraints.proportions.and_then(|c| c.max) {
+                model.universe_avatar_max_scales.proportion = proportions.to_string();
+            }
+        }
+        model
     }
 }
 
@@ -381,22 +409,31 @@ pub struct PlaceTargetConfigurationConfig {
 
 impl From<PlaceTargetConfigurationConfig> for PlaceConfigurationModel {
     fn from(config: PlaceTargetConfigurationConfig) -> Self {
-        PlaceConfigurationModel {
-            name: config.name.clone(),
-            description: config.description.clone(),
-            max_player_count: config.max_player_count,
-            allow_copying: config.allow_copying,
-            social_slot_type: match config.server_fill {
-                Some(ServerFillTargetConfig::RobloxOptimized) => Some(SocialSlotType::Automatic),
-                Some(ServerFillTargetConfig::Maximum) => Some(SocialSlotType::Empty),
-                Some(ServerFillTargetConfig::ReservedSlots(_)) => Some(SocialSlotType::Custom),
-                None => None,
-            },
-            custom_social_slot_count: match config.server_fill {
-                Some(ServerFillTargetConfig::ReservedSlots(count)) => Some(count),
-                _ => None,
-            },
+        let mut model = PlaceConfigurationModel::default();
+        if let Some(name) = config.name {
+            model.name = name;
         }
+        if let Some(description) = config.description {
+            model.description = description;
+        }
+        if let Some(max_player_count) = config.max_player_count {
+            model.max_player_count = max_player_count;
+        }
+        if let Some(allow_copying) = config.allow_copying {
+            model.allow_copying = allow_copying;
+        }
+        if let Some(server_fill) = config.server_fill {
+            model.social_slot_type = match server_fill {
+                ServerFillTargetConfig::RobloxOptimized => SocialSlotType::Automatic,
+                ServerFillTargetConfig::Maximum => SocialSlotType::Empty,
+                ServerFillTargetConfig::ReservedSlots(_) => SocialSlotType::Custom,
+            };
+            model.custom_social_slot_count = match server_fill {
+                ServerFillTargetConfig::ReservedSlots(count) => Some(count),
+                _ => None,
+            }
+        }
+        model
     }
 }
 

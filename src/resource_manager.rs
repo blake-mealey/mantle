@@ -814,24 +814,12 @@ impl ResourceManager for RobloxResourceManager {
                 let outputs = serde_yaml::from_value::<ExperienceOutputs>(resource_outputs)
                     .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
 
-                self.roblox_api.configure_experience(
-                    outputs.asset_id,
-                    &ExperienceConfigurationModel {
-                        genre: None,
-                        playable_devices: None,
-                        is_friends_only: None,
-                        allow_private_servers: None,
-                        private_server_price: None,
-                        is_for_sale: None,
-                        price: None,
-                        studio_access_to_apis_allowed: None,
-                        permissions: None,
-                        universe_avatar_type: None,
-                        universe_animation_type: None,
-                        universe_collision_type: None,
-                        is_archived: Some(true),
-                    },
-                )?;
+                let model = ExperienceConfigurationModel {
+                    is_archived: true,
+                    ..Default::default()
+                };
+                self.roblox_api
+                    .configure_experience(outputs.asset_id, &model)?;
 
                 Ok(())
             }

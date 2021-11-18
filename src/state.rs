@@ -662,7 +662,7 @@ pub fn import_graph(
         let domain = social_link
             .url
             .domain()
-            .ok_or("Invalid social link URL".to_owned())?;
+            .ok_or_else(|| "Invalid social link URL".to_owned())?;
         resources.push(
             Resource::new(resource_types::SOCIAL_LINK, domain)
                 .add_ref_input("experienceId", &experience_asset_id_ref)

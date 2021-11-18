@@ -7,7 +7,7 @@ use url::Url;
 use crate::{
     resource_manager::AssetId,
     roblox_api::{
-        ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
+        AssetTypeId, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
         ExperienceConfigurationModel, ExperienceGenre, ExperiencePlayableDevice,
         PlaceConfigurationModel, SocialSlotType,
     },
@@ -208,6 +208,22 @@ pub struct AvatarScaleConstraintsTargetConfig {
     pub proportions: Option<Constraint>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub struct AvatarAssetOverridesTargetConfig {
+    pub face: Option<AssetId>,
+    pub head: Option<AssetId>,
+    pub torso: Option<AssetId>,
+    pub left_arm: Option<AssetId>,
+    pub right_arm: Option<AssetId>,
+    pub left_leg: Option<AssetId>,
+    pub right_leg: Option<AssetId>,
+    #[serde(rename = "tshirt")]
+    pub t_shirt: Option<AssetId>,
+    pub shirt: Option<AssetId>,
+    pub pants: Option<AssetId>,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductTargetConifg {
@@ -269,8 +285,8 @@ pub struct ExperienceTargetConfigurationConfig {
     pub avatar_type: Option<AvatarTypeTargetConfig>,
     pub avatar_animation_type: Option<AnimationTypeTargetConfig>,
     pub avatar_collision_type: Option<CollisionTypeTargetConfig>,
-    // avatar_asset_overrides: Option<HashMap<String, u64>>,    // TODO: figure out api
     pub avatar_scale_constraints: Option<AvatarScaleConstraintsTargetConfig>,
+    pub avatar_asset_overrides: Option<AvatarAssetOverridesTargetConfig>,
 }
 
 impl From<&ExperienceTargetConfigurationConfig> for ExperienceConfigurationModel {
@@ -376,6 +392,26 @@ impl From<&ExperienceTargetConfigurationConfig> for ExperienceConfigurationModel
             }
             if let Some(proportions) = constraints.proportions.and_then(|c| c.max) {
                 model.universe_avatar_max_scales.proportion = proportions.to_string();
+            }
+        }
+        if let Some(avatar_asset_overrides) = &config.avatar_asset_overrides {
+            for override_model in model.universe_avatar_asset_overrides.iter_mut() {
+                if let Some(override_config) = match override_model.asset_type_id {
+                    AssetTypeId::Face => avatar_asset_overrides.face,
+                    AssetTypeId::Head => avatar_asset_overrides.head,
+                    AssetTypeId::Torso => avatar_asset_overrides.torso,
+                    AssetTypeId::LeftArm => avatar_asset_overrides.left_arm,
+                    AssetTypeId::RightArm => avatar_asset_overrides.right_arm,
+                    AssetTypeId::LeftLeg => avatar_asset_overrides.left_leg,
+                    AssetTypeId::RightLeg => avatar_asset_overrides.right_leg,
+                    AssetTypeId::TShirt => avatar_asset_overrides.t_shirt,
+                    AssetTypeId::Shirt => avatar_asset_overrides.shirt,
+                    AssetTypeId::Pants => avatar_asset_overrides.pants,
+                    _ => None,
+                } {
+                    override_model.is_player_choice = false;
+                    override_model.asset_id = Some(override_config);
+                }
             }
         }
         model

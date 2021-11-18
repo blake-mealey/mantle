@@ -2,6 +2,7 @@ use multipart::client::lazy::{Multipart, PreparedFields};
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::{clone::Clone, collections::HashMap, ffi::OsStr, fmt, fs, path::Path};
 use ureq::{Cookie, Response};
 use url::Url;
@@ -354,6 +355,84 @@ pub struct ExperienceAvatarScales {
     pub proportion: String,
 }
 
+#[derive(Serialize_repr, Deserialize_repr, Clone)]
+#[repr(u8)]
+pub enum AssetTypeId {
+    Image = 1,
+    TShirt = 2,
+    Audio = 3,
+    Mesh = 4,
+    Lua = 5,
+    Hat = 8,
+    Place = 9,
+    Model = 10,
+    Shirt = 11,
+    Pants = 12,
+    Decal = 13,
+    Head = 17,
+    Face = 18,
+    Gear = 19,
+    Badge = 21,
+    Animation = 24,
+    Torso = 27,
+    RightArm = 28,
+    LeftArm = 29,
+    LeftLeg = 30,
+    RightLeg = 31,
+    Package = 32,
+    GamePass = 34,
+    Plugin = 38,
+    MeshPart = 40,
+    HairAccessory = 41,
+    FaceAccessory = 42,
+    NeckAccessory = 43,
+    ShoulderAccessory = 44,
+    FrontAccessory = 45,
+    BackAccessory = 46,
+    WaistAccessory = 47,
+    ClimbAnimation = 48,
+    DeathAnimation = 49,
+    FallAnimation = 50,
+    IdleAnimation = 51,
+    JumpAnimation = 52,
+    RunAnimation = 53,
+    SwimAnimation = 54,
+    WalkAnimation = 55,
+    PoseAnimation = 56,
+    EarAccessory = 57,
+    EyeAccessory = 58,
+    EmoteAnimation = 61,
+    Video = 62,
+    TShirtAccessory = 64,
+    ShirtAccessory = 65,
+    PantsAccessory = 66,
+    JacketAccessory = 67,
+    SweaterAccessory = 68,
+    ShortsAccessory = 69,
+    LeftShoeAccessory = 70,
+    RightShoeAccessory = 71,
+    DressSkirtAccessory = 72,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ExperienceAvatarAssetOverride {
+    #[serde(rename = "assetTypeID")]
+    pub asset_type_id: AssetTypeId,
+    pub is_player_choice: bool,
+    #[serde(rename = "assetID")]
+    pub asset_id: Option<AssetId>,
+}
+impl ExperienceAvatarAssetOverride {
+    pub fn player_choice(asset_type_id: AssetTypeId) -> Self {
+        Self {
+            asset_type_id,
+            is_player_choice: true,
+            asset_id: None,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct ExperiencePermissionsModel {
@@ -381,6 +460,7 @@ pub struct ExperienceConfigurationModel {
     pub universe_collision_type: ExperienceCollisionType,
     pub universe_avatar_min_scales: ExperienceAvatarScales,
     pub universe_avatar_max_scales: ExperienceAvatarScales,
+    pub universe_avatar_asset_overrides: Vec<ExperienceAvatarAssetOverride>,
 
     pub is_archived: bool,
 }
@@ -424,6 +504,19 @@ impl Default for ExperienceConfigurationModel {
                 body_type: 1.0.to_string(),
                 proportion: 1.0.to_string(),
             },
+            universe_avatar_asset_overrides: vec![
+                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::Face),
+                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::Head),
+                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::Torso),
+                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::LeftArm),
+                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::RightArm),
+                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::LeftLeg),
+                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::RightLeg),
+                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::TShirt),
+                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::Shirt),
+                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::Pants),
+            ],
+
             is_archived: false,
         }
     }

@@ -225,6 +225,23 @@ fn get_desired_experience_graph(
     let experience_start_place_id_ref = experience.get_input_ref("startPlaceId");
     resources.push(experience);
 
+    resources.push(
+        Resource::new(resource_types::EXPERIENCE_ACTIVATION, SINGLETON_RESOURCE_ID)
+            .add_value_input(
+                "isActive",
+                &!matches!(
+                    target_config
+                        .configuration
+                        .as_ref()
+                        .and_then(|c| c.playability)
+                        .unwrap_or(PlayabilityTargetConfig::Private),
+                    PlayabilityTargetConfig::Private
+                ),
+            )?
+            .add_ref_input("experienceId", &experience_asset_id_ref)
+            .clone(),
+    );
+
     if let Some(experience_configuration) = &target_config.configuration {
         resources.push(
             Resource::new(
@@ -237,19 +254,6 @@ fn get_desired_experience_graph(
                 &experience_configuration.into(),
             )?
             .clone(),
-        );
-
-        resources.push(
-            Resource::new(resource_types::EXPERIENCE_ACTIVATION, SINGLETON_RESOURCE_ID)
-                .add_value_input(
-                    "isActive",
-                    &!matches!(
-                        experience_configuration.playability,
-                        Some(PlayabilityTargetConfig::Private)
-                    ),
-                )?
-                .add_ref_input("experienceId", &experience_asset_id_ref)
-                .clone(),
         );
 
         if let Some(file_path) = &experience_configuration.icon {

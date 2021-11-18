@@ -1,3 +1,9 @@
+use std::{collections::HashMap, default, fmt, fs, path::Path, str};
+
+use rusoto_core::Region;
+use serde::{Deserialize, Serialize};
+use url::Url;
+
 use crate::{
     resource_manager::AssetId,
     roblox_api::{
@@ -6,9 +12,6 @@ use crate::{
         ExperiencePlayableDevice, PlaceConfigurationModel, SocialSlotType,
     },
 };
-use rusoto_core::Region;
-use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, default, fmt, fs, path::Path, str};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -111,6 +114,8 @@ pub struct ExperienceTargetConfig {
 
     pub places: Option<HashMap<String, PlaceTargetConfig>>,
 
+    pub social_links: Option<Vec<SocialLinkTargetConfig>>,
+
     pub products: Option<HashMap<String, ProductTargetConifg>>,
 
     pub passes: Option<HashMap<String, PassTargetConfig>>,
@@ -118,6 +123,13 @@ pub struct ExperienceTargetConfig {
     pub badges: Option<HashMap<String, BadgeTargetConfig>>,
 
     pub assets: Option<Vec<AssetTargetConfig>>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SocialLinkTargetConfig {
+    pub title: String,
+    pub url: Url,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

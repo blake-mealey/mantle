@@ -8,9 +8,9 @@ use crate::{
     roblox_api::{
         CreateAudioAssetResponse, CreateBadgeResponse, CreateDeveloperProductResponse,
         CreateExperienceResponse, CreateGamePassResponse, CreateImageAssetResponse,
-        CreatePlaceResponse, CreatorType, ExperienceConfigurationModel,
+        CreatePlaceResponse, CreateSocialLinkResponse, CreatorType, ExperienceConfigurationModel,
         GetCreateAudioAssetPriceResponse, GetDeveloperProductResponse, GetPlaceResponse,
-        PlaceConfigurationModel, RobloxApi, UploadImageResponse,
+        PlaceConfigurationModel, RobloxApi, SocialLinkType, UploadImageResponse,
     },
     roblox_auth::RobloxAuth,
 };
@@ -24,11 +24,12 @@ pub mod resource_types {
     pub const EXPERIENCE_ICON: &str = "experienceIcon";
     pub const EXPERIENCE_THUMBNAIL: &str = "experienceThumbnail";
     pub const EXPERIENCE_THUMBNAIL_ORDER: &str = "experienceThumbnailOrder";
-    pub const DEVELOPER_PRODUCT: &str = "developerProduct";
-    pub const DEVELOPER_PRODUCT_ICON: &str = "developerProductIcon";
     pub const PLACE: &str = "place";
     pub const PLACE_FILE: &str = "placeFile";
     pub const PLACE_CONFIGURATION: &str = "placeConfiguration";
+    pub const SOCIAL_LINK: &str = "socialLink";
+    pub const DEVELOPER_PRODUCT: &str = "developerProduct";
+    pub const DEVELOPER_PRODUCT_ICON: &str = "developerProductIcon";
     pub const GAME_PASS: &str = "gamePass";
     pub const GAME_PASS_ICON: &str = "gamePassIcon";
     pub const BADGE: &str = "badge";
@@ -160,6 +161,20 @@ pub struct PlaceFileOutputs {
 pub struct PlaceConfigurationInputs {
     pub asset_id: AssetId,
     pub configuration: PlaceConfigurationModel,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct SocialLinkInputs {
+    experience_id: AssetId,
+    title: String,
+    url: String,
+    link_type: SocialLinkType,
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SocialLinkOutputs {
+    pub asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -493,6 +508,22 @@ impl ResourceManager for RobloxResourceManager {
 
                 Ok(None)
             }
+            resource_types::SOCIAL_LINK => {
+                let inputs = serde_yaml::from_value::<SocialLinkInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                let CreateSocialLinkResponse { id } = self.roblox_api.create_social_link(
+                    inputs.experience_id,
+                    inputs.title,
+                    inputs.url,
+                    inputs.link_type,
+                )?;
+
+                Ok(Some(
+                    serde_yaml::to_value(SocialLinkOutputs { asset_id: id })
+                        .map_err(|e| format!("Failed to serialize outputs: {}", e))?,
+                ))
+            }
             resource_types::GAME_PASS => {
                 let inputs = serde_yaml::from_value::<GamePassInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
@@ -646,6 +677,22 @@ impl ResourceManager for RobloxResourceManager {
             resource_types::PLACE => self.create(resource_type, resource_inputs),
             resource_types::PLACE_FILE => self.create(resource_type, resource_inputs),
             resource_types::PLACE_CONFIGURATION => self.create(resource_type, resource_inputs),
+            resource_types::SOCIAL_LINK => {
+                let inputs = serde_yaml::from_value::<SocialLinkInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let outputs = serde_yaml::from_value::<SocialLinkOutputs>(resource_outputs.clone())
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                self.roblox_api.update_social_link(
+                    inputs.experience_id,
+                    outputs.asset_id,
+                    inputs.title,
+                    inputs.url,
+                    inputs.link_type,
+                )?;
+
+                Ok(Some(resource_outputs))
+            }
             resource_types::DEVELOPER_PRODUCT_ICON => self.create(resource_type, resource_inputs),
             resource_types::DEVELOPER_PRODUCT => {
                 let inputs =
@@ -857,6 +904,17 @@ impl ResourceManager for RobloxResourceManager {
             }
             resource_types::PLACE_FILE => Ok(()),
             resource_types::PLACE_CONFIGURATION => Ok(()),
+            resource_types::SOCIAL_LINK => {
+                let inputs = serde_yaml::from_value::<SocialLinkInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+                let outputs = serde_yaml::from_value::<SocialLinkOutputs>(resource_outputs)
+                    .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
+
+                self.roblox_api
+                    .delete_social_link(inputs.experience_id, outputs.asset_id)?;
+
+                Ok(())
+            }
             resource_types::GAME_PASS => {
                 let inputs = serde_yaml::from_value::<GamePassInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;

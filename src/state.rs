@@ -26,7 +26,7 @@ use crate::{
     resources::{Input, InputRef, Resource, ResourceGraph},
     roblox_api::{
         CreatorType, ExperienceConfigurationModel, GetExperienceResponse, PlaceConfigurationModel,
-        RobloxApi,
+        RobloxApi, SocialLinkType,
     },
 };
 
@@ -333,6 +333,39 @@ fn get_desired_experience_graph(
         }
     } else {
         return Err("No start place defined".to_owned());
+    }
+
+    if let Some(social_links) = &target_config.social_links {
+        for social_link in social_links {
+            let domain = social_link.url.domain().ok_or(format!(
+                "Unknown social link type for URL {}",
+                social_link.url
+            ))?;
+            let link_type = match domain {
+                "facebook.com" => SocialLinkType::Facebook,
+                "twitter.com" => SocialLinkType::Twitter,
+                "youtube.com" => SocialLinkType::YouTube,
+                "twitch.tv" => SocialLinkType::Twitch,
+                "discord.gg" => SocialLinkType::Discord,
+                "roblox.com" => SocialLinkType::RobloxGroup,
+                "www.roblox.com" => SocialLinkType::RobloxGroup,
+                "guilded.gg" => SocialLinkType::Guilded,
+                domain => {
+                    return Err(format!(
+                        "Unknown social link type for domain name {}",
+                        domain
+                    ))
+                }
+            };
+            resources.push(
+                Resource::new(resource_types::SOCIAL_LINK, domain)
+                    .add_ref_input("experienceId", &experience_asset_id_ref)
+                    .add_value_input("title", &social_link.title)?
+                    .add_value_input("url", &social_link.url)?
+                    .add_value_input("linkType", &link_type)?
+                    .clone(),
+            )
+        }
     }
 
     if let Some(products) = &target_config.products {

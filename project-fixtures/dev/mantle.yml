@@ -51,6 +51,9 @@ target:
         file: start.rbxlx
         configuration:
           name: Second World
+    socialLinks:
+      - title: Follow me on Twitter!
+        url: https://twitter.com/blakemdev
     products:
       myFirstProduct:
         name: My first product

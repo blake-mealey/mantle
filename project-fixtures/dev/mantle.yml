@@ -18,6 +18,7 @@ environments:
         start:
           configuration:
             name: Preview - Start name
+  - name: other
 
 target:
   experience:

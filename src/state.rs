@@ -21,7 +21,8 @@ use crate::{
         resource_types, AssetAliasOutputs, AssetId, AudioAssetOutputs, BadgeIconOutputs,
         BadgeOutputs, ExperienceDeveloperProductIconOutputs, ExperienceDeveloperProductOutputs,
         ExperienceOutputs, ExperienceThumbnailOutputs, GamePassIconOutputs, GamePassOutputs,
-        ImageAssetOutputs, PlaceFileOutputs, PlaceOutputs, SINGLETON_RESOURCE_ID,
+        ImageAssetOutputs, PlaceFileOutputs, PlaceOutputs, SocialLinkOutputs,
+        SINGLETON_RESOURCE_ID,
     },
     resources::{Input, InputRef, Resource, ResourceGraph},
     roblox_api::{
@@ -652,6 +653,25 @@ pub fn import_graph(
             Resource::new(resource_types::PLACE_CONFIGURATION, &resource_id)
                 .add_ref_input("assetId", &place_asset_id_ref)
                 .add_value_input::<PlaceConfigurationModel>("configuration", &place.into())?
+                .clone(),
+        );
+    }
+
+    let social_links = roblox_api.list_social_links(experience_id)?;
+    for social_link in social_links {
+        let domain = social_link
+            .url
+            .domain()
+            .ok_or("Invalid social link URL".to_owned())?;
+        resources.push(
+            Resource::new(resource_types::SOCIAL_LINK, domain)
+                .add_ref_input("experienceId", &experience_asset_id_ref)
+                .add_value_input("title", &social_link.title)?
+                .add_value_input("url", &social_link.url)?
+                .add_value_input("linkType", &social_link.link_type)?
+                .set_outputs(SocialLinkOutputs {
+                    asset_id: social_link.id,
+                })?
                 .clone(),
         );
     }

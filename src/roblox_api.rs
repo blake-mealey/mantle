@@ -277,6 +277,22 @@ pub struct CreateSocialLinkResponse {
     pub id: AssetId,
 }
 
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ListSocialLinksResponse {
+    pub data: Vec<GetSocialLinkResponse>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GetSocialLinkResponse {
+    pub id: AssetId,
+    pub title: String,
+    pub url: Url,
+    #[serde(rename = "type")]
+    pub link_type: SocialLinkType,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub enum ExperienceGenre {
     All,
@@ -1069,6 +1085,25 @@ impl RobloxApi {
         Self::handle_response(res)?;
 
         Ok(())
+    }
+
+    pub fn list_social_links(
+        &mut self,
+        experience_id: AssetId,
+    ) -> Result<Vec<GetSocialLinkResponse>, String> {
+        let res = ureq::get(&format!(
+            "https://games.roblox.com/v1/games/{}/social-links/list",
+            experience_id
+        ))
+        .set_auth(AuthType::CookieAndCsrfToken, &mut self.roblox_auth)?
+        .call();
+
+        let response = Self::handle_response(res)?;
+        let model = response
+            .into_json::<ListSocialLinksResponse>()
+            .map_err(|e| format!("Failed to deserialize create social link response: {}", e))?;
+
+        Ok(model.data)
     }
 
     pub fn list_game_passes(

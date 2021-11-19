@@ -308,7 +308,7 @@ impl ResourceManager for RobloxResourceManager {
                 let GetCreateAudioAssetPriceResponse {
                     price, can_afford, ..
                 } = self.roblox_api.get_create_audio_asset_price(
-                    self.project_path.join(inputs.file_path).as_path(),
+                    self.project_path.join(inputs.file_path),
                     inputs.group_id,
                 )?;
 
@@ -383,7 +383,7 @@ impl ResourceManager for RobloxResourceManager {
 
                 let UploadImageResponse { target_id } = self.roblox_api.upload_icon(
                     inputs.experience_id,
-                    self.project_path.join(inputs.file_path).as_path(),
+                    self.project_path.join(inputs.file_path),
                 )?;
 
                 Ok(Some(
@@ -399,7 +399,7 @@ impl ResourceManager for RobloxResourceManager {
 
                 let UploadImageResponse { target_id } = self.roblox_api.upload_thumbnail(
                     inputs.experience_id,
-                    self.project_path.join(inputs.file_path).as_path(),
+                    self.project_path.join(inputs.file_path),
                 )?;
 
                 Ok(Some(
@@ -426,7 +426,7 @@ impl ResourceManager for RobloxResourceManager {
 
                 let asset_id = self.roblox_api.create_developer_product_icon(
                     inputs.experience_id,
-                    self.project_path.join(inputs.file_path).as_path(),
+                    self.project_path.join(inputs.file_path),
                 )?;
 
                 Ok(Some(
@@ -483,10 +483,8 @@ impl ResourceManager for RobloxResourceManager {
                 let inputs = serde_yaml::from_value::<PlaceFileInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
 
-                self.roblox_api.upload_place(
-                    self.project_path.join(inputs.file_path).as_path(),
-                    inputs.asset_id,
-                )?;
+                self.roblox_api
+                    .upload_place(self.project_path.join(inputs.file_path), inputs.asset_id)?;
                 let GetPlaceResponse {
                     current_saved_version,
                     ..
@@ -535,7 +533,7 @@ impl ResourceManager for RobloxResourceManager {
                     inputs.start_place_id,
                     inputs.name.clone(),
                     inputs.description.clone(),
-                    self.project_path.join(inputs.icon_file_path).as_path(),
+                    self.project_path.join(inputs.icon_file_path),
                 )?;
                 self.roblox_api.update_game_pass(
                     asset_id,
@@ -571,7 +569,7 @@ impl ResourceManager for RobloxResourceManager {
                     inputs.experience_id,
                     inputs.name,
                     inputs.description,
-                    self.project_path.join(inputs.icon_file_path).as_path(),
+                    self.project_path.join(inputs.icon_file_path),
                     self.payment_source.clone(),
                 )?;
 
@@ -618,7 +616,7 @@ impl ResourceManager for RobloxResourceManager {
                     backing_asset_id,
                     ..
                 } = self.roblox_api.create_image_asset(
-                    self.project_path.join(inputs.file_path).as_path(),
+                    self.project_path.join(inputs.file_path),
                     inputs.group_id,
                 )?;
 
@@ -635,7 +633,7 @@ impl ResourceManager for RobloxResourceManager {
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
 
                 let CreateAudioAssetResponse { id } = self.roblox_api.create_audio_asset(
-                    self.project_path.join(inputs.file_path).as_path(),
+                    self.project_path.join(inputs.file_path),
                     inputs.group_id,
                     self.payment_source.clone(),
                 )?;
@@ -735,7 +733,7 @@ impl ResourceManager for RobloxResourceManager {
 
                 let UploadImageResponse { target_id } = self.roblox_api.update_game_pass_icon(
                     inputs.game_pass_id,
-                    self.project_path.join(inputs.file_path).as_path(),
+                    self.project_path.join(inputs.file_path),
                 )?;
 
                 Ok(Some(
@@ -764,10 +762,9 @@ impl ResourceManager for RobloxResourceManager {
                 let inputs = serde_yaml::from_value::<BadgeIconInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
 
-                let UploadImageResponse { target_id } = self.roblox_api.update_badge_icon(
-                    inputs.badge_id,
-                    self.project_path.join(inputs.file_path).as_path(),
-                )?;
+                let UploadImageResponse { target_id } = self
+                    .roblox_api
+                    .update_badge_icon(inputs.badge_id, self.project_path.join(inputs.file_path))?;
 
                 Ok(Some(
                     serde_yaml::to_value(BadgeIconOutputs {

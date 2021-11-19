@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use difference::Changeset;
+use serde::Serialize;
 use yansi::Paint;
 
 use crate::logger;
@@ -23,12 +24,19 @@ pub(crate) use all_outputs;
 
 macro_rules! single_output {
     ($expr:expr, $enum:path) => {{
-        all_outputs!($expr, $enum)
+        *all_outputs!($expr, $enum)
             .first()
             .expect("Missing expected output")
     }};
 }
 pub(crate) use single_output;
+
+macro_rules! optional_output {
+    ($expr:expr, $enum:path) => {{
+        all_outputs!($expr, $enum).first().map(|output| *output)
+    }};
+}
+pub(crate) use optional_output;
 
 pub type ResourceId = String;
 
@@ -71,7 +79,6 @@ pub trait ResourceManager<TInputs, TOutputs> {
 
     fn delete(
         &mut self,
-        inputs: TInputs,
         outputs: TOutputs,
         dependency_outputs: Vec<TOutputs>,
     ) -> Result<(), String>;
@@ -84,6 +91,11 @@ pub struct EvaluateResults {
     pub deleted_count: u32,
     pub noop_count: u32,
     pub skipped_count: u32,
+}
+
+enum CreateOrUpdate {
+    Create,
+    Update,
 }
 
 enum OperationResult<TOutputs> {
@@ -115,6 +127,7 @@ where
     TResource: Resource<TInputs, TOutputs>,
     TInputs: Clone,
     TOutputs: Clone,
+    TOutputs: Serialize,
 {
     fn get_dependency_graph(&self) -> HashMap<ResourceId, Vec<ResourceId>> {
         self.resources
@@ -172,6 +185,20 @@ where
             }
         }
         Some(dependency_outputs)
+    }
+
+    fn get_dependency_outputs_hash(&self, dependency_outputs: Vec<TOutputs>) -> String {
+        // TODO: Should we separate hashes from displays?
+        let hash = serde_yaml::to_string(&dependency_outputs)
+            .map_err(|e| format!("Failed to compute dependency outputs hash\n\t{}", e))
+            .unwrap();
+        if hash.is_empty() {
+            ""
+        } else {
+            // We remove first 4 characters to remove "---\n", and we trim the end to remove "\n"
+            hash[4..].trim_end()
+        }
+        .to_owned()
     }
 
     fn handle_operation_result(
@@ -281,7 +308,6 @@ where
         logger::log_changeset(get_changeset(&inputs_hash, ""));
 
         match manager.delete(
-            resource.get_inputs(),
             resource
                 .get_outputs()
                 .expect("Existing resource should have outputs."),
@@ -303,98 +329,124 @@ where
         TManager: ResourceManager<TInputs, TOutputs>,
     {
         let resource = self.resources.get(resource_id).unwrap();
+        let inputs_hash = resource.get_inputs_hash();
+        let dependency_outputs = self.get_dependency_outputs(resource);
+
         let previous_resource = previous_graph.resources.get(resource_id);
 
-        let dependency_outputs = match self.get_dependency_outputs(resource) {
-            Some(v) => v,
-            None => {
-                logger::start_action(format!(
-                    "{} Unknown: {}",
-                    Paint::new("○").dimmed(),
-                    resource_id
-                ));
-                return OperationResult::Skipped(
-                    "A dependency failed to produce required outputs.".to_owned(),
-                );
+        if let Some(previous_resource) = previous_resource {
+            // Check for changes
+            let previous_hash = previous_resource.get_inputs_hash();
+            let previous_dependency_outputs = previous_graph
+                .get_dependency_outputs(previous_resource)
+                .expect("Previous graph should be complete.");
+            let previous_dependencies_hash =
+                self.get_dependency_outputs_hash(previous_dependency_outputs);
+
+            // TODO: How can we determine between update/noop?
+            let dependency_outputs = match dependency_outputs {
+                Some(v) => v,
+                None => {
+                    logger::start_action(format!(
+                        "{} Update or Noop: {}",
+                        Paint::new("○").dimmed(),
+                        resource.get_id(),
+                    ));
+                    return OperationResult::Skipped(
+                        "A dependency failed to produce outputs.".to_owned(),
+                    );
+                }
+            };
+            let dependencies_hash = self.get_dependency_outputs_hash(dependency_outputs.clone());
+
+            if previous_hash == inputs_hash && previous_dependencies_hash == dependencies_hash {
+                // No changes
+                return OperationResult::Noop;
             }
-        };
 
-        // TODO: we also need to check if dependency outputs changed
-        let inputs_hash = resource.get_inputs_hash();
-        let previous_hash = previous_resource.map(|r| r.get_inputs_hash());
+            // This resource has changed
+            logger::start_action(format!("{} Updating: {}", Paint::yellow("~"), resource_id));
+            logger::log("Inputs:");
+            logger::log_changeset(get_changeset(&previous_hash, &inputs_hash));
+            logger::log("Dependencies:");
+            logger::log_changeset(get_changeset(
+                &previous_dependencies_hash,
+                &dependencies_hash,
+            ));
 
-        // TODO: improve DRY here
-        match previous_hash {
-            None => {
-                // This resource is new
-                logger::start_action(format!("{} Creating: {}", Paint::green("+"), resource_id));
-                // TODO: we should print dependency outputs too
-                logger::log_changeset(get_changeset("", &inputs_hash));
+            let outputs = previous_resource
+                .get_outputs()
+                .expect("Existing resource should have outputs.");
 
-                match manager.get_create_price(resource.get_inputs(), dependency_outputs.clone()) {
-                    Ok(Some(price)) if price > 0 => {
-                        if allow_purchases {
-                            logger::log("");
-                            logger::log(Paint::yellow(format!(
-                                "{} Robux will be charged from your account.",
-                                price
-                            )))
-                        } else {
-                            return OperationResult::Skipped(format!(
+            match manager.get_update_price(
+                resource.get_inputs(),
+                outputs.clone(),
+                dependency_outputs.clone(),
+            ) {
+                Ok(Some(price)) if price > 0 => {
+                    if allow_purchases {
+                        logger::log("");
+                        logger::log(Paint::yellow(format!(
+                            "{} Robux will be charged from your account.",
+                            price
+                        )))
+                    } else {
+                        return OperationResult::Skipped(format!(
                                 "Resource would cost {} Robux to create. Give Mantle permission to make purchases with --allow-purchases.",
                                 price
                             ));
-                        }
                     }
-                    Err(error) => return OperationResult::Failed(error),
-                    Ok(_) => {}
-                };
-
-                match manager.create(resource.get_inputs(), dependency_outputs) {
-                    Ok(outputs) => OperationResult::SucceededCreate(outputs),
-                    Err(error) => OperationResult::Failed(error),
                 }
+                Err(error) => return OperationResult::Failed(error),
+                Ok(_) => {}
+            };
+
+            match manager.update(resource.get_inputs(), outputs, dependency_outputs) {
+                Ok(outputs) => OperationResult::SucceededUpdate(outputs),
+                Err(error) => OperationResult::Failed(error),
             }
-            Some(previous_hash) if previous_hash != inputs_hash => {
-                // This resource has changed
-                logger::start_action(format!("{} Updating: {}", Paint::yellow("~"), resource_id));
-                // TODO: we should print dependency outputs too
-                logger::log_changeset(get_changeset(&previous_hash, &inputs_hash));
+        } else {
+            // Create
+            logger::start_action(format!("{} Creating: {}", Paint::green("+"), resource_id));
+            logger::log("Inputs:");
+            logger::log_changeset(get_changeset("", &inputs_hash));
 
-                let outputs = previous_resource
-                    .unwrap()
-                    .get_outputs()
-                    .expect("Existing resource should have outputs.");
+            let dependency_outputs = match dependency_outputs {
+                Some(v) => v,
+                None => {
+                    return OperationResult::Skipped(
+                        "A dependency failed to produce outputs.".to_owned(),
+                    );
+                }
+            };
+            let dependencies_hash = self.get_dependency_outputs_hash(dependency_outputs.clone());
 
-                match manager.get_update_price(
-                    resource.get_inputs(),
-                    outputs.clone(),
-                    dependency_outputs.clone(),
-                ) {
-                    Ok(Some(price)) if price > 0 => {
-                        if allow_purchases {
-                            logger::log("");
-                            logger::log(Paint::yellow(format!(
-                                "{} Robux will be charged from your account.",
-                                price
-                            )))
-                        } else {
-                            return OperationResult::Skipped(format!(
+            logger::log("Dependencies:");
+            logger::log_changeset(get_changeset("", &dependencies_hash));
+
+            match manager.get_create_price(resource.get_inputs(), dependency_outputs.clone()) {
+                Ok(Some(price)) if price > 0 => {
+                    if allow_purchases {
+                        logger::log("");
+                        logger::log(Paint::yellow(format!(
+                            "{} Robux will be charged from your account.",
+                            price
+                        )))
+                    } else {
+                        return OperationResult::Skipped(format!(
                                 "Resource would cost {} Robux to create. Give Mantle permission to make purchases with --allow-purchases.",
                                 price
                             ));
-                        }
                     }
-                    Err(error) => return OperationResult::Failed(error),
-                    Ok(_) => {}
-                };
-
-                match manager.update(resource.get_inputs(), outputs, dependency_outputs) {
-                    Ok(outputs) => OperationResult::SucceededUpdate(outputs),
-                    Err(error) => OperationResult::Failed(error),
                 }
+                Err(error) => return OperationResult::Failed(error),
+                Ok(_) => {}
+            };
+
+            match manager.create(resource.get_inputs(), dependency_outputs) {
+                Ok(outputs) => OperationResult::SucceededCreate(outputs),
+                Err(error) => OperationResult::Failed(error),
             }
-            _ => OperationResult::Noop,
         }
     }
 

@@ -8,8 +8,8 @@ use ureq::{Cookie, Response};
 use url::Url;
 
 use crate::{
-    resource_manager::AssetId,
     roblox_auth::{AuthType, RequestExt, RobloxAuth},
+    safe_resource_manager::AssetId,
 };
 
 #[derive(Deserialize, Debug)]

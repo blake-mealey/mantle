@@ -7,7 +7,6 @@ mod roblox_api;
 mod roblox_auth;
 mod safe_resource_manager;
 mod safe_resources;
-mod safe_state;
 mod state;
 mod util;
 

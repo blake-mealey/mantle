@@ -14,7 +14,7 @@ use crate::{
     roblox_api::CreatorType,
     safe_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource},
     safe_resources::ResourceGraph,
-    safe_state::{get_desired_graph, get_previous_state, ResourceStateVLatest},
+    state::{get_desired_graph, get_previous_state, ResourceStateVLatest},
     util::run_command,
 };
 

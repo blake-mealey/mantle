@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, marker::PhantomData};
 
 use difference::Changeset;
 use serde::Serialize;
@@ -129,6 +129,17 @@ where
     TOutputs: Clone,
     TOutputs: Serialize,
 {
+    pub fn new(resources: &[TResource]) -> Self {
+        Self {
+            resources: resources
+                .iter()
+                .map(|resource| (resource.get_id(), resource.clone()))
+                .collect(),
+            phantom_inputs: PhantomData,
+            phantom_outputs: PhantomData,
+        }
+    }
+
     fn get_dependency_graph(&self) -> HashMap<ResourceId, Vec<ResourceId>> {
         self.resources
             .iter()
@@ -168,6 +179,14 @@ where
             true => Err("Cannot evaluate resource graph because it has cycles".to_owned()),
             false => Ok(ordered),
         }
+    }
+
+    pub fn get_resource_list(&self) -> Vec<TResource> {
+        self
+            .get_topological_order().unwrap()
+            .iter()
+            .map(|id| self.resources.get(id).unwrap().clone())
+            .collect()
     }
 
     fn get_dependency_outputs(&self, resource: &TResource) -> Option<Vec<TOutputs>> {
@@ -450,7 +469,7 @@ where
         }
     }
 
-    fn evaluate<TManager>(
+    pub fn evaluate<TManager>(
         &mut self,
         previous_graph: &ResourceGraph<TResource, TInputs, TOutputs>,
         manager: &mut TManager,

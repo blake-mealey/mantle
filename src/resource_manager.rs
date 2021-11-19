@@ -444,7 +444,7 @@ impl ResourceManager for RobloxResourceManager {
                         inputs.experience_id,
                         inputs.name,
                         inputs.price,
-                        inputs.description,
+                        Some(inputs.description),
                         inputs.icon_asset_id,
                     )?;
 
@@ -706,7 +706,7 @@ impl ResourceManager for RobloxResourceManager {
                     outputs.asset_id,
                     inputs.name,
                     inputs.price,
-                    inputs.description,
+                    Some(inputs.description),
                     inputs.icon_asset_id,
                 )?;
 
@@ -877,10 +877,10 @@ impl ResourceManager for RobloxResourceManager {
                     outputs.asset_id,
                     format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
                     inputs.price,
-                    format!(
+                    Some(format!(
                         "Name: {}\nDescription:\n{}",
                         inputs.name, inputs.description
-                    ),
+                    )),
                     inputs.icon_asset_id,
                 )
             }

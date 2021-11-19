@@ -117,30 +117,30 @@ pub async fn run_with(args: Vec<String>) -> i32 {
             )
             .await
         }
-        ("destroy", Some(destroy_matches)) => {
-            commands::destroy::run(
-                destroy_matches.value_of("PROJECT"),
-                destroy_matches.value_of("environment"),
-            )
-            .await
-        }
-        ("outputs", Some(outputs_matches)) => {
-            commands::outputs::run(
-                outputs_matches.value_of("PROJECT"),
-                outputs_matches.value_of("environment"),
-                outputs_matches.value_of("output"),
-                outputs_matches.value_of("format").unwrap(),
-            )
-            .await
-        }
-        ("import", Some(import_matches)) => {
-            commands::import::run(
-                import_matches.value_of("PROJECT"),
-                import_matches.value_of("environment"),
-                import_matches.value_of("experience_id").unwrap(),
-            )
-            .await
-        }
+        // ("destroy", Some(destroy_matches)) => {
+        //     commands::destroy::run(
+        //         destroy_matches.value_of("PROJECT"),
+        //         destroy_matches.value_of("environment"),
+        //     )
+        //     .await
+        // }
+        // ("outputs", Some(outputs_matches)) => {
+        //     commands::outputs::run(
+        //         outputs_matches.value_of("PROJECT"),
+        //         outputs_matches.value_of("environment"),
+        //         outputs_matches.value_of("output"),
+        //         outputs_matches.value_of("format").unwrap(),
+        //     )
+        //     .await
+        // }
+        // ("import", Some(import_matches)) => {
+        //     commands::import::run(
+        //         import_matches.value_of("PROJECT"),
+        //         import_matches.value_of("environment"),
+        //         import_matches.value_of("experience_id").unwrap(),
+        //     )
+        //     .await
+        // }
         _ => unreachable!(),
     }
 }

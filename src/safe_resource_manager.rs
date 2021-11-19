@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -11,6 +11,7 @@ use crate::{
         GetCreateAudioAssetPriceResponse, GetDeveloperProductResponse, GetPlaceResponse,
         PlaceConfigurationModel, RobloxApi, SocialLinkType, UploadImageResponse,
     },
+    roblox_auth::RobloxAuth,
     safe_resources::{
         all_outputs, optional_output, single_output, Resource, ResourceId, ResourceManager,
     },
@@ -33,62 +34,62 @@ pub struct ExperienceActivationInputs {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct FileInputs {
-    file_path: String,
-    file_hash: String,
+    pub file_path: String,
+    pub file_hash: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaceInputs {
-    is_start: bool,
+    pub is_start: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SocialLinkInputs {
-    title: String,
-    url: String,
-    link_type: SocialLinkType,
+    pub title: String,
+    pub url: String,
+    pub link_type: SocialLinkType,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct DeveloperProductInputs {
-    name: String,
-    description: String,
-    price: u32,
+pub struct ProductInputs {
+    pub name: String,
+    pub description: Option<String>,
+    pub price: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct GamePassInputs {
-    name: String,
-    description: Option<String>,
-    price: Option<u32>,
-    icon_file_path: String,
+pub struct PassInputs {
+    pub name: String,
+    pub description: Option<String>,
+    pub price: Option<u32>,
+    pub icon_file_path: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct BadgeInputs {
-    name: String,
-    description: Option<String>,
-    enabled: bool,
-    icon_file_path: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub enabled: bool,
+    pub icon_file_path: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct FileWithGroupIdInputs {
-    file_path: String,
-    file_hash: String,
-    group_id: Option<AssetId>,
+    pub file_path: String,
+    pub file_hash: String,
+    pub group_id: Option<AssetId>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetAliasInputs {
-    name: String,
+    pub name: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -104,10 +105,10 @@ pub enum RobloxInputs {
     PlaceFile(FileInputs),
     PlaceConfiguration(PlaceConfigurationModel),
     SocialLink(SocialLinkInputs),
-    DeveloperProduct(DeveloperProductInputs),
-    DeveloperProductIcon(FileInputs),
-    GamePass(GamePassInputs),
-    GamePassIcon(FileInputs),
+    Product(ProductInputs),
+    ProductIcon(FileInputs),
+    Pass(PassInputs),
+    PassIcon(FileInputs),
     Badge(BadgeInputs),
     BadgeIcon(FileInputs),
     ImageAsset(FileWithGroupIdInputs),
@@ -136,7 +137,7 @@ pub struct PlaceFileOutputs {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct DeveloperProductOutputs {
+pub struct ProductOutputs {
     pub asset_id: AssetId,
     pub product_id: AssetId,
 }
@@ -174,10 +175,10 @@ pub enum RobloxOutputs {
     PlaceFile(PlaceFileOutputs),
     PlaceConfiguration,
     SocialLink(AssetOutputs),
-    DeveloperProduct(DeveloperProductOutputs),
-    DeveloperProductIcon(AssetOutputs),
-    GamePass(AssetWithInitialIconOutputs),
-    GamePassIcon(AssetOutputs),
+    Product(ProductOutputs),
+    ProductIcon(AssetOutputs),
+    Pass(AssetWithInitialIconOutputs),
+    PassIcon(AssetOutputs),
     Badge(AssetWithInitialIconOutputs),
     BadgeIcon(AssetOutputs),
     ImageAsset(ImageAssetOutputs),
@@ -192,6 +193,36 @@ pub struct RobloxResource {
     inputs: RobloxInputs,
     outputs: Option<RobloxOutputs>,
     dependencies: Vec<ResourceId>,
+}
+
+impl RobloxResource {
+    pub fn new(id: &str, inputs: RobloxInputs, dependencies: &[&RobloxResource]) -> Self {
+        Self {
+            id: id.to_owned(),
+            inputs,
+            outputs: None,
+            dependencies: dependencies.iter().map(|d| d.get_id()).collect(),
+        }
+    }
+
+    pub fn existing(
+        id: &str,
+        inputs: RobloxInputs,
+        outputs: RobloxOutputs,
+        dependencies: &[&RobloxResource],
+    ) -> Self {
+        Self {
+            id: id.to_owned(),
+            inputs,
+            outputs: Some(outputs),
+            dependencies: dependencies.iter().map(|d| d.get_id()).collect(),
+        }
+    }
+
+    pub fn add_dependency(&mut self, dependency: &RobloxResource) -> &mut Self {
+        self.dependencies.push(dependency.get_id());
+        self
+    }
 }
 
 impl Resource<RobloxInputs, RobloxOutputs> for RobloxResource {
@@ -244,13 +275,21 @@ impl Resource<RobloxInputs, RobloxOutputs> for RobloxResource {
     }
 }
 
-struct RobloxResourceManager {
+pub struct RobloxResourceManager {
     roblox_api: RobloxApi,
     project_path: PathBuf,
     payment_source: CreatorType,
 }
 
 impl RobloxResourceManager {
+    pub fn new(project_path: &Path, payment_source: CreatorType) -> Self {
+        Self {
+            roblox_api: RobloxApi::new(RobloxAuth::new()),
+            project_path: project_path.to_path_buf(),
+            payment_source,
+        }
+    }
+
     fn get_path(&self, file: String) -> PathBuf {
         self.project_path.join(file)
     }
@@ -394,7 +433,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
                 Ok(RobloxOutputs::SocialLink(AssetOutputs { asset_id: id }))
             }
-            RobloxInputs::DeveloperProductIcon(inputs) => {
+            RobloxInputs::ProductIcon(inputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
                 let asset_id = self.roblox_api.create_developer_product_icon(
@@ -402,14 +441,11 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     self.get_path(inputs.file_path),
                 )?;
 
-                Ok(RobloxOutputs::DeveloperProductIcon(AssetOutputs {
-                    asset_id,
-                }))
+                Ok(RobloxOutputs::ProductIcon(AssetOutputs { asset_id }))
             }
-            RobloxInputs::DeveloperProduct(inputs) => {
+            RobloxInputs::Product(inputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
-                let icon =
-                    optional_output!(dependency_outputs, RobloxOutputs::DeveloperProductIcon);
+                let icon = optional_output!(dependency_outputs, RobloxOutputs::ProductIcon);
 
                 let CreateDeveloperProductResponse { id } =
                     self.roblox_api.create_developer_product(
@@ -424,12 +460,12 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     .roblox_api
                     .find_developer_product_by_id(experience.asset_id, id)?;
 
-                Ok(RobloxOutputs::DeveloperProduct(DeveloperProductOutputs {
+                Ok(RobloxOutputs::Product(ProductOutputs {
                     asset_id: product_id,
                     product_id: id,
                 }))
             }
-            RobloxInputs::GamePass(inputs) => {
+            RobloxInputs::Pass(inputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
                 let CreateGamePassResponse {
@@ -448,15 +484,15 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     inputs.price,
                 )?;
 
-                Ok(RobloxOutputs::GamePass(AssetWithInitialIconOutputs {
+                Ok(RobloxOutputs::Pass(AssetWithInitialIconOutputs {
                     asset_id,
                     initial_icon_asset_id: icon_asset_id,
                 }))
             }
-            RobloxInputs::GamePassIcon(_) => {
-                let game_pass = single_output!(dependency_outputs, RobloxOutputs::GamePass);
+            RobloxInputs::PassIcon(_) => {
+                let game_pass = single_output!(dependency_outputs, RobloxOutputs::Pass);
 
-                Ok(RobloxOutputs::GamePassIcon(AssetOutputs {
+                Ok(RobloxOutputs::PassIcon(AssetOutputs {
                     asset_id: game_pass.initial_icon_asset_id,
                 }))
             }
@@ -595,13 +631,12 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
                 Ok(RobloxOutputs::SocialLink(outputs))
             }
-            (RobloxInputs::DeveloperProductIcon(_), RobloxOutputs::DeveloperProductIcon(_)) => {
+            (RobloxInputs::ProductIcon(_), RobloxOutputs::ProductIcon(_)) => {
                 self.create(inputs, dependency_outputs)
             }
-            (RobloxInputs::DeveloperProduct(inputs), RobloxOutputs::DeveloperProduct(outputs)) => {
+            (RobloxInputs::Product(inputs), RobloxOutputs::Product(outputs)) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
-                let icon =
-                    optional_output!(dependency_outputs, RobloxOutputs::DeveloperProductIcon);
+                let icon = optional_output!(dependency_outputs, RobloxOutputs::ProductIcon);
 
                 self.roblox_api.update_developer_product(
                     experience.asset_id,
@@ -612,9 +647,9 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     icon.map(|i| i.asset_id),
                 )?;
 
-                Ok(RobloxOutputs::DeveloperProduct(outputs))
+                Ok(RobloxOutputs::Product(outputs))
             }
-            (RobloxInputs::GamePass(inputs), RobloxOutputs::GamePass(outputs)) => {
+            (RobloxInputs::Pass(inputs), RobloxOutputs::Pass(outputs)) => {
                 self.roblox_api.update_game_pass(
                     outputs.asset_id,
                     inputs.name,
@@ -622,16 +657,16 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     inputs.price,
                 )?;
 
-                Ok(RobloxOutputs::GamePass(outputs))
+                Ok(RobloxOutputs::Pass(outputs))
             }
-            (RobloxInputs::GamePassIcon(inputs), RobloxOutputs::GamePassIcon(_)) => {
-                let game_pass = single_output!(dependency_outputs, RobloxOutputs::GamePass);
+            (RobloxInputs::PassIcon(inputs), RobloxOutputs::PassIcon(_)) => {
+                let game_pass = single_output!(dependency_outputs, RobloxOutputs::Pass);
 
                 let UploadImageResponse { target_id } = self
                     .roblox_api
                     .update_game_pass_icon(game_pass.asset_id, self.get_path(inputs.file_path))?;
 
-                Ok(RobloxOutputs::GamePassIcon(AssetOutputs {
+                Ok(RobloxOutputs::PassIcon(AssetOutputs {
                     asset_id: target_id,
                 }))
             }
@@ -750,8 +785,8 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 self.roblox_api
                     .delete_social_link(experience.asset_id, outputs.asset_id)?;
             }
-            RobloxOutputs::DeveloperProductIcon(_) => {}
-            RobloxOutputs::DeveloperProduct(outputs) => {
+            RobloxOutputs::ProductIcon(_) => {}
+            RobloxOutputs::Product(outputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
                 let utc = Utc::now();
@@ -760,11 +795,11 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     outputs.asset_id,
                     format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
                     0,
-                    "".to_owned(),
+                    Some("".to_owned()),
                     None,
                 )?;
             }
-            RobloxOutputs::GamePass(outputs) => {
+            RobloxOutputs::Pass(outputs) => {
                 let utc = Utc::now();
                 self.roblox_api.update_game_pass(
                     outputs.asset_id,
@@ -773,7 +808,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     None,
                 )?;
             }
-            RobloxOutputs::GamePassIcon(_) => {}
+            RobloxOutputs::PassIcon(_) => {}
             RobloxOutputs::Badge(outputs) => {
                 let utc = Utc::now();
                 self.roblox_api.update_badge(

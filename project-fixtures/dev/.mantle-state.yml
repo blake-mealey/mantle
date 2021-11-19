@@ -1,0 +1,292 @@
+---
+version: "3"
+environments:
+  staging:
+    - id: experience_singleton
+      inputs:
+        experience:
+          groupId: ~
+      outputs:
+        experience:
+          assetId: 3100838354
+          startPlaceId: 8043770455
+      dependencies: []
+    - id: pass_myFirstPass
+      inputs:
+        pass:
+          name: My first pass
+          description: With a description!
+          price: 50
+          iconFilePath: game-pass-1.png
+      outputs:
+        pass:
+          assetId: 25158960
+          initialIconAssetId: 8044112387
+      dependencies:
+        - experience_singleton
+    - id: passIcon_myFirstPass
+      inputs:
+        passIcon:
+          filePath: game-pass-1.png
+          fileHash: 72b022c9b91cf8a3ee4b4058d487678a071e516a246d7e8a10b078483f80be0a
+      outputs:
+        passIcon:
+          assetId: 8044112387
+      dependencies:
+        - pass_myFirstPass
+    - id: experienceThumbnail_game-thumbnail-3.png
+      inputs:
+        experienceThumbnail:
+          filePath: game-thumbnail-3.png
+          fileHash: 66c276e730608cac1c95be4dabd9e12303b477fe6091772b3e998067ed6e3da0
+      outputs:
+        experienceThumbnail:
+          assetId: 50755434
+      dependencies:
+        - experience_singleton
+    - id: experienceIcon_singleton
+      inputs:
+        experienceIcon:
+          filePath: game-icon.png
+          fileHash: 787f02689d554fd858b6db2e912179524d348a74ba23cffcc9415815e2a27b33
+      outputs:
+        experienceIcon:
+          assetId: 34805863
+      dependencies:
+        - experience_singleton
+    - id: experienceActivation_singleton
+      inputs:
+        experienceActivation:
+          isActive: false
+      outputs: experienceActivation
+      dependencies:
+        - experience_singleton
+    - id: experienceConfiguration_singleton
+      inputs:
+        experienceConfiguration:
+          genre: Pirate
+          playableDevices:
+            - Computer
+          isFriendsOnly: ~
+          allowPrivateServers: false
+          privateServerPrice: ~
+          isForSale: false
+          price: ~
+          studioAccessToApisAllowed: true
+          permissions:
+            IsThirdPartyPurchaseAllowed: false
+            IsThirdPartyTeleportAllowed: false
+          universeAvatarType: MorphToR15
+          universeAnimationType: PlayerChoice
+          universeCollisionType: OuterBox
+          universeAvatarMinScales:
+            height: "0.9"
+            width: "0.7"
+            head: "0.95"
+            bodyType: "0"
+            proportion: "0"
+          universeAvatarMaxScales:
+            height: "1.05"
+            width: "1"
+            head: "1"
+            bodyType: "1"
+            proportion: "1"
+          universeAvatarAssetOverrides:
+            - assetTypeID: 18
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 17
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 27
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 29
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 28
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 30
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 31
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 2
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 11
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 12
+              isPlayerChoice: true
+              assetID: ~
+          isArchived: false
+      outputs: experienceConfiguration
+      dependencies:
+        - experience_singleton
+    - id: socialLink_twitter.com
+      inputs:
+        socialLink:
+          title: Follow me on Twitter!
+          url: "https://twitter.com/blakemdev"
+          linkType: Twitter
+      outputs:
+        socialLink:
+          assetId: 7424330
+      dependencies:
+        - experience_singleton
+    - id: place_start
+      inputs:
+        place:
+          isStart: true
+      outputs:
+        place:
+          assetId: 8043770455
+      dependencies:
+        - experience_singleton
+    - id: placeFile_start
+      inputs:
+        placeFile:
+          filePath: start.rbxlx
+          fileHash: 991d8b1cadc89be408a9f3cf9c47c4f844f52f439b8e5b20c61c77f194a81c7c
+      outputs:
+        placeFile:
+          version: 2
+      dependencies:
+        - place_start
+    - id: placeConfiguration_start
+      inputs:
+        placeConfiguration:
+          name: Staging - Start name
+          description: Start description
+          maxPlayerCount: 20
+          allowCopying: false
+          socialSlotType: Custom
+          customSocialSlotCount: 10
+      outputs: placeConfiguration
+      dependencies:
+        - place_start
+    - id: place_firstWorld
+      inputs:
+        place:
+          isStart: false
+      outputs:
+        place:
+          assetId: 8044112150
+      dependencies:
+        - experience_singleton
+    - id: placeConfiguration_firstWorld
+      inputs:
+        placeConfiguration:
+          name: World
+          description: Created with Mantle
+          maxPlayerCount: 50
+          allowCopying: false
+          socialSlotType: Automatic
+          customSocialSlotCount: ~
+      outputs: placeConfiguration
+      dependencies:
+        - place_firstWorld
+    - id: placeFile_firstWorld
+      inputs:
+        placeFile:
+          filePath: start.rbxlx
+          fileHash: 991d8b1cadc89be408a9f3cf9c47c4f844f52f439b8e5b20c61c77f194a81c7c
+      outputs:
+        placeFile:
+          version: 2
+      dependencies:
+        - place_firstWorld
+    - id: experienceThumbnail_game-thumbnail-2.png
+      inputs:
+        experienceThumbnail:
+          filePath: game-thumbnail-2.png
+          fileHash: d36757cf3312ca2683eb597bed3359367861cd3e4f1c71668fef24f86edb3a12
+      outputs:
+        experienceThumbnail:
+          assetId: 50755433
+      dependencies:
+        - experience_singleton
+    - id: experienceThumbnail_game-thumbnail-1.png
+      inputs:
+        experienceThumbnail:
+          filePath: game-thumbnail-1.png
+          fileHash: c1811300860fcd79a178142a4f4f7aa73198afa3b64a1b3ae19fc50235e7fa75
+      outputs:
+        experienceThumbnail:
+          assetId: 50755435
+      dependencies:
+        - experience_singleton
+    - id: experienceThumbnailOrder_singleton
+      inputs: experienceThumbnailOrder
+      outputs: experienceThumbnailOrder
+      dependencies:
+        - experienceThumbnail_game-thumbnail-1.png
+        - experienceThumbnail_game-thumbnail-2.png
+        - experienceThumbnail_game-thumbnail-3.png
+        - experience_singleton
+    - id: place_secondWorld
+      inputs:
+        place:
+          isStart: false
+      outputs:
+        place:
+          assetId: 8044111751
+      dependencies:
+        - experience_singleton
+    - id: placeConfiguration_secondWorld
+      inputs:
+        placeConfiguration:
+          name: Second World
+          description: Created with Mantle
+          maxPlayerCount: 50
+          allowCopying: false
+          socialSlotType: Automatic
+          customSocialSlotCount: ~
+      outputs: placeConfiguration
+      dependencies:
+        - place_secondWorld
+    - id: placeFile_secondWorld
+      inputs:
+        placeFile:
+          filePath: start.rbxlx
+          fileHash: 991d8b1cadc89be408a9f3cf9c47c4f844f52f439b8e5b20c61c77f194a81c7c
+      outputs:
+        placeFile:
+          version: 2
+      dependencies:
+        - place_secondWorld
+    - id: productIcon_myFirstProduct
+      inputs:
+        productIcon:
+          filePath: developer-product-1.png
+          fileHash: 2fe64fc151209486cc7afd0d28d7a4b44ef139d36f8e67190a4276bb0cfacc7e
+      outputs:
+        productIcon:
+          assetId: 8044112052
+      dependencies:
+        - experience_singleton
+    - id: "asset_assets\\image-1.png"
+      inputs:
+        imageAsset:
+          filePath: "assets\\image-1.png"
+          fileHash: e00aa869a7e732cebfe03aa7f6dda6422c791c1d58f374a111286a656d85dd3a
+          groupId: ~
+      outputs:
+        imageAsset:
+          assetId: 8044111620
+          decalAssetId: 8044111685
+      dependencies: []
+    - id: "asset_assets\\image-2.png"
+      inputs:
+        imageAsset:
+          filePath: "assets\\image-2.png"
+          fileHash: dfca92a2a07f99de240f038249e2ab3e54750106dcaf0e01fe7a1cac9d40bfc2
+          groupId: ~
+      outputs:
+        imageAsset:
+          assetId: 8044111506
+          decalAssetId: 8044111564
+      dependencies: []

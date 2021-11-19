@@ -1149,7 +1149,7 @@ impl RobloxApi {
         experience_id: AssetId,
         name: String,
         price: u32,
-        description: String,
+        description: Option<String>,
         icon_asset_id: Option<AssetId>,
     ) -> Result<CreateDeveloperProductResponse, String> {
         let mut req = ureq::post(&format!(
@@ -1158,7 +1158,7 @@ impl RobloxApi {
         ))
         .query("name", &name)
         .query("priceInRobux", &price.to_string())
-        .query("description", &description);
+        .query("description", &description.unwrap_or_default());
         if let Some(icon_asset_id) = icon_asset_id {
             req = req.query("iconImageAssetId", &icon_asset_id.to_string());
         }
@@ -1413,7 +1413,7 @@ impl RobloxApi {
         developer_product_id: AssetId,
         name: String,
         price: u32,
-        description: String,
+        description: Option<String>,
         icon_asset_id: Option<AssetId>,
     ) -> Result<(), String> {
         let res = ureq::post(&format!(

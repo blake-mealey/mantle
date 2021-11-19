@@ -316,7 +316,7 @@ impl ResourceGraph {
         dependency_graph
     }
 
-    fn get_topological_order(&self) -> Result<Vec<ResourceRef>, String> {
+    pub fn get_topological_order(&self) -> Result<Vec<ResourceRef>, String> {
         let mut dependency_graph = self.get_dependency_graph();
 
         let mut start_nodes: Vec<ResourceRef> = dependency_graph

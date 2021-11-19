@@ -1,4 +1,7 @@
-use std::{collections::HashMap, marker::PhantomData};
+use std::{
+    collections::{BTreeMap, HashMap},
+    marker::PhantomData,
+};
 
 use difference::Changeset;
 use serde::Serialize;
@@ -140,7 +143,7 @@ where
         }
     }
 
-    fn get_dependency_graph(&self) -> HashMap<ResourceId, Vec<ResourceId>> {
+    fn get_dependency_graph(&self) -> BTreeMap<ResourceId, Vec<ResourceId>> {
         self.resources
             .iter()
             .map(|(id, resource)| (id.clone(), resource.get_dependencies()))
@@ -182,8 +185,8 @@ where
     }
 
     pub fn get_resource_list(&self) -> Vec<TResource> {
-        self
-            .get_topological_order().unwrap()
+        self.get_topological_order()
+            .unwrap()
             .iter()
             .map(|id| self.resources.get(id).unwrap().clone())
             .collect()

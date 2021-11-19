@@ -100,17 +100,19 @@ pub fn log_changeset(changeset: Changeset) {
         .diffs
         .iter()
         .map(|diff| match diff {
-            Difference::Same(same) => {
-                with_prefix_and_style(same, SPACING, Style::default().dimmed())
-            }
+            Difference::Same(same) => with_prefix_and_style(
+                same,
+                format!("{}{}", SPACING, SPACING),
+                Style::default().dimmed(),
+            ),
             Difference::Add(add) => with_prefix_and_style(
                 add,
-                &format!("{} ", Paint::green("+")),
+                &format!("{}{} ", SPACING, Paint::green("+")),
                 Style::new(Color::Green),
             ),
             Difference::Rem(rem) => with_prefix_and_style(
                 rem,
-                &format!("{} ", Paint::red("-")),
+                &format!("{}{} ", SPACING, Paint::red("-")),
                 Style::new(Color::Red),
             ),
         })

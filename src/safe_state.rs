@@ -117,11 +117,60 @@ macro_rules! input_ref {
     }};
 }
 
+macro_rules! optional_input_ref {
+    ($resource:expr, $input:expr) => {{
+        if let Some(value) = $resource.inputs.get($input) {
+            match value {
+                crate::resources::Input::Ref((resource_type, resource_id, _output_name)) => {
+                    Some((resource_type.clone(), resource_id.clone()))
+                }
+                _ => panic!(),
+            }
+        } else {
+            None
+        }
+    }};
+}
+
+macro_rules! input_ref_list {
+    ($resource:expr, $input:expr) => {{
+        let value = $resource.inputs.get($input).unwrap().clone();
+        match value {
+            crate::resources::Input::RefList(list) => list
+                .iter()
+                .map(|(resource_type, resource_id, _output_name)| {
+                    (resource_type.clone(), resource_id.clone())
+                })
+                .collect::<Vec<_>>(),
+            _ => panic!(),
+        }
+    }};
+}
+
 macro_rules! dependency {
     ($ref_to_resource:expr, $resource:expr, $input:expr) => {{
         $ref_to_resource
             .get(&input_ref!($resource, $input))
             .unwrap()
+    }};
+}
+
+macro_rules! optional_dependency {
+    ($ref_to_resource:expr, $resource:expr, $input:expr) => {{
+        if let Some(resource_ref) = optional_input_ref!($resource, $input) {
+            $ref_to_resource.get(&resource_ref)
+        } else {
+            None
+        }
+    }};
+}
+
+macro_rules! dependency_list {
+    ($ref_to_resource:expr, $resource:expr, $input:expr) => {{
+        input_ref_list!($resource, $input)
+            .iter()
+            .map(|resource_ref| $ref_to_resource.get(resource_ref).unwrap())
+            .collect::<Vec<_>>()
     }};
 }
 
@@ -138,11 +187,15 @@ impl From<ResourceStateV2> for ResourceStateV3 {
             let mut ref_to_resource: HashMap<crate::resources::ResourceRef, RobloxResource> =
                 HashMap::new();
 
-            for resource in resources {
-                match resource.resource_type.as_str() {
+            let resource_graph = crate::resources::ResourceGraph::new(&resources);
+            let resource_order = resource_graph.get_topological_order().unwrap();
+
+            for resource_ref in resource_order {
+                let resource = resource_graph.get_resource_from_ref(&resource_ref).unwrap();
+                let new_resource = match resource.resource_type.as_str() {
                     crate::resource_manager::resource_types::EXPERIENCE => {
-                        let new_resource = RobloxResource::existing(
-                            "experience_singleton",
+                        RobloxResource::existing(
+                            &format!("experience_{}", resource.id),
                             RobloxInputs::Experience(ExperienceInputs {
                                 group_id: input_value!(&resource, "groupId"),
                             }),
@@ -151,37 +204,31 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                                 start_place_id: output_value!(&resource, "startPlaceId"),
                             }),
                             &[],
-                        );
-                        id_to_resource.insert(new_resource.get_id(), new_resource.clone());
-                        ref_to_resource.insert(resource.get_ref(), new_resource);
+                        )
                     }
                     crate::resource_manager::resource_types::EXPERIENCE_CONFIGURATION => {
-                        let new_resource = RobloxResource::existing(
-                            "experienceConfiguration_singleton",
+                        RobloxResource::existing(
+                            &format!("experienceConfiguration_{}", resource.id),
                             RobloxInputs::ExperienceConfiguration(input_value!(
                                 resource,
                                 "configuration"
                             )),
                             RobloxOutputs::ExperienceConfiguration,
                             &[dependency!(ref_to_resource, resource, "experienceId")],
-                        );
-                        id_to_resource.insert(new_resource.get_id(), new_resource.clone());
-                        ref_to_resource.insert(resource.get_ref(), new_resource);
+                        )
                     }
                     crate::resource_manager::resource_types::EXPERIENCE_ACTIVATION => {
-                        let new_resource = RobloxResource::existing(
-                            "experienceActivation_singleton",
+                        RobloxResource::existing(
+                            &format!("experienceActivation_{}", resource.id),
                             RobloxInputs::ExperienceActivation(ExperienceActivationInputs {
                                 is_active: input_value!(&resource, "isActive"),
                             }),
                             RobloxOutputs::ExperienceActivation,
                             &[dependency!(ref_to_resource, resource, "experienceId")],
-                        );
-                        id_to_resource.insert(new_resource.get_id(), new_resource.clone());
-                        ref_to_resource.insert(resource.get_ref(), new_resource);
+                        )
                     }
                     crate::resource_manager::resource_types::EXPERIENCE_ICON => {
-                        let new_resource = RobloxResource::existing(
+                        RobloxResource::existing(
                             "experienceIcon_singleton",
                             RobloxInputs::ExperienceIcon(FileInputs {
                                 file_path: input_value!(&resource, "filePath"),
@@ -191,12 +238,217 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                                 asset_id: output_value!(&resource, "assetId"),
                             }),
                             &[dependency!(ref_to_resource, resource, "experienceId")],
-                        );
-                        id_to_resource.insert(new_resource.get_id(), new_resource.clone());
-                        ref_to_resource.insert(resource.get_ref(), new_resource);
+                        )
                     }
-                    _ => {}
-                }
+                    crate::resource_manager::resource_types::EXPERIENCE_THUMBNAIL => {
+                        RobloxResource::existing(
+                            &format!("experienceThumbnail_{}", resource.id),
+                            RobloxInputs::ExperienceThumbnail(FileInputs {
+                                file_path: input_value!(&resource, "filePath"),
+                                file_hash: input_value!(&resource, "fileHash"),
+                            }),
+                            RobloxOutputs::ExperienceThumbnail(AssetOutputs {
+                                asset_id: output_value!(&resource, "assetId"),
+                            }),
+                            &[dependency!(ref_to_resource, resource, "experienceId")],
+                        )
+                    }
+                    crate::resource_manager::resource_types::EXPERIENCE_THUMBNAIL_ORDER => {
+                        let thumbnails = dependency_list!(ref_to_resource, resource, "assetIds");
+                        RobloxResource::existing(
+                            &format!("experienceThumbnailOrder_{}", resource.id),
+                            RobloxInputs::ExperienceThumbnailOrder,
+                            RobloxOutputs::ExperienceThumbnailOrder,
+                            &thumbnails,
+                        )
+                        .add_dependency(dependency!(ref_to_resource, resource, "experienceId"))
+                        .clone()
+                    }
+                    crate::resource_manager::resource_types::PLACE => RobloxResource::existing(
+                        &format!("place_{}", resource.id),
+                        RobloxInputs::Place(PlaceInputs {
+                            is_start: resource.id == "start",
+                        }),
+                        RobloxOutputs::Place(AssetOutputs {
+                            asset_id: output_value!(&resource, "assetId"),
+                        }),
+                        &[dependency!(ref_to_resource, resource, "experienceId")],
+                    ),
+                    crate::resource_manager::resource_types::PLACE_FILE => {
+                        RobloxResource::existing(
+                            &format!("placeFile_{}", resource.id),
+                            RobloxInputs::PlaceFile(FileInputs {
+                                file_path: input_value!(&resource, "filePath"),
+                                file_hash: input_value!(&resource, "fileHash"),
+                            }),
+                            RobloxOutputs::PlaceFile(PlaceFileOutputs {
+                                version: output_value!(&resource, "version"),
+                            }),
+                            &[dependency!(ref_to_resource, resource, "assetId")],
+                        )
+                    }
+                    crate::resource_manager::resource_types::PLACE_CONFIGURATION => {
+                        RobloxResource::existing(
+                            &format!("placeConfiguration_{}", resource.id),
+                            RobloxInputs::PlaceConfiguration(input_value!(
+                                &resource,
+                                "configuration"
+                            )),
+                            RobloxOutputs::PlaceConfiguration,
+                            &[dependency!(ref_to_resource, resource, "assetId")],
+                        )
+                    }
+                    crate::resource_manager::resource_types::SOCIAL_LINK => {
+                        RobloxResource::existing(
+                            &format!("socialLink_{}", resource.id),
+                            RobloxInputs::SocialLink(SocialLinkInputs {
+                                title: input_value!(&resource, "title"),
+                                url: input_value!(&resource, "url"),
+                                link_type: input_value!(&resource, "linkType"),
+                            }),
+                            RobloxOutputs::SocialLink(AssetOutputs {
+                                asset_id: output_value!(&resource, "assetId"),
+                            }),
+                            &[dependency!(ref_to_resource, resource, "experienceId")],
+                        )
+                    }
+                    crate::resource_manager::resource_types::DEVELOPER_PRODUCT => {
+                        let mut new_resource = RobloxResource::existing(
+                            &format!("product_{}", resource.id),
+                            RobloxInputs::Product(ProductInputs {
+                                name: input_value!(&resource, "name"),
+                                description: input_value!(&resource, "description"),
+                                price: input_value!(&resource, "price"),
+                            }),
+                            RobloxOutputs::Product(ProductOutputs {
+                                asset_id: output_value!(&resource, "assetId"),
+                                product_id: output_value!(&resource, "productId"),
+                            }),
+                            &[dependency!(ref_to_resource, resource, "experienceId")],
+                        );
+                        if let Some(icon_asset) =
+                            optional_dependency!(ref_to_resource, resource, "iconAssetId")
+                        {
+                            new_resource.add_dependency(icon_asset).clone()
+                        } else {
+                            new_resource
+                        }
+                    }
+                    crate::resource_manager::resource_types::DEVELOPER_PRODUCT_ICON => {
+                        RobloxResource::existing(
+                            &format!("productIcon_{}", resource.id),
+                            RobloxInputs::ProductIcon(FileInputs {
+                                file_path: input_value!(&resource, "filePath"),
+                                file_hash: input_value!(&resource, "fileHash"),
+                            }),
+                            RobloxOutputs::ProductIcon(AssetOutputs {
+                                asset_id: output_value!(&resource, "assetId"),
+                            }),
+                            &[dependency!(ref_to_resource, resource, "experienceId")],
+                        )
+                    }
+                    crate::resource_manager::resource_types::GAME_PASS => RobloxResource::existing(
+                        &format!("pass_{}", resource.id),
+                        RobloxInputs::Pass(PassInputs {
+                            name: input_value!(&resource, "name"),
+                            description: input_value!(&resource, "description"),
+                            price: input_value!(&resource, "price"),
+                            icon_file_path: input_value!(&resource, "iconFilePath"),
+                        }),
+                        RobloxOutputs::Pass(AssetWithInitialIconOutputs {
+                            asset_id: output_value!(&resource, "assetId"),
+                            initial_icon_asset_id: output_value!(&resource, "initialIconAssetId"),
+                        }),
+                        &[dependency!(ref_to_resource, resource, "startPlaceId")],
+                    ),
+                    crate::resource_manager::resource_types::GAME_PASS_ICON => {
+                        RobloxResource::existing(
+                            &format!("passIcon_{}", resource.id),
+                            RobloxInputs::PassIcon(FileInputs {
+                                file_path: input_value!(&resource, "filePath"),
+                                file_hash: input_value!(&resource, "fileHash"),
+                            }),
+                            RobloxOutputs::PassIcon(AssetOutputs {
+                                asset_id: output_value!(&resource, "assetId"),
+                            }),
+                            &[dependency!(ref_to_resource, resource, "gamePassId")],
+                        )
+                    }
+                    crate::resource_manager::resource_types::BADGE => RobloxResource::existing(
+                        &format!("badge_{}", resource.id),
+                        RobloxInputs::Badge(BadgeInputs {
+                            name: input_value!(&resource, "name"),
+                            description: input_value!(&resource, "description"),
+                            enabled: input_value!(&resource, "enabled"),
+                            icon_file_path: input_value!(&resource, "iconFilePath"),
+                        }),
+                        RobloxOutputs::Badge(AssetWithInitialIconOutputs {
+                            asset_id: output_value!(&resource, "assetId"),
+                            initial_icon_asset_id: output_value!(&resource, "initialIconAssetId"),
+                        }),
+                        &[dependency!(ref_to_resource, resource, "experienceId")],
+                    ),
+                    crate::resource_manager::resource_types::BADGE_ICON => {
+                        RobloxResource::existing(
+                            &format!("badgeIcon_{}", resource.id),
+                            RobloxInputs::BadgeIcon(FileInputs {
+                                file_path: input_value!(&resource, "filePath"),
+                                file_hash: input_value!(&resource, "fileHash"),
+                            }),
+                            RobloxOutputs::BadgeIcon(AssetOutputs {
+                                asset_id: output_value!(&resource, "assetId"),
+                            }),
+                            &[dependency!(ref_to_resource, resource, "badgeId")],
+                        )
+                    }
+                    crate::resource_manager::resource_types::IMAGE_ASSET => {
+                        RobloxResource::existing(
+                            &format!("asset_{}", resource.id),
+                            RobloxInputs::ImageAsset(FileWithGroupIdInputs {
+                                file_path: input_value!(&resource, "filePath"),
+                                file_hash: input_value!(&resource, "fileHash"),
+                                group_id: input_value!(&resource, "groupId"),
+                            }),
+                            RobloxOutputs::ImageAsset(ImageAssetOutputs {
+                                asset_id: output_value!(&resource, "assetId"),
+                                decal_asset_id: output_value!(&resource, "decalAssetId"),
+                            }),
+                            &[],
+                        )
+                    }
+                    crate::resource_manager::resource_types::AUDIO_ASSET => {
+                        RobloxResource::existing(
+                            &format!("asset_{}", resource.id),
+                            RobloxInputs::AudioAsset(FileWithGroupIdInputs {
+                                file_path: input_value!(&resource, "filePath"),
+                                file_hash: input_value!(&resource, "fileHash"),
+                                group_id: input_value!(&resource, "groupId"),
+                            }),
+                            RobloxOutputs::AudioAsset(AssetOutputs {
+                                asset_id: output_value!(&resource, "assetId"),
+                            }),
+                            &[],
+                        )
+                    }
+                    crate::resource_manager::resource_types::ASSET_ALIAS => {
+                        RobloxResource::existing(
+                            &format!("assetAlias_{}", resource.id),
+                            RobloxInputs::AssetAlias(AssetAliasInputs {
+                                name: input_value!(&resource, "name"),
+                            }),
+                            RobloxOutputs::AssetAlias(AssetAliasOutputs {
+                                name: output_value!(&resource, "name"),
+                            }),
+                            &[
+                                dependency!(ref_to_resource, resource, "experienceId"),
+                                dependency!(ref_to_resource, resource, "assetId"),
+                            ],
+                        )
+                    }
+                    _ => unreachable!(),
+                };
+                id_to_resource.insert(new_resource.get_id(), new_resource.clone());
+                ref_to_resource.insert(resource.get_ref(), new_resource);
             }
 
             environments.insert(

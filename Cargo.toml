@@ -1,6 +1,6 @@
 [package]
-name = "rocat"
-version = "0.6.1"
+name = "mantle"
+version = "0.9.0"
 authors = ["Blake Mealey <blakemealey@gmail.com>"]
 edition = "2018"
 
@@ -20,3 +20,7 @@ rusoto_s3 = "0.47.0"
 tokio = { version = "1", features = ["full"] }
 chrono = "0.4"
 yansi = "0.5.0"
+scraper = "0.12.0"
+url = { version = "2.2.2", features = ["serde"] }
+base64 = "0.13.0"
+serde_repr = "0.1.7"

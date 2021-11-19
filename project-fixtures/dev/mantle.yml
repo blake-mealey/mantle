@@ -1,0 +1,82 @@
+environments:
+  - name: staging
+    branches: [dev, dev/*]
+    overrides:
+      places:
+        start:
+          configuration:
+            name: Staging - Start name
+  - name: production
+    branches: [main]
+    # tagCommit: true
+    overrides:
+      configuration:
+        playability: friends
+  - name: preview
+    overrides:
+      places:
+        start:
+          configuration:
+            name: Preview - Start name
+  - name: other
+
+target:
+  experience:
+    configuration:
+      genre: naval
+      playableDevices: [computer]
+      playability: private
+      enableStudioAccessToApis: true
+      avatarType: r15
+      avatarAnimationType: playerChoice
+      avatarCollisionType: outerBox
+      icon: game-icon.png
+      thumbnails:
+        - game-thumbnail-1.png
+        - game-thumbnail-2.png
+        - game-thumbnail-3.png
+    places:
+      start:
+        file: start.rbxlx
+        configuration:
+          name: Start name
+          description: Start description
+          maxPlayerCount: 20
+          serverFill: { reservedSlots: 10 }
+          allowCopying: false
+      firstWorld:
+        file: start.rbxlx
+        configuration:
+          name: World
+      secondWorld:
+        file: start.rbxlx
+        configuration:
+          name: Second World
+    socialLinks:
+      - title: Follow me on Twitter!
+        url: https://twitter.com/blakemdev
+    products:
+      myFirstProduct:
+        name: My first product
+        description: With an amazing description
+        price: 50
+        icon: developer-product-1.png
+    passes:
+      myFirstPass:
+        name: My first pass
+        description: With a description!
+        price: 50
+        icon: game-pass-1.png
+    badges:
+      myFirstBadge:
+        name: My first badge
+        description: The best badge of all
+        icon: badge-1.png
+    assets:
+      - assets/*
+
+state:
+  remote:
+    region: [us-west-2]
+    bucket: mantle-states
+    key: project-fixtures/dev

@@ -18,7 +18,7 @@ function Get-PackageVersion() {
   }
 
   $PackageMeta = ConvertFrom-Json -InputObject $PackageMetaRaw
-  return ($PackageMeta.packages | where { $_.name -eq "rocat" }).version
+  return ($PackageMeta.packages | where { $_.name -eq "mantle" }).version
 }
 
 function Undo-Changes() {
@@ -117,7 +117,7 @@ function Invoke-BumpVersion() {
     return
   }
 
-  Write-Host "🎉 Bumped Rocat version to $NextVersion. Ready to push with 'git push origin && git push --tags'`n"
+  Write-Host "🎉 Bumped Mantle version to $NextVersion. Ready to push with 'git push origin && git push --tags'`n"
 
   $choices = "&Yes", "&No"
   $selectedIndex = $Host.UI.PromptForChoice($Null, "Automatically push changes to Git?", $choices, 0)

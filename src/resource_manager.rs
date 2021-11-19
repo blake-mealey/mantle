@@ -814,28 +814,26 @@ impl ResourceManager for RobloxResourceManager {
                 let outputs = serde_yaml::from_value::<ExperienceOutputs>(resource_outputs)
                     .map_err(|e| format!("Failed to deserialize outputs: {}", e))?;
 
-                self.roblox_api.configure_experience(
-                    outputs.asset_id,
-                    &ExperienceConfigurationModel {
-                        genre: None,
-                        playable_devices: None,
-                        is_friends_only: None,
-                        allow_private_servers: None,
-                        private_server_price: None,
-                        is_for_sale: None,
-                        price: None,
-                        studio_access_to_apis_allowed: None,
-                        permissions: None,
-                        universe_avatar_type: None,
-                        universe_animation_type: None,
-                        universe_collision_type: None,
-                        is_archived: Some(true),
-                    },
-                )?;
+                let model = ExperienceConfigurationModel {
+                    is_archived: true,
+                    ..Default::default()
+                };
+                self.roblox_api
+                    .configure_experience(outputs.asset_id, &model)?;
 
                 Ok(())
             }
-            resource_types::EXPERIENCE_CONFIGURATION => Ok(()),
+            resource_types::EXPERIENCE_CONFIGURATION => {
+                let inputs =
+                    serde_yaml::from_value::<ExperienceConfigurationInputs>(resource_inputs)
+                        .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                let model = ExperienceConfigurationModel::default();
+                self.roblox_api
+                    .configure_experience(inputs.experience_id, &model)?;
+
+                Ok(())
+            }
             resource_types::EXPERIENCE_ACTIVATION => {
                 let inputs = serde_yaml::from_value::<ExperienceActivationInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
@@ -903,7 +901,16 @@ impl ResourceManager for RobloxResourceManager {
                 Ok(())
             }
             resource_types::PLACE_FILE => Ok(()),
-            resource_types::PLACE_CONFIGURATION => Ok(()),
+            resource_types::PLACE_CONFIGURATION => {
+                let inputs = serde_yaml::from_value::<PlaceConfigurationInputs>(resource_inputs)
+                    .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;
+
+                let model = PlaceConfigurationModel::default();
+
+                self.roblox_api.configure_place(inputs.asset_id, &model)?;
+
+                Ok(())
+            }
             resource_types::SOCIAL_LINK => {
                 let inputs = serde_yaml::from_value::<SocialLinkInputs>(resource_inputs)
                     .map_err(|e| format!("Failed to deserialize inputs: {}", e))?;

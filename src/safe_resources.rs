@@ -1,237 +1,457 @@
-use std::{collections::HashMap, fmt::Display, hash::Hash};
+use std::collections::HashMap;
 
-// defined externally
+use difference::Changeset;
+use yansi::Paint;
 
-#[derive(Clone)]
-enum ImplInputs {
-    Experience { name: String },
-    Asset { name: String },
-}
+use crate::logger;
 
-#[derive(Clone)]
-enum ImplOutputs {
-    Experience { asset_id: u64 },
-    Asset { asset_id: u64 },
-}
-
-#[derive(Clone, Hash, PartialEq, Eq)]
-enum ImplType {
-    Experience,
-    Asset,
-}
-impl Display for ImplType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            ImplType::Experience => "experience",
-            ImplType::Asset => "asset",
-        })
-    }
-}
-
-#[derive(Clone)]
-struct ImplResource {
-    resource_type: ImplType,
-    id: String,
-    inputs: ImplInputs,
-    outputs: ImplOutputs,
-    dependencies: Vec<ResourceRef<ImplType>>,
-}
-
-impl Resource<ImplType, ImplInputs, ImplOutputs> for ImplResource {
-    fn get_type(&self) -> ImplType {
-        self.resource_type.clone()
-    }
-
-    fn get_id(&self) -> String {
-        self.id.clone()
-    }
-
-    fn get_inputs_hash(&self) -> String {
-        todo!("hash the inputs")
-    }
-
-    fn get_inputs(&self) -> ImplInputs {
-        self.inputs.clone()
-    }
-
-    fn get_outputs(&self) -> ImplOutputs {
-        self.outputs.clone()
-    }
-
-    fn get_dependencies(&self) -> Vec<ResourceRef<ImplType>> {
-        self.dependencies.clone()
-    }
-}
-
-struct ImplResourceManager {}
-
-impl ResourceManager<ImplType, ImplInputs, ImplOutputs> for ImplResourceManager {
-    fn create(
-        &self,
-        resource_type: ImplType,
-        inputs: ImplInputs,
-        dependency_outputs: HashMap<ResourceRef<ImplType>, ImplOutputs>,
-    ) -> ImplOutputs {
-        match (resource_type, inputs) {
-            (ImplType::Experience, ImplInputs::Experience { name }) => {
-                if let ImplOutputs::Experience {
-                    asset_id: experience_id,
-                } = get_first_output(&dependency_outputs, ImplType::Experience)
-                {
-                    let thumbnail_ids = get_outputs(&dependency_outputs, ImplType::Asset)
-                        .iter()
-                        .filter_map(|d| match d {
-                            ImplOutputs::Asset { asset_id } => Some(asset_id),
-                            _ => None,
-                        })
-                        .collect::<Vec<&u64>>();
-
-                    // TODO: make requests and return outputs
+macro_rules! all_outputs {
+    ($expr:expr, $enum:path) => {{
+        $expr
+            .iter()
+            .filter_map(|value| {
+                if let $enum(outputs) = value {
+                    Some(outputs)
+                } else {
+                    None
                 }
-                panic!("missing expected dependency outputs");
-            }
-            _ => {}
-        }
-        unimplemented!()
-    }
-    fn update(
-        &self,
-        resource_type: ImplType,
-        inputs: ImplInputs,
-        outputs: ImplOutputs,
-        dependency_outputs: HashMap<ResourceRef<ImplType>, ImplOutputs>,
-    ) -> ImplOutputs {
-        match (resource_type, inputs, outputs) {
-            (
-                ImplType::Experience,
-                ImplInputs::Experience { name },
-                ImplOutputs::Experience { asset_id },
-            ) => {}
-            _ => {}
-        }
-        unimplemented!()
-    }
+            })
+            .collect::<Vec<_>>()
+    }};
 }
+pub(crate) use all_outputs;
 
-// internals
-fn get_first_output<TType, TOutputs>(
-    dependency_outputs: &HashMap<ResourceRef<TType>, TOutputs>,
-    resource_type: TType,
-) -> &TOutputs
-where
-    TType: Clone,
-    TType: Hash,
-    TType: Eq,
-    TType: Display,
-{
-    dependency_outputs
-        .iter()
-        .find_map(|(key, value)| {
-            if key.0 == resource_type {
-                Some(value)
-            } else {
-                None
-            }
-        })
-        .expect(&format!(
-            "Missing required dependency output of type {}",
-            resource_type
-        ))
+macro_rules! single_output {
+    ($expr:expr, $enum:path) => {{
+        all_outputs!($expr, $enum)
+            .first()
+            .expect("Missing expected output")
+    }};
 }
+pub(crate) use single_output;
 
-fn get_outputs<TType, TOutputs>(
-    dependency_outputs: &HashMap<ResourceRef<TType>, TOutputs>,
-    resource_type: TType,
-) -> Vec<&TOutputs>
-where
-    TType: Clone,
-    TType: Hash,
-    TType: Eq,
-{
-    dependency_outputs
-        .iter()
-        .filter_map(|(key, value)| {
-            if key.0 == resource_type {
-                Some(value)
-            } else {
-                None
-            }
-        })
-        .collect()
-}
+pub type ResourceId = String;
 
-type ResourceRef<TType> = (TType, String);
-
-trait Resource<TType, TInputs, TOutputs> {
-    fn get_type(&self) -> TType;
-    fn get_id(&self) -> String;
+pub trait Resource<TInputs, TOutputs>: Clone {
+    fn get_id(&self) -> ResourceId;
     fn get_inputs_hash(&self) -> String;
+    fn get_outputs_hash(&self) -> String;
     fn get_inputs(&self) -> TInputs;
-    fn get_outputs(&self) -> TOutputs;
-    fn get_dependencies(&self) -> Vec<ResourceRef<TType>>;
+    fn get_outputs(&self) -> Option<TOutputs>;
+    fn get_dependencies(&self) -> Vec<ResourceId>;
+    fn set_outputs(&mut self, outputs: TOutputs);
 }
 
-trait ResourceManager<TType, TInputs, TOutputs>
-where
-    TType: Hash,
-    TType: Eq,
-    TType: Clone,
-{
-    fn create(
-        &self,
-        resource_type: TType,
+pub trait ResourceManager<TInputs, TOutputs> {
+    fn get_create_price(
+        &mut self,
         inputs: TInputs,
-        dependency_outputs: HashMap<ResourceRef<TType>, TOutputs>,
-    ) -> TOutputs;
-    fn update(
-        &self,
-        resource_type: TType,
+        dependency_outputs: Vec<TOutputs>,
+    ) -> Result<Option<u32>, String>;
+
+    fn create(
+        &mut self,
+        inputs: TInputs,
+        dependency_outputs: Vec<TOutputs>,
+    ) -> Result<TOutputs, String>;
+
+    fn get_update_price(
+        &mut self,
         inputs: TInputs,
         outputs: TOutputs,
-        dependency_outputs: HashMap<ResourceRef<TType>, TOutputs>,
-    ) -> TOutputs;
+        dependency_outputs: Vec<TOutputs>,
+    ) -> Result<Option<u32>, String>;
+
+    fn update(
+        &mut self,
+        inputs: TInputs,
+        outputs: TOutputs,
+        dependency_outputs: Vec<TOutputs>,
+    ) -> Result<TOutputs, String>;
+
+    fn delete(
+        &mut self,
+        inputs: TInputs,
+        outputs: TOutputs,
+        dependency_outputs: Vec<TOutputs>,
+    ) -> Result<(), String>;
 }
 
-fn get_dependency_outputs<TResource, TType, TInputs, TOutputs>(
-    resources: &HashMap<ResourceRef<TType>, TResource>,
-    dependencies: Vec<ResourceRef<TType>>,
-) -> Option<HashMap<ResourceRef<TType>, TOutputs>>
+#[derive(Default, Clone)]
+pub struct EvaluateResults {
+    pub created_count: u32,
+    pub updated_count: u32,
+    pub deleted_count: u32,
+    pub noop_count: u32,
+    pub skipped_count: u32,
+}
+
+enum OperationResult<TOutputs> {
+    Skipped(String),
+    Noop,
+    Failed(String),
+    SucceededDelete,
+    SucceededCreate(TOutputs),
+    SucceededUpdate(TOutputs),
+}
+
+fn get_changeset(previous_inputs_hash: &str, new_inputs_hash: &str) -> Changeset {
+    Changeset::new(previous_inputs_hash, new_inputs_hash, "\n")
+}
+
+pub struct ResourceGraph<TResource, TInputs, TOutputs>
 where
-    TType: Hash,
-    TType: Eq,
-    TResource: Resource<TType, TInputs, TOutputs>,
+    TResource: Resource<TInputs, TOutputs>,
+    TInputs: Clone,
+    TOutputs: Clone,
 {
-    let mut dependency_outputs: HashMap<ResourceRef<TType>, TOutputs> = HashMap::new();
-    for dependency in dependencies {
-        let resource = resources.get(&dependency);
-        if let Some(resource) = resource {
-            dependency_outputs.insert(dependency, resource.get_outputs());
-        } else {
-            return None;
+    phantom_inputs: std::marker::PhantomData<TInputs>,
+    phantom_outputs: std::marker::PhantomData<TOutputs>,
+    resources: HashMap<ResourceId, TResource>,
+}
+
+impl<TResource, TInputs, TOutputs> ResourceGraph<TResource, TInputs, TOutputs>
+where
+    TResource: Resource<TInputs, TOutputs>,
+    TInputs: Clone,
+    TOutputs: Clone,
+{
+    fn get_dependency_graph(&self) -> HashMap<ResourceId, Vec<ResourceId>> {
+        self.resources
+            .iter()
+            .map(|(id, resource)| (id.clone(), resource.get_dependencies()))
+            .collect()
+    }
+
+    fn get_topological_order(&self) -> Result<Vec<ResourceId>, String> {
+        let mut dependency_graph = self.get_dependency_graph();
+
+        let mut start_nodes: Vec<ResourceId> = dependency_graph
+            .iter()
+            .filter_map(|(node, deps)| {
+                if deps.is_empty() {
+                    Some(node.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let mut ordered: Vec<ResourceId> = Vec::new();
+        while let Some(start_node) = start_nodes.pop() {
+            ordered.push(start_node.clone());
+            for (node, deps) in dependency_graph.iter_mut() {
+                if deps.contains(&start_node) {
+                    deps.retain(|dep| dep != &start_node);
+                    if deps.is_empty() {
+                        start_nodes.push(node.clone());
+                    }
+                }
+            }
+        }
+
+        let has_cycles = dependency_graph.iter().any(|(_, deps)| !deps.is_empty());
+        match has_cycles {
+            true => Err("Cannot evaluate resource graph because it has cycles".to_owned()),
+            false => Ok(ordered),
         }
     }
-    Some(dependency_outputs)
-}
 
-fn evaluate<TManager, TResource, TType, TInputs, TOutputs>(
-    manager: &TManager,
-    resources: &HashMap<ResourceRef<TType>, TResource>,
-) where
-    TManager: ResourceManager<TType, TInputs, TOutputs>,
-    TResource: Resource<TType, TInputs, TOutputs>,
-    TType: Clone,
-    TType: Hash,
-    TType: Eq,
-{
-    for resource in resources.values() {
-        if let Some(dependency_outputs) =
-            get_dependency_outputs(resources, resource.get_dependencies())
-        {
-            manager.create(
-                resource.get_type(),
-                resource.get_inputs(),
-                dependency_outputs,
+    fn get_dependency_outputs(&self, resource: &TResource) -> Option<Vec<TOutputs>> {
+        let mut dependency_outputs: Vec<TOutputs> = Vec::new();
+        for dependency in resource.get_dependencies() {
+            let resource = self.resources.get(&dependency);
+            if let Some(resource) = resource {
+                if let Some(outputs) = resource.get_outputs() {
+                    dependency_outputs.push(outputs);
+                } else {
+                    return None;
+                }
+            } else {
+                return None;
+            }
+        }
+        Some(dependency_outputs)
+    }
+
+    fn handle_operation_result(
+        &mut self,
+        results: &mut EvaluateResults,
+        failures_count: &mut u32,
+        previous_graph: &ResourceGraph<TResource, TInputs, TOutputs>,
+        resource_id: &ResourceId,
+        operation_result: OperationResult<TOutputs>,
+    ) {
+        // TODO: Improve DRY here
+        match operation_result {
+            OperationResult::SucceededDelete => {
+                // No need to update the graph since it's already not present
+                results.deleted_count += 1;
+                logger::end_action("Succeeded");
+            }
+            OperationResult::SucceededCreate(outputs) => {
+                // Update the resource with the new outputs
+                let resource = self.resources.get_mut(resource_id).unwrap();
+                resource.set_outputs(outputs);
+
+                results.created_count += 1;
+                // TODO: Do we want the "Succeeded" with no outputs message?
+                logger::end_action_with_results(
+                    "Succeeded with outputs:",
+                    resource.get_outputs_hash(),
+                );
+            }
+            OperationResult::SucceededUpdate(outputs) => {
+                // Update the resource with the new outputs
+                let resource = self.resources.get_mut(resource_id).unwrap();
+                resource.set_outputs(outputs);
+
+                results.updated_count += 1;
+                // TODO: Do we want the "Succeeded" with no outputs message?
+                logger::end_action_with_results(
+                    "Succeeded with outputs:",
+                    resource.get_outputs_hash(),
+                );
+            }
+            OperationResult::Noop => {
+                // There was no need to create or update the resource. We will update the resource
+                // with the previous outputs
+                let previous_resource = previous_graph.resources.get(resource_id).unwrap();
+                let resource = self.resources.get_mut(resource_id).unwrap();
+                resource.set_outputs(
+                    previous_resource
+                        .get_outputs()
+                        .expect("Existing resource should have outputs."),
+                );
+
+                results.noop_count += 1;
+            }
+            OperationResult::Skipped(reason) => {
+                // The resource was not evaluated. If the resource existed previously, we will copy
+                // the old version into this graph. Otherwise, we will remove this resource from the
+                // graph.
+                if let Some(previous_resource) = previous_graph.resources.get(resource_id) {
+                    self.resources
+                        .insert(resource_id.to_owned(), previous_resource.to_owned());
+                } else {
+                    self.resources.remove(resource_id);
+                }
+
+                results.skipped_count += 1;
+                logger::end_action(format!("Skipped: {}", Paint::yellow(reason)));
+            }
+            OperationResult::Failed(error) => {
+                // An error occurred while creating or updating the resource. If the
+                // resource existed previously, we will copy the old version into this
+                // graph. Otherwise, we will remove this resource from the graph.
+                if let Some(previous_resource) = previous_graph.resources.get(resource_id) {
+                    self.resources
+                        .insert(resource_id.to_owned(), previous_resource.to_owned());
+                } else {
+                    self.resources.remove(resource_id);
+                }
+
+                *failures_count += 1;
+                logger::end_action(format!("Failed: {}", Paint::red(error)));
+            }
+        }
+    }
+
+    fn evaluate_delete<TManager>(
+        &self,
+        previous_graph: &ResourceGraph<TResource, TInputs, TOutputs>,
+        manager: &mut TManager,
+        resource_id: &ResourceId,
+    ) -> OperationResult<TOutputs>
+    where
+        TManager: ResourceManager<TInputs, TOutputs>,
+    {
+        let resource = previous_graph.resources.get(resource_id).unwrap();
+        let dependency_outputs = previous_graph
+            .get_dependency_outputs(resource)
+            .expect("Previous graph should be complete.");
+
+        let inputs_hash = resource.get_inputs_hash();
+        logger::start_action(format!(
+            "{} Deleting: {}",
+            Paint::red("-"),
+            resource.get_id()
+        ));
+        // TODO: we should print dependency outputs too
+        logger::log_changeset(get_changeset(&inputs_hash, ""));
+
+        match manager.delete(
+            resource.get_inputs(),
+            resource
+                .get_outputs()
+                .expect("Existing resource should have outputs."),
+            dependency_outputs,
+        ) {
+            Ok(()) => OperationResult::SucceededDelete,
+            Err(error) => OperationResult::Failed(error),
+        }
+    }
+
+    fn evaluate_create_or_update<TManager>(
+        &self,
+        previous_graph: &ResourceGraph<TResource, TInputs, TOutputs>,
+        manager: &mut TManager,
+        resource_id: &ResourceId,
+        allow_purchases: bool,
+    ) -> OperationResult<TOutputs>
+    where
+        TManager: ResourceManager<TInputs, TOutputs>,
+    {
+        let resource = self.resources.get(resource_id).unwrap();
+        let previous_resource = previous_graph.resources.get(resource_id);
+
+        let dependency_outputs = match self.get_dependency_outputs(resource) {
+            Some(v) => v,
+            None => {
+                logger::start_action(format!(
+                    "{} Unknown: {}",
+                    Paint::new("○").dimmed(),
+                    resource_id
+                ));
+                return OperationResult::Skipped(
+                    "A dependency failed to produce required outputs.".to_owned(),
+                );
+            }
+        };
+
+        // TODO: we also need to check if dependency outputs changed
+        let inputs_hash = resource.get_inputs_hash();
+        let previous_hash = previous_resource.map(|r| r.get_inputs_hash());
+
+        // TODO: improve DRY here
+        match previous_hash {
+            None => {
+                // This resource is new
+                logger::start_action(format!("{} Creating: {}", Paint::green("+"), resource_id));
+                // TODO: we should print dependency outputs too
+                logger::log_changeset(get_changeset("", &inputs_hash));
+
+                match manager.get_create_price(resource.get_inputs(), dependency_outputs.clone()) {
+                    Ok(Some(price)) if price > 0 => {
+                        if allow_purchases {
+                            logger::log("");
+                            logger::log(Paint::yellow(format!(
+                                "{} Robux will be charged from your account.",
+                                price
+                            )))
+                        } else {
+                            return OperationResult::Skipped(format!(
+                                "Resource would cost {} Robux to create. Give Mantle permission to make purchases with --allow-purchases.",
+                                price
+                            ));
+                        }
+                    }
+                    Err(error) => return OperationResult::Failed(error),
+                    Ok(_) => {}
+                };
+
+                match manager.create(resource.get_inputs(), dependency_outputs) {
+                    Ok(outputs) => OperationResult::SucceededCreate(outputs),
+                    Err(error) => OperationResult::Failed(error),
+                }
+            }
+            Some(previous_hash) if previous_hash != inputs_hash => {
+                // This resource has changed
+                logger::start_action(format!("{} Updating: {}", Paint::yellow("~"), resource_id));
+                // TODO: we should print dependency outputs too
+                logger::log_changeset(get_changeset(&previous_hash, &inputs_hash));
+
+                let outputs = previous_resource
+                    .unwrap()
+                    .get_outputs()
+                    .expect("Existing resource should have outputs.");
+
+                match manager.get_update_price(
+                    resource.get_inputs(),
+                    outputs.clone(),
+                    dependency_outputs.clone(),
+                ) {
+                    Ok(Some(price)) if price > 0 => {
+                        if allow_purchases {
+                            logger::log("");
+                            logger::log(Paint::yellow(format!(
+                                "{} Robux will be charged from your account.",
+                                price
+                            )))
+                        } else {
+                            return OperationResult::Skipped(format!(
+                                "Resource would cost {} Robux to create. Give Mantle permission to make purchases with --allow-purchases.",
+                                price
+                            ));
+                        }
+                    }
+                    Err(error) => return OperationResult::Failed(error),
+                    Ok(_) => {}
+                };
+
+                match manager.update(resource.get_inputs(), outputs, dependency_outputs) {
+                    Ok(outputs) => OperationResult::SucceededUpdate(outputs),
+                    Err(error) => OperationResult::Failed(error),
+                }
+            }
+            _ => OperationResult::Noop,
+        }
+    }
+
+    fn evaluate<TManager>(
+        &mut self,
+        previous_graph: &ResourceGraph<TResource, TInputs, TOutputs>,
+        manager: &mut TManager,
+        allow_purchases: bool,
+    ) -> Result<EvaluateResults, String>
+    where
+        TManager: ResourceManager<TInputs, TOutputs>,
+    {
+        let mut results = EvaluateResults::default();
+        let mut failures_count: u32 = 0;
+
+        // Iterate over previous resources in reverse order so that leaf resources are removed first
+        let mut previous_resource_order = previous_graph.get_topological_order()?;
+        previous_resource_order.reverse();
+        for resource_id in previous_resource_order.iter() {
+            if self.resources.get(resource_id).is_some() {
+                continue;
+            }
+
+            let operation_result = self.evaluate_delete(previous_graph, manager, resource_id);
+            self.handle_operation_result(
+                &mut results,
+                &mut failures_count,
+                previous_graph,
+                resource_id,
+                operation_result,
             );
+        }
+
+        let resource_order = self.get_topological_order()?;
+        for resource_id in resource_order.iter() {
+            let operation_result = self.evaluate_create_or_update(
+                previous_graph,
+                manager,
+                resource_id,
+                allow_purchases,
+            );
+            self.handle_operation_result(
+                &mut results,
+                &mut failures_count,
+                previous_graph,
+                resource_id,
+                operation_result,
+            );
+        }
+
+        if failures_count > 0 {
+            Err(format!(
+                "Failed {} changes(s) while evaluating the resource graph. See above for more details.",
+                failures_count
+            ))
+        } else {
+            Ok(results)
         }
     }
 }

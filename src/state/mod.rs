@@ -22,7 +22,7 @@ use crate::{
         PlayabilityTargetConfig, RemoteStateConfig, StateConfig, TargetConfig,
     },
     logger,
-    roblox_api::{RobloxApi, SocialLinkType},
+    roblox_api::{CreatorType, GetExperienceResponse, RobloxApi, SocialLinkType},
     safe_resource_manager::*,
     safe_resources::ResourceGraph,
 };
@@ -496,7 +496,270 @@ pub fn import_graph(
     roblox_api: &mut RobloxApi,
     experience_id: AssetId,
 ) -> Result<ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>, String> {
-    unimplemented!()
+    let mut resources: Vec<RobloxResource> = Vec::new();
+
+    let GetExperienceResponse {
+        root_place_id: start_place_id,
+        is_active: is_experience_active,
+        creator_target_id,
+        creator_type,
+    } = roblox_api.get_experience(experience_id)?;
+
+    let group_id = match creator_type {
+        CreatorType::User => None,
+        CreatorType::Group => Some(creator_target_id),
+    };
+
+    let experience = RobloxResource::existing(
+        "experience_singleton",
+        RobloxInputs::Experience(ExperienceInputs { group_id }),
+        RobloxOutputs::Experience(ExperienceOutputs {
+            asset_id: experience_id,
+            start_place_id,
+        }),
+        &[],
+    );
+    resources.push(experience.clone());
+
+    resources.push(RobloxResource::existing(
+        "experienceActivation_singleton",
+        RobloxInputs::ExperienceActivation(ExperienceActivationInputs {
+            is_active: is_experience_active,
+        }),
+        RobloxOutputs::ExperienceActivation,
+        &[&experience],
+    ));
+
+    let experience_configuration = roblox_api.get_experience_configuration(experience_id)?;
+    resources.push(RobloxResource::existing(
+        "experienceConfiguration_singleton",
+        RobloxInputs::ExperienceConfiguration(experience_configuration.into()),
+        RobloxOutputs::ExperienceConfiguration,
+        &[&experience],
+    ));
+
+    // We intentionally do not import the game icon because we do not know of an API which returns
+    // the correct ID for it to be removed.
+
+    let thumbnails = roblox_api.get_experience_thumbnails(experience_id)?;
+    let mut thumbnail_resources: Vec<RobloxResource> = Vec::new();
+    for thumbnail in thumbnails {
+        thumbnail_resources.push(RobloxResource::existing(
+            &format!("experienceThumbnail_{}", thumbnail.id),
+            RobloxInputs::ExperienceThumbnail(FileInputs {
+                file_path: "fake-path".to_owned(),
+                file_hash: "fake-hash".to_owned(),
+            }),
+            RobloxOutputs::ExperienceThumbnail(AssetOutputs {
+                asset_id: thumbnail.id,
+            }),
+            &[&experience],
+        ));
+    }
+    let mut thumbnail_order_dependencies: Vec<&RobloxResource> =
+        thumbnail_resources.iter().collect();
+    thumbnail_order_dependencies.push(&experience);
+    resources.push(RobloxResource::existing(
+        "experienceThumbnailOrder_singleton",
+        RobloxInputs::ExperienceThumbnailOrder,
+        RobloxOutputs::ExperienceThumbnailOrder,
+        &thumbnail_order_dependencies,
+    ));
+    resources.extend(thumbnail_resources);
+
+    let places = roblox_api.get_all_places(experience_id)?;
+    for place in places {
+        let resource_id = if place.is_root_place {
+            "start".to_owned()
+        } else {
+            place.id.to_string()
+        };
+
+        let place_resource = RobloxResource::existing(
+            &format!("place_{}", resource_id),
+            RobloxInputs::Place(PlaceInputs {
+                is_start: place.is_root_place,
+            }),
+            RobloxOutputs::Place(AssetOutputs { asset_id: place.id }),
+            &[&experience],
+        );
+        resources.push(place_resource.clone());
+
+        resources.push(RobloxResource::existing(
+            &format!("placeFile_{}", resource_id),
+            RobloxInputs::PlaceFile(FileInputs {
+                file_path: "fake-path".to_owned(),
+                file_hash: "fake-hash".to_owned(),
+            }),
+            RobloxOutputs::PlaceFile(PlaceFileOutputs {
+                version: place.current_saved_version,
+            }),
+            &[&place_resource],
+        ));
+
+        resources.push(RobloxResource::existing(
+            &format!("placeConfiguration_{}", resource_id),
+            RobloxInputs::PlaceConfiguration(place.into()),
+            RobloxOutputs::PlaceConfiguration,
+            &[&place_resource],
+        ));
+    }
+
+    let social_links = roblox_api.list_social_links(experience_id)?;
+    for social_link in social_links {
+        let domain = social_link
+            .url
+            .domain()
+            .ok_or_else(|| "Invalid social link URL".to_owned())?;
+        resources.push(RobloxResource::existing(
+            &format!("socialLink_{}", domain),
+            RobloxInputs::SocialLink(SocialLinkInputs {
+                title: social_link.title,
+                url: social_link.url.to_string(),
+                link_type: social_link.link_type,
+            }),
+            RobloxOutputs::SocialLink(AssetOutputs {
+                asset_id: social_link.id,
+            }),
+            &[&experience],
+        ));
+    }
+
+    let developer_products = roblox_api.get_all_developer_products(experience_id)?;
+    for product in developer_products {
+        let mut product_resource = RobloxResource::existing(
+            &format!("product_{}", product.product_id),
+            RobloxInputs::Product(ProductInputs {
+                name: product.name,
+                description: product.description,
+                price: product.price_in_robux,
+            }),
+            RobloxOutputs::Product(ProductOutputs {
+                asset_id: product.product_id,
+                product_id: product.developer_product_id,
+            }),
+            &[&experience],
+        );
+        if let Some(icon_id) = product.icon_image_asset_id {
+            let icon_resource = RobloxResource::existing(
+                &format!("productIcon_{}", product.product_id),
+                RobloxInputs::ProductIcon(FileInputs {
+                    file_path: "fake-path".to_owned(),
+                    file_hash: "fake-hash".to_owned(),
+                }),
+                RobloxOutputs::ProductIcon(AssetOutputs { asset_id: icon_id }),
+                &[&experience],
+            );
+            product_resource.add_dependency(&icon_resource);
+            resources.push(icon_resource);
+        }
+        resources.push(product_resource);
+    }
+
+    let game_passes = roblox_api.get_all_game_passes(experience_id)?;
+    for pass in game_passes {
+        let pass_resource = RobloxResource::existing(
+            &format!("pass_{}", pass.target_id),
+            RobloxInputs::Pass(PassInputs {
+                name: pass.name,
+                description: Some(pass.description),
+                price: pass.price_in_robux,
+                icon_file_path: "fake-path".to_owned(),
+            }),
+            RobloxOutputs::Pass(AssetWithInitialIconOutputs {
+                asset_id: pass.target_id,
+                initial_icon_asset_id: pass.icon_image_asset_id,
+            }),
+            &[&experience],
+        );
+        resources.push(RobloxResource::existing(
+            &format!("passIcon_{}", pass.target_id),
+            RobloxInputs::PassIcon(FileInputs {
+                file_path: "fake-path".to_owned(),
+                file_hash: "fake-hash".to_owned(),
+            }),
+            RobloxOutputs::PassIcon(AssetOutputs {
+                asset_id: pass.icon_image_asset_id,
+            }),
+            &[&pass_resource],
+        ));
+        resources.push(pass_resource);
+    }
+
+    let badges = roblox_api.get_all_badges(experience_id)?;
+    for badge in badges {
+        let badge_resource = RobloxResource::existing(
+            &format!("badge_{}", badge.id),
+            RobloxInputs::Badge(BadgeInputs {
+                name: badge.name,
+                description: Some(badge.description),
+                enabled: badge.enabled,
+                icon_file_path: "fake-path".to_owned(),
+            }),
+            RobloxOutputs::Badge(AssetWithInitialIconOutputs {
+                asset_id: badge.id,
+                initial_icon_asset_id: badge.icon_image_id,
+            }),
+            &[&experience],
+        );
+        resources.push(RobloxResource::existing(
+            &format!("badgeIcon_{}", badge.id),
+            RobloxInputs::BadgeIcon(FileInputs {
+                file_path: "fake-path".to_owned(),
+                file_hash: "fake-hash".to_owned(),
+            }),
+            RobloxOutputs::BadgeIcon(AssetOutputs {
+                asset_id: badge.icon_image_id,
+            }),
+            &[&badge_resource],
+        ));
+        resources.push(badge_resource);
+    }
+
+    let assets = roblox_api.get_all_asset_aliases(experience_id)?;
+    for asset in assets {
+        let resource_data = match asset.asset.type_id {
+            1 => Some((
+                RobloxInputs::ImageAsset(FileWithGroupIdInputs {
+                    file_path: "fake-path".to_owned(),
+                    file_hash: "fake-hash".to_owned(),
+                    group_id,
+                }),
+                RobloxOutputs::ImageAsset(ImageAssetOutputs {
+                    asset_id: asset.target_id,
+                    decal_asset_id: None,
+                }),
+            )),
+            3 => Some((
+                RobloxInputs::AudioAsset(FileWithGroupIdInputs {
+                    file_path: "fake-path".to_owned(),
+                    file_hash: "fake-hash".to_owned(),
+                    group_id,
+                }),
+                RobloxOutputs::AudioAsset(AssetOutputs {
+                    asset_id: asset.target_id,
+                }),
+            )),
+            _ => None,
+        };
+
+        if let Some((resource_inputs, resource_outputs)) = resource_data {
+            let asset_resource = RobloxResource::existing(
+                &format!("asset_{}", asset.name),
+                resource_inputs,
+                resource_outputs,
+                &[],
+            );
+            resources.push(RobloxResource::new(
+                &format!("assetAlias_{}", asset.name),
+                RobloxInputs::AssetAlias(AssetAliasInputs { name: asset.name }),
+                &[&experience, &asset_resource],
+            ));
+            resources.push(asset_resource);
+        }
+    }
+
+    Ok(ResourceGraph::new(&resources))
 }
 
 pub async fn save_state_to_remote(config: &RemoteStateConfig, data: &[u8]) -> Result<(), String> {

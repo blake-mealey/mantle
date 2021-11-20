@@ -94,6 +94,7 @@ pub struct AssetAliasInputs {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant)]
 pub enum RobloxInputs {
     Experience(ExperienceInputs),
     ExperienceConfiguration(ExperienceConfigurationModel),
@@ -572,7 +573,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
         outputs: RobloxOutputs,
         dependency_outputs: Vec<RobloxOutputs>,
     ) -> Result<Option<u32>, String> {
-        match (inputs.clone(), outputs.clone()) {
+        match (inputs.clone(), outputs) {
             (RobloxInputs::AudioAsset(_), RobloxOutputs::AudioAsset(_)) => {
                 self.get_create_price(inputs, dependency_outputs)
             }

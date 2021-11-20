@@ -138,7 +138,7 @@ where
         }
     }
 
-    pub fn get_outputs(&self, resource_id: &ResourceId) -> Option<TOutputs> {
+    pub fn get_outputs(&self, resource_id: &str) -> Option<TOutputs> {
         self.resources
             .get(resource_id)
             .map(|resource| resource.get_outputs())
@@ -230,7 +230,7 @@ where
         results: &mut EvaluateResults,
         failures_count: &mut u32,
         previous_graph: &ResourceGraph<TResource, TInputs, TOutputs>,
-        resource_id: &ResourceId,
+        resource_id: &str,
         operation_result: OperationResult<TOutputs>,
     ) {
         // TODO: Improve DRY here
@@ -312,7 +312,7 @@ where
         &self,
         previous_graph: &ResourceGraph<TResource, TInputs, TOutputs>,
         manager: &mut TManager,
-        resource_id: &ResourceId,
+        resource_id: &str,
     ) -> OperationResult<TOutputs>
     where
         TManager: ResourceManager<TInputs, TOutputs>,
@@ -346,7 +346,7 @@ where
         &self,
         previous_graph: &ResourceGraph<TResource, TInputs, TOutputs>,
         manager: &mut TManager,
-        resource_id: &ResourceId,
+        resource_id: &str,
         allow_purchases: bool,
     ) -> OperationResult<TOutputs>
     where

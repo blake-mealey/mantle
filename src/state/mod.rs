@@ -329,7 +329,7 @@ fn get_desired_experience_graph(
                 RobloxInputs::Product(ProductInputs {
                     name: product.name.clone(),
                     description: product.description.clone(),
-                    price: product.price.clone(),
+                    price: product.price,
                 }),
                 &[&experience],
             );
@@ -358,7 +358,7 @@ fn get_desired_experience_graph(
                 RobloxInputs::Pass(PassInputs {
                     name: pass.name.clone(),
                     description: pass.description.clone(),
-                    price: pass.price.clone(),
+                    price: pass.price,
                     icon_file_path: pass.icon.clone(),
                 }),
                 &[&experience],
@@ -533,7 +533,7 @@ pub fn import_graph(
     let experience_configuration = roblox_api.get_experience_configuration(experience_id)?;
     resources.push(RobloxResource::existing(
         "experienceConfiguration_singleton",
-        RobloxInputs::ExperienceConfiguration(experience_configuration.into()),
+        RobloxInputs::ExperienceConfiguration(experience_configuration),
         RobloxOutputs::ExperienceConfiguration,
         &[&experience],
     ));

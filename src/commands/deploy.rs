@@ -1,79 +1,63 @@
 use std::str;
 
-use serde::de;
 use yansi::Paint;
 
 use crate::{
     config::TargetConfig,
     logger,
     project::{load_project, Project},
-    safe_resource_manager::RobloxResourceManager,
+    safe_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource, RobloxResourceManager},
     safe_resources::{EvaluateResults, ResourceGraph},
     state::save_state,
     util::run_command,
 };
 
-// fn get_output<T>(graph: &ResourceGraph, input_ref: &InputId) -> Option<T>
-// where
-//     T: de::DeserializeOwned,
-// {
-//     graph
-//         .get_resource_from_input_ref(input_ref)
-//         .map(|r| {
-//             r.get_output_from_input_ref(input_ref)
-//                 .ok()
-//                 .map(|v| serde_yaml::from_value::<T>(v).ok())
-//                 .flatten()
-//         })
-//         .flatten()
-// }
+fn tag_commit(
+    target_config: &TargetConfig,
+    next_graph: &ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>,
+    previous_graph: &ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>,
+) -> Result<u32, String> {
+    let mut tag_count: u32 = 0;
 
-// fn tag_commit(
-//     target_config: &TargetConfig,
-//     next_graph: &ResourceGraph,
-//     previous_graph: &ResourceGraph,
-// ) -> Result<u32, String> {
-//     let mut tag_count: u32 = 0;
+    #[allow(irrefutable_let_patterns)]
+    if let TargetConfig::Experience(target_config) = target_config {
+        for name in target_config.places.as_ref().unwrap().keys() {
+            let input_id = format!("placeFile_{}", name);
 
-//     #[allow(irrefutable_let_patterns)]
-//     if let TargetConfig::Experience(target_config) = target_config {
-//         for name in target_config.places.as_ref().unwrap().keys() {
-//             let input_ref = (
-//                 resource_types::PLACE_FILE.to_owned(),
-//                 name.to_owned(),
-//                 "version".to_owned(),
-//             );
-//             let previous_version_output = get_output::<u32>(previous_graph, &input_ref);
-//             let next_version_output = get_output::<u32>(next_graph, &input_ref);
+            let previous_outputs = previous_graph.get_outputs(&input_id);
+            let next_outputs = next_graph.get_outputs(&input_id);
 
-//             let tag_version = match (previous_version_output, next_version_output) {
-//                 (None, Some(version)) => Some(version),
-//                 (Some(previous), Some(next)) if next != previous => Some(next),
-//                 _ => None,
-//             };
+            let tag_version = match (previous_outputs, next_outputs) {
+                (None, Some(RobloxOutputs::PlaceFile(next))) => Some(next.version),
+                (
+                    Some(RobloxOutputs::PlaceFile(previous)),
+                    Some(RobloxOutputs::PlaceFile(next)),
+                ) if next.version != previous.version => Some(next.version),
+                _ => None,
+            };
 
-//             if let Some(version) = tag_version {
-//                 logger::log(format!(
-//                     "Place {} was updated to version {}",
-//                     Paint::cyan(name),
-//                     Paint::cyan(version)
-//                 ));
-//                 let tag = format!("{}-v{}", name, version);
-//                 logger::log(format!("Tagging commit with {}", Paint::cyan(tag.clone())));
+            if let Some(version) = tag_version {
+                logger::log(format!(
+                    "Place {} was updated to version {}",
+                    Paint::cyan(name),
+                    Paint::cyan(version)
+                ));
+                let tag = format!("{}-v{}", name, version);
+                logger::log(format!("Tagging commit with {}", Paint::cyan(tag.clone())));
 
-//                 tag_count += 1;
-//                 run_command(&format!("git tag {}", tag))
-//                     .map_err(|e| format!("Unable to tag the current commit\n\t{}", e))?;
-//             }
-//         }
-//     }
+                tag_count += 1;
+                run_command(&format!("git tag {}", tag))
+                    .map_err(|e| format!("Unable to tag the current commit\n\t{}", e))?;
+            }
+        }
+    }
 
-//     if tag_count > 0 {
-//         run_command("git push --tags")
-//             .map_err(|e| format!("Unable to push tags to remote\n\t{}", e))?;
-//     }
-//     Ok(tag_count)
-// }
+    if tag_count > 0 {
+        run_command("git push --tags")
+            .map_err(|e| format!("Unable to push tags to remote\n\t{}", e))?;
+    }
+    Ok(tag_count)
+}
 
 pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchases: bool) -> i32 {
     logger::start_action("Loading project:");
@@ -130,16 +114,16 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
         }
     };
 
-    // if environment_config.tag_commit && matches!(results, Ok(_)) {
-    //     logger::start_action("Tagging commit:");
-    //     match tag_commit(&target_config, &next_graph, &previous_graph) {
-    //         Ok(0) => logger::end_action("No tagging required"),
-    //         Ok(tag_count) => {
-    //             logger::end_action(format!("Succeeded in pushing {} tag(s)", tag_count))
-    //         }
-    //         Err(e) => logger::end_action(Paint::red(e)),
-    //     };
-    // }
+    if environment_config.tag_commit && matches!(results, Ok(_)) {
+        logger::start_action("Tagging commit:");
+        match tag_commit(&target_config, &next_graph, &previous_graph) {
+            Ok(0) => logger::end_action("No tagging required"),
+            Ok(tag_count) => {
+                logger::end_action(format!("Succeeded in pushing {} tag(s)", tag_count))
+            }
+            Err(e) => logger::end_action(Paint::red(e)),
+        };
+    }
 
     logger::start_action("Saving state:");
     state.environments.insert(

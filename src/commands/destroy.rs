@@ -5,8 +5,8 @@ use yansi::Paint;
 use crate::{
     logger,
     project::{load_project, Project},
-    resource_manager::RobloxResourceManager,
-    resources::{EvaluateResults, ResourceGraph},
+    safe_resource_manager::RobloxResourceManager,
+    safe_resources::{EvaluateResults, ResourceGraph},
     state::save_state,
 };
 

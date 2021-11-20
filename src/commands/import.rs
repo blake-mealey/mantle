@@ -3,9 +3,9 @@ use yansi::Paint;
 use crate::{
     logger,
     project::{load_project, Project},
-    resource_manager::AssetId,
     roblox_api::RobloxApi,
     roblox_auth::RobloxAuth,
+    safe_resource_manager::AssetId,
     state::{import_graph, save_state},
 };
 

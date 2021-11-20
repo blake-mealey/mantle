@@ -96,11 +96,6 @@ pub struct EvaluateResults {
     pub skipped_count: u32,
 }
 
-enum CreateOrUpdate {
-    Create,
-    Update,
-}
-
 enum OperationResult<TOutputs> {
     Skipped(String),
     Noop,

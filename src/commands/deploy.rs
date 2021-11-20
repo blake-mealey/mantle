@@ -6,8 +6,8 @@ use crate::{
     config::TargetConfig,
     logger,
     project::{load_project, Project},
-    roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource, RobloxResourceManager},
     resource_graph::{EvaluateResults, ResourceGraph},
+    roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource, RobloxResourceManager},
     state::save_state,
     util::run_command,
 };

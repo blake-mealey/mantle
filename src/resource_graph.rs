@@ -105,8 +105,8 @@ enum OperationResult<TOutputs> {
     SucceededUpdate(TOutputs),
 }
 
-fn get_changeset(previous_inputs_hash: &str, new_inputs_hash: &str) -> Changeset {
-    Changeset::new(previous_inputs_hash, new_inputs_hash, "\n")
+fn get_changeset(previous_hash: &str, new_hash: &str) -> Changeset {
+    Changeset::new(previous_hash, new_hash, "\n")
 }
 
 pub struct ResourceGraph<TResource, TInputs, TOutputs>
@@ -238,7 +238,11 @@ where
             OperationResult::SucceededDelete => {
                 // No need to update the graph since it's already not present
                 results.deleted_count += 1;
-                logger::end_action("Succeeded");
+                let previous_resource = previous_graph.resources.get(resource_id).unwrap();
+                logger::end_action_with_results(
+                    "Succeeded with outputs:",
+                    get_changeset(&previous_resource.get_outputs_hash(), ""),
+                );
             }
             OperationResult::SucceededCreate(outputs) => {
                 // Update the resource with the new outputs
@@ -246,10 +250,9 @@ where
                 resource.set_outputs(outputs);
 
                 results.created_count += 1;
-                // TODO: Do we want the "Succeeded" with no outputs message?
                 logger::end_action_with_results(
                     "Succeeded with outputs:",
-                    resource.get_outputs_hash(),
+                    get_changeset("", &resource.get_outputs_hash()),
                 );
             }
             OperationResult::SucceededUpdate(outputs) => {
@@ -258,10 +261,13 @@ where
                 resource.set_outputs(outputs);
 
                 results.updated_count += 1;
-                // TODO: Do we want the "Succeeded" with no outputs message?
+                let previous_resource = previous_graph.resources.get(resource_id).unwrap();
                 logger::end_action_with_results(
                     "Succeeded with outputs:",
-                    resource.get_outputs_hash(),
+                    get_changeset(
+                        &previous_resource.get_outputs_hash(),
+                        &resource.get_outputs_hash(),
+                    ),
                 );
             }
             OperationResult::Noop => {
@@ -323,12 +329,15 @@ where
             .expect("Previous graph should be complete.");
 
         let inputs_hash = resource.get_inputs_hash();
+        let dependencies_hash = self.get_dependency_outputs_hash(dependency_outputs.clone());
         logger::start_action(format!(
             "{} Deleting: {}",
             Paint::red("-"),
             resource.get_id()
         ));
-        // TODO: we should print dependency outputs too
+        logger::log("Dependencies:");
+        logger::log_changeset(get_changeset(&dependencies_hash, &dependencies_hash));
+        logger::log("Inputs:");
         logger::log_changeset(get_changeset(&inputs_hash, ""));
 
         match manager.delete(
@@ -390,13 +399,13 @@ where
 
             // This resource has changed
             logger::start_action(format!("{} Updating: {}", Paint::yellow("~"), resource_id));
-            logger::log("Inputs:");
-            logger::log_changeset(get_changeset(&previous_hash, &inputs_hash));
             logger::log("Dependencies:");
             logger::log_changeset(get_changeset(
                 &previous_dependencies_hash,
                 &dependencies_hash,
             ));
+            logger::log("Inputs:");
+            logger::log_changeset(get_changeset(&previous_hash, &inputs_hash));
 
             let outputs = previous_resource
                 .get_outputs()
@@ -432,8 +441,6 @@ where
         } else {
             // Create
             logger::start_action(format!("{} Creating: {}", Paint::green("+"), resource_id));
-            logger::log("Inputs:");
-            logger::log_changeset(get_changeset("", &inputs_hash));
 
             let dependency_outputs = match dependency_outputs {
                 Some(v) => v,
@@ -446,7 +453,9 @@ where
             let dependencies_hash = self.get_dependency_outputs_hash(dependency_outputs.clone());
 
             logger::log("Dependencies:");
-            logger::log_changeset(get_changeset("", &dependencies_hash));
+            logger::log_changeset(get_changeset(&dependencies_hash, &dependencies_hash));
+            logger::log("Inputs:");
+            logger::log_changeset(get_changeset("", &inputs_hash));
 
             match manager.get_create_price(resource.get_inputs(), dependency_outputs.clone()) {
                 Ok(Some(price)) if price > 0 => {

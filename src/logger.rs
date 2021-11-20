@@ -58,10 +58,9 @@ where
     ACTION_COUNT.fetch_add(1, Ordering::SeqCst);
 }
 
-fn end_action_internal<S1, S2>(message: S1, results: Option<S2>)
+fn end_action_internal<S>(message: S, results: Option<Changeset>)
 where
-    S1: Display,
-    S2: Display,
+    S: Display,
 {
     if ACTION_COUNT.load(Ordering::SeqCst) == 0 {
         panic!("Attempted to end an action that was not started.");
@@ -71,11 +70,7 @@ where
     ACTION_COUNT.fetch_sub(1, Ordering::SeqCst);
     log(&format!("{}╰─ {}", SPACING, message));
     if let Some(results) = results {
-        log(&with_prefix_and_style(
-            results,
-            format!("{0}{0}{0} ", SPACING),
-            Style::default().dimmed(),
-        ));
+        log_changeset_with_prefix(results, format!("{0}{0} ", SPACING));
     }
     log("");
 }
@@ -84,38 +79,44 @@ pub fn end_action<S>(message: S)
 where
     S: Display,
 {
-    end_action_internal(message, None::<String>);
+    end_action_internal(message, None);
 }
 
-pub fn end_action_with_results<S1, S2>(message: S1, results: S2)
+pub fn end_action_with_results<S>(message: S, results: Changeset)
 where
-    S1: Display,
-    S2: Display,
+    S: Display,
 {
     end_action_internal(message, Some(results));
 }
 
-pub fn log_changeset(changeset: Changeset) {
+pub fn log_changeset_with_prefix<S>(changeset: Changeset, prefix: S)
+where
+    S: Display,
+{
     log(&changeset
         .diffs
         .iter()
         .map(|diff| match diff {
             Difference::Same(same) => with_prefix_and_style(
                 same,
-                format!("{}{}", SPACING, SPACING),
+                format!("{}{}{}", prefix, SPACING, SPACING),
                 Style::default().dimmed(),
             ),
             Difference::Add(add) => with_prefix_and_style(
                 add,
-                &format!("{}{} ", SPACING, Paint::green("+")),
+                &format!("{}{}{} ", prefix, SPACING, Paint::green("+")),
                 Style::new(Color::Green),
             ),
             Difference::Rem(rem) => with_prefix_and_style(
                 rem,
-                &format!("{}{} ", SPACING, Paint::red("-")),
+                &format!("{}{}{} ", prefix, SPACING, Paint::red("-")),
                 Style::new(Color::Red),
             ),
         })
         .collect::<Vec<String>>()
         .join(&changeset.split));
+}
+
+pub fn log_changeset(changeset: Changeset) {
+    log_changeset_with_prefix(changeset, "");
 }

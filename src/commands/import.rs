@@ -5,7 +5,7 @@ use crate::{
     project::{load_project, Project},
     roblox_api::RobloxApi,
     roblox_auth::RobloxAuth,
-    safe_resource_manager::AssetId,
+    roblox_resource_manager::AssetId,
     state::{import_graph, save_state},
 };
 

@@ -4,6 +4,9 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    resource_graph::{
+        all_outputs, optional_output, single_output, Resource, ResourceId, ResourceManager,
+    },
     roblox_api::{
         CreateAudioAssetResponse, CreateBadgeResponse, CreateDeveloperProductResponse,
         CreateExperienceResponse, CreateGamePassResponse, CreateImageAssetResponse,
@@ -12,9 +15,6 @@ use crate::{
         PlaceConfigurationModel, RobloxApi, SocialLinkType, UploadImageResponse,
     },
     roblox_auth::RobloxAuth,
-    safe_resources::{
-        all_outputs, optional_output, single_output, Resource, ResourceId, ResourceManager,
-    },
 };
 
 pub type AssetId = u64;

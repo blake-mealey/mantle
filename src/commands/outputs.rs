@@ -5,7 +5,7 @@ use yansi::Paint;
 use crate::{
     logger,
     project::{load_project, Project},
-    safe_resources::Resource,
+    resource_graph::Resource,
 };
 
 pub async fn run(

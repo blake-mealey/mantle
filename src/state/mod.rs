@@ -22,9 +22,9 @@ use crate::{
         PlayabilityTargetConfig, RemoteStateConfig, StateConfig, TargetConfig,
     },
     logger,
+    resource_graph::ResourceGraph,
     roblox_api::{CreatorType, GetExperienceResponse, RobloxApi, SocialLinkType},
-    safe_resource_manager::*,
-    safe_resources::ResourceGraph,
+    roblox_resource_manager::*,
 };
 
 use self::{v1::ResourceStateV1, v2::ResourceStateV2, v3::ResourceStateV3};

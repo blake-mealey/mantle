@@ -10,7 +10,7 @@ use crate::{
         ExperienceConfigurationModel, ExperienceGenre, ExperiencePlayableDevice,
         PlaceConfigurationModel, SocialSlotType,
     },
-    safe_resource_manager::AssetId,
+    roblox_resource_manager::AssetId,
 };
 
 #[derive(Deserialize)]

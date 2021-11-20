@@ -11,9 +11,9 @@ use crate::{
         StateConfig, TargetConfig,
     },
     logger,
+    resource_graph::ResourceGraph,
     roblox_api::CreatorType,
-    safe_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource},
-    safe_resources::ResourceGraph,
+    roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource},
     state::{get_desired_graph, get_previous_state, ResourceStateVLatest},
     util::run_command,
 };

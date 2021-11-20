@@ -9,7 +9,7 @@ use url::Url;
 
 use crate::{
     roblox_auth::{AuthType, RequestExt, RobloxAuth},
-    safe_resource_manager::AssetId,
+    roblox_resource_manager::AssetId,
 };
 
 #[derive(Deserialize, Debug)]

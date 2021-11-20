@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    safe_resource_manager::*,
-    safe_resources::{Resource, ResourceId},
+    roblox_resource_manager::*,
+    resource_graph::{Resource, ResourceId},
 };
 
 use super::{

@@ -3,10 +3,10 @@ mod commands;
 mod config;
 mod logger;
 mod project;
+mod resource_graph;
 mod roblox_api;
 mod roblox_auth;
-mod safe_resource_manager;
-mod safe_resources;
+mod roblox_resource_manager;
 mod state;
 mod util;
 

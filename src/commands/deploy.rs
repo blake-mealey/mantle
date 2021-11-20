@@ -1,54 +1,38 @@
 use std::str;
 
-use serde::de;
 use yansi::Paint;
 
 use crate::{
     config::TargetConfig,
     logger,
     project::{load_project, Project},
-    resource_manager::{resource_types, RobloxResourceManager},
-    resources::{EvaluateResults, InputRef, ResourceGraph},
+    resource_graph::{EvaluateResults, ResourceGraph},
+    roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource, RobloxResourceManager},
     state::save_state,
     util::run_command,
 };
 
-fn get_output<T>(graph: &ResourceGraph, input_ref: &InputRef) -> Option<T>
-where
-    T: de::DeserializeOwned,
-{
-    graph
-        .get_resource_from_input_ref(input_ref)
-        .map(|r| {
-            r.get_output_from_input_ref(input_ref)
-                .ok()
-                .map(|v| serde_yaml::from_value::<T>(v).ok())
-                .flatten()
-        })
-        .flatten()
-}
-
 fn tag_commit(
     target_config: &TargetConfig,
-    next_graph: &ResourceGraph,
-    previous_graph: &ResourceGraph,
+    next_graph: &ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>,
+    previous_graph: &ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>,
 ) -> Result<u32, String> {
     let mut tag_count: u32 = 0;
 
     #[allow(irrefutable_let_patterns)]
     if let TargetConfig::Experience(target_config) = target_config {
         for name in target_config.places.as_ref().unwrap().keys() {
-            let input_ref = (
-                resource_types::PLACE_FILE.to_owned(),
-                name.to_owned(),
-                "version".to_owned(),
-            );
-            let previous_version_output = get_output::<u32>(previous_graph, &input_ref);
-            let next_version_output = get_output::<u32>(next_graph, &input_ref);
+            let input_id = format!("placeFile_{}", name);
 
-            let tag_version = match (previous_version_output, next_version_output) {
-                (None, Some(version)) => Some(version),
-                (Some(previous), Some(next)) if next != previous => Some(next),
+            let previous_outputs = previous_graph.get_outputs(&input_id);
+            let next_outputs = next_graph.get_outputs(&input_id);
+
+            let tag_version = match (previous_outputs, next_outputs) {
+                (None, Some(RobloxOutputs::PlaceFile(next))) => Some(next.version),
+                (
+                    Some(RobloxOutputs::PlaceFile(previous)),
+                    Some(RobloxOutputs::PlaceFile(next)),
+                ) if next.version != previous.version => Some(next.version),
                 _ => None,
             };
 

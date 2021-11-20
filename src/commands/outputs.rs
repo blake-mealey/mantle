@@ -5,7 +5,7 @@ use yansi::Paint;
 use crate::{
     logger,
     project::{load_project, Project},
-    resources::ResourceRef,
+    resource_graph::Resource,
 };
 
 pub async fn run(
@@ -28,19 +28,10 @@ pub async fn run(
     };
 
     let resources = previous_graph.get_resource_list();
-    let outputs_list: Vec<(ResourceRef, &BTreeMap<String, serde_yaml::Value>)> = resources
+    let outputs_map = resources
         .iter()
-        .filter_map(|r| r.outputs.as_ref().map(|o| (r.get_ref(), o)))
-        .collect();
-
-    let mut outputs_map: BTreeMap<String, BTreeMap<String, BTreeMap<String, serde_yaml::Value>>> =
-        BTreeMap::new();
-    for ((resource_type, resource_id), outputs) in outputs_list {
-        let type_map = outputs_map
-            .entry(resource_type)
-            .or_insert_with(BTreeMap::new);
-        type_map.insert(resource_id, outputs.clone());
-    }
+        .map(|r| (r.get_id(), r.get_outputs()))
+        .collect::<BTreeMap<_, _>>();
 
     let outputs_string = match match format {
         "json" => serde_json::to_string_pretty(&outputs_map).map_err(|e| e.to_string()),

@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 use crate::{
-    resource_manager::AssetId,
     roblox_api::{
         AssetTypeId, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
         ExperienceConfigurationModel, ExperienceGenre, ExperiencePlayableDevice,
         PlaceConfigurationModel, SocialSlotType,
     },
+    roblox_resource_manager::AssetId,
 };
 
 #[derive(Deserialize)]

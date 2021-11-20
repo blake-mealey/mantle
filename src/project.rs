@@ -11,9 +11,10 @@ use crate::{
         StateConfig, TargetConfig,
     },
     logger,
-    resources::ResourceGraph,
+    resource_graph::ResourceGraph,
     roblox_api::CreatorType,
-    state::{get_desired_graph, get_previous_state, ResourceStateV2},
+    roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource},
+    state::{get_desired_graph, get_previous_state, ResourceStateVLatest},
     util::run_command,
 };
 
@@ -108,9 +109,9 @@ fn get_target_config(
 
 pub struct Project {
     pub project_path: PathBuf,
-    pub next_graph: ResourceGraph,
-    pub previous_graph: ResourceGraph,
-    pub state: ResourceStateV2,
+    pub next_graph: ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>,
+    pub previous_graph: ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>,
+    pub state: ResourceStateVLatest,
     pub environment_config: EnvironmentConfig,
     pub target_config: TargetConfig,
     pub payment_source: CreatorType,

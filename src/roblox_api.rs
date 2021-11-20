@@ -3,13 +3,13 @@ use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use std::{clone::Clone, collections::HashMap, ffi::OsStr, fmt, fs, path::Path};
+use std::{clone::Clone, collections::HashMap, ffi::OsStr, fmt, fs, path::PathBuf};
 use ureq::{Cookie, Response};
 use url::Url;
 
 use crate::{
-    resource_manager::AssetId,
     roblox_auth::{AuthType, RequestExt, RobloxAuth},
+    roblox_resource_manager::AssetId,
 };
 
 #[derive(Deserialize, Debug)]
@@ -639,8 +639,8 @@ impl RobloxApi {
             .ok_or(format!("Response did not include a {} cookie", name))
     }
 
-    pub fn upload_place(&mut self, place_file: &Path, place_id: AssetId) -> Result<(), String> {
-        let data = match fs::read_to_string(place_file) {
+    pub fn upload_place(&mut self, place_file: PathBuf, place_id: AssetId) -> Result<(), String> {
+        let data = match fs::read_to_string(&place_file) {
             Ok(v) => v,
             Err(e) => {
                 return Err(format!(
@@ -929,10 +929,10 @@ impl RobloxApi {
 
     fn create_multipart_form_from_file(
         file_field_name: String,
-        image_file: &Path,
+        image_file: PathBuf,
         text_fields: Option<HashMap<String, String>>,
-    ) -> Result<PreparedFields, String> {
-        let stream = fs::File::open(image_file)
+    ) -> Result<PreparedFields<'static>, String> {
+        let stream = fs::File::open(&image_file)
             .map_err(|e| format!("Failed to open image file {}: {}", image_file.display(), e))?;
         let file_name = Some(
             image_file
@@ -940,7 +940,7 @@ impl RobloxApi {
                 .and_then(OsStr::to_str)
                 .ok_or("Unable to determine image name")?,
         );
-        let mime = Some(mime_guess::from_path(image_file).first_or_octet_stream());
+        let mime = Some(mime_guess::from_path(&image_file).first_or_octet_stream());
 
         let mut multipart = Self::internal_create_multipart_form(text_fields);
 
@@ -958,7 +958,7 @@ impl RobloxApi {
     pub fn upload_icon(
         &mut self,
         experience_id: AssetId,
-        icon_file: &Path,
+        icon_file: PathBuf,
     ) -> Result<UploadImageResponse, String> {
         let multipart =
             Self::create_multipart_form_from_file("request.files".to_owned(), icon_file, None)?;
@@ -1002,7 +1002,7 @@ impl RobloxApi {
     pub fn upload_thumbnail(
         &mut self,
         experience_id: AssetId,
-        thumbnail_file: &Path,
+        thumbnail_file: PathBuf,
     ) -> Result<UploadImageResponse, String> {
         let multipart = Self::create_multipart_form_from_file(
             "request.files".to_owned(),
@@ -1085,7 +1085,7 @@ impl RobloxApi {
     pub fn create_developer_product_icon(
         &mut self,
         experience_id: AssetId,
-        icon_file: &Path,
+        icon_file: PathBuf,
     ) -> Result<AssetId, String> {
         let (image_verification_token, request_verification_token) = {
             let res = ureq::get("https://www.roblox.com/places/create-developerproduct")
@@ -1149,7 +1149,7 @@ impl RobloxApi {
         experience_id: AssetId,
         name: String,
         price: u32,
-        description: String,
+        description: Option<String>,
         icon_asset_id: Option<AssetId>,
     ) -> Result<CreateDeveloperProductResponse, String> {
         let mut req = ureq::post(&format!(
@@ -1158,7 +1158,7 @@ impl RobloxApi {
         ))
         .query("name", &name)
         .query("priceInRobux", &price.to_string())
-        .query("description", &description);
+        .query("description", &description.unwrap_or_default());
         if let Some(icon_asset_id) = icon_asset_id {
             req = req.query("iconImageAssetId", &icon_asset_id.to_string());
         }
@@ -1413,7 +1413,7 @@ impl RobloxApi {
         developer_product_id: AssetId,
         name: String,
         price: u32,
-        description: String,
+        description: Option<String>,
         icon_asset_id: Option<AssetId>,
     ) -> Result<(), String> {
         let res = ureq::post(&format!(
@@ -1438,7 +1438,7 @@ impl RobloxApi {
         start_place_id: AssetId,
         name: String,
         description: Option<String>,
-        icon_file: &Path,
+        icon_file: PathBuf,
     ) -> Result<CreateGamePassResponse, String> {
         let (form_verification_token, request_verification_token) = {
             let res = ureq::get("https://www.roblox.com/build/upload")
@@ -1580,7 +1580,7 @@ impl RobloxApi {
     pub fn update_game_pass_icon(
         &mut self,
         game_pass_id: AssetId,
-        icon_file: &Path,
+        icon_file: PathBuf,
     ) -> Result<UploadImageResponse, String> {
         let multipart =
             Self::create_multipart_form_from_file("request.files".to_owned(), icon_file, None)?;
@@ -1609,7 +1609,7 @@ impl RobloxApi {
         experience_id: AssetId,
         name: String,
         description: Option<String>,
-        icon_file_path: &Path,
+        icon_file_path: PathBuf,
         payment_source: CreatorType,
     ) -> Result<CreateBadgeResponse, String> {
         let mut text_fields = HashMap::new();
@@ -1717,7 +1717,7 @@ impl RobloxApi {
     pub fn update_badge_icon(
         &mut self,
         badge_id: AssetId,
-        icon_file: &Path,
+        icon_file: PathBuf,
     ) -> Result<UploadImageResponse, String> {
         let multipart =
             Self::create_multipart_form_from_file("request.files".to_owned(), icon_file, None)?;
@@ -1843,10 +1843,10 @@ impl RobloxApi {
 
     pub fn create_image_asset(
         &mut self,
-        file_path: &Path,
+        file_path: PathBuf,
         group_id: Option<AssetId>,
     ) -> Result<CreateImageAssetResponse, String> {
-        let data = fs::read(file_path).map_err(|e| {
+        let data = fs::read(&file_path).map_err(|e| {
             format!(
                 "Unable to read image asset file: {}\n\t{}",
                 file_path.display(),
@@ -1884,10 +1884,10 @@ impl RobloxApi {
 
     pub fn get_create_audio_asset_price(
         &mut self,
-        file_path: &Path,
+        file_path: PathBuf,
         group_id: Option<AssetId>,
     ) -> Result<GetCreateAudioAssetPriceResponse, String> {
-        let data = fs::read(file_path).map_err(|e| {
+        let data = fs::read(&file_path).map_err(|e| {
             format!(
                 "Unable to read audio asset file: {}\n\t{}",
                 file_path.display(),
@@ -1926,11 +1926,11 @@ impl RobloxApi {
 
     pub fn create_audio_asset(
         &mut self,
-        file_path: &Path,
+        file_path: PathBuf,
         group_id: Option<AssetId>,
         payment_source: CreatorType,
     ) -> Result<CreateAudioAssetResponse, String> {
-        let data = fs::read(file_path).map_err(|e| {
+        let data = fs::read(&file_path).map_err(|e| {
             format!(
                 "Unable to read audio asset file: {}\n\t{}",
                 file_path.display(),

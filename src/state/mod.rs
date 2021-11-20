@@ -328,7 +328,7 @@ fn get_desired_experience_graph(
                 &format!("product_{}", name),
                 RobloxInputs::Product(ProductInputs {
                     name: product.name.clone(),
-                    description: product.description.clone(),
+                    description: product.description.clone().unwrap_or_default(),
                     price: product.price,
                 }),
                 &[&experience],
@@ -357,7 +357,7 @@ fn get_desired_experience_graph(
                 &format!("pass_{}", name),
                 RobloxInputs::Pass(PassInputs {
                     name: pass.name.clone(),
-                    description: pass.description.clone(),
+                    description: pass.description.clone().unwrap_or_default(),
                     price: pass.price,
                     icon_file_path: pass.icon.clone(),
                 }),
@@ -381,7 +381,7 @@ fn get_desired_experience_graph(
                 &format!("badge_{}", name),
                 RobloxInputs::Badge(BadgeInputs {
                     name: badge.name.clone(),
-                    description: badge.description.clone(),
+                    description: badge.description.clone().unwrap_or_default(),
                     enabled: badge.enabled.unwrap_or(true),
                     icon_file_path: badge.icon.clone(),
                 }),
@@ -662,7 +662,7 @@ pub fn import_graph(
             &format!("pass_{}", pass.target_id),
             RobloxInputs::Pass(PassInputs {
                 name: pass.name,
-                description: Some(pass.description),
+                description: pass.description,
                 price: pass.price_in_robux,
                 icon_file_path: "fake-path".to_owned(),
             }),
@@ -692,7 +692,7 @@ pub fn import_graph(
             &format!("badge_{}", badge.id),
             RobloxInputs::Badge(BadgeInputs {
                 name: badge.name,
-                description: Some(badge.description),
+                description: badge.description,
                 enabled: badge.enabled,
                 icon_file_path: "fake-path".to_owned(),
             }),

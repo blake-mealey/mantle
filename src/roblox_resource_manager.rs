@@ -56,7 +56,7 @@ pub struct SocialLinkInputs {
 #[serde(rename_all = "camelCase")]
 pub struct ProductInputs {
     pub name: String,
-    pub description: Option<String>,
+    pub description: String,
     pub price: u32,
 }
 
@@ -64,7 +64,7 @@ pub struct ProductInputs {
 #[serde(rename_all = "camelCase")]
 pub struct PassInputs {
     pub name: String,
-    pub description: Option<String>,
+    pub description: String,
     pub price: Option<u32>,
     pub icon_file_path: String,
 }
@@ -73,7 +73,7 @@ pub struct PassInputs {
 #[serde(rename_all = "camelCase")]
 pub struct BadgeInputs {
     pub name: String,
-    pub description: Option<String>,
+    pub description: String,
     pub enabled: bool,
     pub icon_file_path: String,
 }
@@ -796,7 +796,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     outputs.asset_id,
                     format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
                     0,
-                    Some("".to_owned()),
+                    "".to_owned(),
                     None,
                 )?;
             }
@@ -805,7 +805,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 self.roblox_api.update_game_pass(
                     outputs.asset_id,
                     format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
-                    Some("".to_owned()),
+                    "".to_owned(),
                     None,
                 )?;
             }
@@ -815,7 +815,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 self.roblox_api.update_badge(
                     outputs.asset_id,
                     format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
-                    Some("".to_owned()),
+                    "".to_owned(),
                     false,
                 )?;
             }

@@ -136,7 +136,7 @@ pub struct GetDeveloperProductResponse {
     pub product_id: AssetId,
     pub developer_product_id: AssetId,
     pub name: String,
-    pub description: Option<String>,
+    pub description: String,
     pub icon_image_asset_id: Option<AssetId>,
     pub price_in_robux: u32,
 }
@@ -1149,7 +1149,7 @@ impl RobloxApi {
         experience_id: AssetId,
         name: String,
         price: u32,
-        description: Option<String>,
+        description: String,
         icon_asset_id: Option<AssetId>,
     ) -> Result<CreateDeveloperProductResponse, String> {
         let mut req = ureq::post(&format!(
@@ -1158,7 +1158,7 @@ impl RobloxApi {
         ))
         .query("name", &name)
         .query("priceInRobux", &price.to_string())
-        .query("description", &description.unwrap_or_default());
+        .query("description", &description);
         if let Some(icon_asset_id) = icon_asset_id {
             req = req.query("iconImageAssetId", &icon_asset_id.to_string());
         }
@@ -1413,7 +1413,7 @@ impl RobloxApi {
         developer_product_id: AssetId,
         name: String,
         price: u32,
-        description: Option<String>,
+        description: String,
         icon_asset_id: Option<AssetId>,
     ) -> Result<(), String> {
         let res = ureq::post(&format!(
@@ -1437,7 +1437,7 @@ impl RobloxApi {
         &mut self,
         start_place_id: AssetId,
         name: String,
-        description: Option<String>,
+        description: String,
         icon_file: PathBuf,
     ) -> Result<CreateGamePassResponse, String> {
         let (form_verification_token, request_verification_token) = {
@@ -1470,9 +1470,7 @@ impl RobloxApi {
             text_fields.insert("assetTypeId".to_owned(), "34".to_owned());
             text_fields.insert("targetPlaceId".to_owned(), start_place_id.to_string());
             text_fields.insert("name".to_owned(), name.clone());
-            if let Some(description) = description.clone() {
-                text_fields.insert("description".to_owned(), description);
-            }
+            text_fields.insert("description".to_owned(), description.clone());
             let multipart = Self::create_multipart_form_from_file(
                 "file".to_owned(),
                 icon_file,
@@ -1516,9 +1514,7 @@ impl RobloxApi {
         text_fields.insert("assetTypeId".to_owned(), "34".to_owned());
         text_fields.insert("targetPlaceId".to_owned(), start_place_id.to_string());
         text_fields.insert("name".to_owned(), name);
-        if let Some(description) = description {
-            text_fields.insert("description".to_owned(), description);
-        }
+        text_fields.insert("description".to_owned(), description);
         text_fields.insert("assetImageId".to_owned(), icon_asset_id.to_string());
         let multipart = Self::create_multipart_form_from_fields(text_fields)?;
 
@@ -1559,7 +1555,7 @@ impl RobloxApi {
         &mut self,
         game_pass_id: AssetId,
         name: String,
-        description: Option<String>,
+        description: String,
         price: Option<u32>,
     ) -> Result<(), String> {
         let res = ureq::post("https://www.roblox.com/game-pass/update")
@@ -1608,15 +1604,13 @@ impl RobloxApi {
         &mut self,
         experience_id: AssetId,
         name: String,
-        description: Option<String>,
+        description: String,
         icon_file_path: PathBuf,
         payment_source: CreatorType,
     ) -> Result<CreateBadgeResponse, String> {
         let mut text_fields = HashMap::new();
         text_fields.insert("request.name".to_owned(), name);
-        if let Some(description) = description {
-            text_fields.insert("request.description".to_owned(), description);
-        }
+        text_fields.insert("request.description".to_owned(), description);
         text_fields.insert(
             "request.paymentSourceType".to_owned(),
             payment_source.to_string(),
@@ -1650,7 +1644,7 @@ impl RobloxApi {
         &mut self,
         badge_id: AssetId,
         name: String,
-        description: Option<String>,
+        description: String,
         enabled: bool,
     ) -> Result<(), String> {
         let res = ureq::request(

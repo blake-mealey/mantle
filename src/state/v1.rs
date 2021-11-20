@@ -176,6 +176,20 @@ impl From<ResourceStateV1> for ResourceStateV2 {
                         );
                     }
                 }
+
+                // Resources format change: add missing "description" defaults. Previously, these
+                // resources allowed "description" to be missing, but the new version requires that
+                // it is set.
+                if matches!(r_type, "developerProduct" | "gamePass" | "badge") {
+                    if let None | Some(Input::Value(Value::Null)) =
+                        resource.inputs.get("description")
+                    {
+                        resource.inputs.insert(
+                            "description".to_owned(),
+                            Input::Value(Value::String("".to_owned())),
+                        );
+                    };
+                }
             }
         }
 

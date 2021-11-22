@@ -37,7 +37,6 @@ impl RequestExt for ureq::Request {
 pub struct RobloxAuth {
     roblosecurity: Option<String>,
     csrf_token: Option<String>,
-    // verification_tokens: HashMap<String, String>,
 }
 
 impl RobloxAuth {
@@ -47,13 +46,13 @@ impl RobloxAuth {
 
     pub fn get_roblosecurity(&mut self) -> Result<String, String> {
         if self.roblosecurity.is_none() {
-            let var = match env::var("ROBLOSECURITY") {
-                Ok(v) => v,
-                Err(_) => {
-                    return Err("Please check your ROBLOSECURITY environment variable".to_owned())
-                }
+            self.roblosecurity = match env::var("ROBLOSECURITY").ok() {
+                Some(v) => Some(v),
+                None => get_roblosecurity_from_roblox_studio(),
             };
-            self.roblosecurity = Some(var);
+            if self.roblosecurity.is_none() {
+                return Err("Missing the ROBLOSECURITY environment variable".to_string());
+            }
         }
         Ok(self.roblosecurity.clone().unwrap())
     }
@@ -93,49 +92,35 @@ impl RobloxAuth {
         }
         Ok(self.csrf_token.clone().unwrap())
     }
+}
 
-    // pub fn get_verification_token(&mut self, url: String) -> Result<String, String> {
-    //     if let Some(verification_token) = self.verification_tokens.get(&url) {
-    //         return Ok(verification_token.to_owned());
-    //     }
+#[cfg(windows)]
+fn get_roblosecurity_from_roblox_studio() -> Option<String> {
+    use winreg::{enums::HKEY_CURRENT_USER, RegKey};
 
-    //     let res = ureq::get(&url)
-    //         .set_auth(AuthType::CookieAndCsrfToken, self)?
-    //         .send_string("");
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let key = hkcu
+        .open_subkey("SOFTWARE\\Roblox\\RobloxStudioBrowser\\roblox.com")
+        .ok()?;
+    let value: String = key.get_value(".ROBLOSECURITY").ok()?;
 
-    //     let response = match res {
-    //         Ok(response) => response,
-    //         Err(ureq::Error::Status(_code, response)) => response,
-    //         Err(e) => return Err(format!("Request for verification token failed: {}", e)),
-    //     };
+    for item in value.split(',') {
+        let parts = item.split("::").collect::<Vec<_>>();
+        match &parts[..] {
+            ["COOK", cookie] => {
+                if !cookie.starts_with('<') || !cookie.ends_with('>') {
+                    return None;
+                }
+                return Some(cookie[1..cookie.len() - 1].to_owned());
+            }
+            _ => continue,
+        }
+    }
 
-    //     let cookies = response.all("set-cookie");
-    //     for cookie in cookies {
-    //         let cookie = Cookie::parse(cookie).map_err(|e| {
-    //             format!(
-    //                 "Request for verification token's set-cookie header could not be parsed: {}",
-    //                 e
-    //             )
-    //         })?;
+    None
+}
 
-    //         if let ("__RequestVerificationToken", value) = cookie.name_value() {
-    //             self.verification_tokens
-    //                 .insert(url.clone(), value.to_owned());
-    //             return Ok(value.to_owned());
-    //         }
-    //     }
-
-    //     return Err(
-    //         "Request for verification token did not return a __RequestVerificationToken cookie"
-    //             .to_owned(),
-    //     );
-    // }
-
-    // pub fn get_verification_token_cookie(&mut self, url: String) -> Result<String, String> {
-    //     Ok(Cookie::new(
-    //         "__RequestVerificationToken",
-    //         self.get_verification_token(url)?.to_string(),
-    //     )
-    //     .to_string())
-    // }
+#[cfg(not(windows))]
+fn get_roblosecurity_from_roblox_studio() -> Option<String> {
+    None
 }

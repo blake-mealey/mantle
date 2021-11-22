@@ -597,7 +597,14 @@ impl RobloxApi {
         result: Result<ureq::Response, ureq::Error>,
     ) -> Result<ureq::Response, String> {
         match result {
-            Ok(response) => Ok(response),
+            Ok(response) => {
+                let url = Url::parse(response.get_url())
+                    .map_err(|e| format!("Invalid response URL: {}", e))?;
+                if matches!(url.domain(), Some("www.roblox.com")) && url.path() == "/NewLogin" {
+                    return Err("Authorization has been denied for this request.".to_owned());
+                }
+                Ok(response)
+            }
             Err(ureq::Error::Status(status, response)) => {
                 match Self::get_roblox_api_error_message(response) {
                     Some(message) => Err(message),

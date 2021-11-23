@@ -19,35 +19,36 @@ fn tag_commit(
 ) -> Result<u32, String> {
     let mut tag_count: u32 = 0;
 
-    #[allow(irrefutable_let_patterns)]
-    if let TargetConfig::Experience(target_config) = target_config {
-        for name in target_config.places.as_ref().unwrap().keys() {
-            let input_id = format!("placeFile_{}", name);
+    match target_config {
+        TargetConfig::Experience(target_config) => {
+            for name in target_config.places.as_ref().unwrap().keys() {
+                let resource_id = format!("placeFile_{}", name);
 
-            let previous_outputs = previous_graph.get_outputs(&input_id);
-            let next_outputs = next_graph.get_outputs(&input_id);
+                let previous_outputs = previous_graph.get_outputs(&resource_id);
+                let next_outputs = next_graph.get_outputs(&resource_id);
 
-            let tag_version = match (previous_outputs, next_outputs) {
-                (None, Some(RobloxOutputs::PlaceFile(next))) => Some(next.version),
-                (
-                    Some(RobloxOutputs::PlaceFile(previous)),
-                    Some(RobloxOutputs::PlaceFile(next)),
-                ) if next.version != previous.version => Some(next.version),
-                _ => None,
-            };
+                let tag_version = match (previous_outputs, next_outputs) {
+                    (None, Some(RobloxOutputs::PlaceFile(next))) => Some(next.version),
+                    (
+                        Some(RobloxOutputs::PlaceFile(previous)),
+                        Some(RobloxOutputs::PlaceFile(next)),
+                    ) if next.version != previous.version => Some(next.version),
+                    _ => None,
+                };
 
-            if let Some(version) = tag_version {
-                logger::log(format!(
-                    "Place {} was updated to version {}",
-                    Paint::cyan(name),
-                    Paint::cyan(version)
-                ));
-                let tag = format!("{}-v{}", name, version);
-                logger::log(format!("Tagging commit with {}", Paint::cyan(tag.clone())));
+                if let Some(version) = tag_version {
+                    logger::log(format!(
+                        "Place {} was updated to version {}",
+                        Paint::cyan(name),
+                        Paint::cyan(version)
+                    ));
+                    let tag = format!("{}-v{}", name, version);
+                    logger::log(format!("Tagging commit with {}", Paint::cyan(tag.clone())));
 
-                tag_count += 1;
-                run_command(&format!("git tag {}", tag))
-                    .map_err(|e| format!("Unable to tag the current commit\n\t{}", e))?;
+                    tag_count += 1;
+                    run_command(&format!("git tag {}", tag))
+                        .map_err(|e| format!("Unable to tag the current commit\n\t{}", e))?;
+                }
             }
         }
     }
@@ -56,7 +57,52 @@ fn tag_commit(
         run_command("git push --tags")
             .map_err(|e| format!("Unable to push tags to remote\n\t{}", e))?;
     }
+
     Ok(tag_count)
+}
+
+fn log_target_results(
+    target_config: &TargetConfig,
+    graph: &ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>,
+) {
+    logger::start_action("Target results:");
+    match target_config {
+        TargetConfig::Experience(target_config) => {
+            let experience_outputs = match graph.get_outputs("experience_singleton") {
+                Some(RobloxOutputs::Experience(outputs)) => Some(outputs),
+                _ => None,
+            };
+            logger::log("Experience:");
+            if let Some(outputs) = experience_outputs {
+                logger::log(format!(
+                    "  https://www.roblox.com/games/{}",
+                    outputs.start_place_id
+                ));
+            } else {
+                logger::log(Paint::red("  no outputs"));
+            }
+            logger::log("");
+
+            logger::log("Places:");
+            for name in target_config.places.as_ref().unwrap().keys() {
+                let resource_id = format!("place_{}", name);
+
+                let place_outputs = match graph.get_outputs(&resource_id) {
+                    Some(RobloxOutputs::Place(outputs)) => Some(outputs),
+                    _ => None,
+                };
+                if let Some(outputs) = place_outputs {
+                    logger::log(format!(
+                        "  {}: https://www.roblox.com/games/{}",
+                        name, outputs.asset_id
+                    ));
+                } else {
+                    logger::log(format!("  {}: {}", name, Paint::red("no outputs")));
+                }
+            }
+        }
+    }
+    logger::end_action_without_message();
 }
 
 pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchases: bool) -> i32 {
@@ -138,6 +184,8 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
         }
     };
     logger::end_action("Succeeded");
+
+    log_target_results(&target_config, &next_graph);
 
     match &results {
         Ok(_) => 0,

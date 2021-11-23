@@ -58,7 +58,7 @@ where
     ACTION_COUNT.fetch_add(1, Ordering::SeqCst);
 }
 
-fn end_action_internal<S>(message: S, results: Option<Changeset>)
+fn end_action_internal<S>(message: Option<S>, results: Option<Changeset>)
 where
     S: Display,
 {
@@ -68,10 +68,17 @@ where
 
     log("");
     ACTION_COUNT.fetch_sub(1, Ordering::SeqCst);
-    log(&format!("{}╰─ {}", SPACING, message));
+
+    if let Some(message) = message {
+        log(&format!("{}╰─ {}", SPACING, message));
+    } else {
+        log(&format!("{}╰──○", SPACING));
+    }
+
     if let Some(results) = results {
         log_changeset_with_prefix(results, format!("{0}{0} ", SPACING));
     }
+
     log("");
 }
 
@@ -79,14 +86,18 @@ pub fn end_action<S>(message: S)
 where
     S: Display,
 {
-    end_action_internal(message, None);
+    end_action_internal(Some(message), None);
 }
 
 pub fn end_action_with_results<S>(message: S, results: Changeset)
 where
     S: Display,
 {
-    end_action_internal(message, Some(results));
+    end_action_internal(Some(message), Some(results));
+}
+
+pub fn end_action_without_message() {
+    end_action_internal(None::<String>, None);
 }
 
 pub fn log_changeset_with_prefix<S>(changeset: Changeset, prefix: S)

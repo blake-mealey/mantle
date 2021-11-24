@@ -9,7 +9,7 @@ use crate::{
     state::{import_graph, save_state},
 };
 
-pub async fn run(project: Option<&str>, environment: Option<&str>, experience_id: &str) -> i32 {
+pub async fn run(project: Option<&str>, environment: Option<&str>, target_id: &str) -> i32 {
     logger::start_action("Loading project:");
     let Project {
         project_path,
@@ -37,12 +37,12 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, experience_id
 
     logger::end_action("Succeeded");
 
-    let experience_id = match experience_id.parse::<AssetId>() {
+    let target_id = match target_id.parse::<AssetId>() {
         Ok(v) => v,
         Err(e) => {
             logger::log(Paint::red(format!(
                 "Experience ID {} is invalid: {}",
-                experience_id, e
+                target_id, e
             )));
             return 1;
         }
@@ -64,7 +64,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, experience_id
         }
     };
 
-    let imported_graph = match import_graph(&roblox_api, experience_id).await {
+    let imported_graph = match import_graph(&roblox_api, target_id).await {
         Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(format!("Failed: {}", e)));

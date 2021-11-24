@@ -494,7 +494,7 @@ pub fn get_desired_graph(
 
 pub async fn import_graph(
     roblox_api: &RobloxApi,
-    experience_id: AssetId,
+    target_id: AssetId,
 ) -> Result<ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>, String> {
     let mut resources: Vec<RobloxResource> = Vec::new();
 
@@ -504,7 +504,7 @@ pub async fn import_graph(
         is_active: is_experience_active,
         creator_target_id,
         creator_type,
-    } = roblox_api.get_experience(experience_id).await?;
+    } = roblox_api.get_experience(target_id).await?;
 
     let group_id = match creator_type {
         CreatorType::User => None,
@@ -515,7 +515,7 @@ pub async fn import_graph(
         "experience_singleton",
         RobloxInputs::Experience(ExperienceInputs { group_id }),
         RobloxOutputs::Experience(ExperienceOutputs {
-            asset_id: experience_id,
+            asset_id: target_id,
             start_place_id,
         }),
         &[],
@@ -532,9 +532,7 @@ pub async fn import_graph(
     ));
 
     logger::log("Importing experience configuration");
-    let experience_configuration = roblox_api
-        .get_experience_configuration(experience_id)
-        .await?;
+    let experience_configuration = roblox_api.get_experience_configuration(target_id).await?;
     resources.push(RobloxResource::existing(
         "experienceConfiguration_singleton",
         RobloxInputs::ExperienceConfiguration(experience_configuration),
@@ -546,7 +544,7 @@ pub async fn import_graph(
     // the correct ID for it to be removed.
 
     logger::log("Importing experience thumbnails");
-    let thumbnails = roblox_api.get_experience_thumbnails(experience_id).await?;
+    let thumbnails = roblox_api.get_experience_thumbnails(target_id).await?;
     let mut thumbnail_resources: Vec<RobloxResource> = Vec::new();
     for thumbnail in thumbnails {
         thumbnail_resources.push(RobloxResource::existing(
@@ -573,7 +571,7 @@ pub async fn import_graph(
     resources.extend(thumbnail_resources);
 
     logger::log("Importing places");
-    let places = roblox_api.get_all_places(experience_id).await?;
+    let places = roblox_api.get_all_places(target_id).await?;
     for place in places {
         let resource_id = if place.is_root_place {
             "start".to_owned()
@@ -612,7 +610,7 @@ pub async fn import_graph(
     }
 
     logger::log("Importing social links");
-    let social_links = roblox_api.list_social_links(experience_id).await?;
+    let social_links = roblox_api.list_social_links(target_id).await?;
     for social_link in social_links {
         let domain = social_link
             .url
@@ -633,7 +631,7 @@ pub async fn import_graph(
     }
 
     logger::log("Importing products");
-    let developer_products = roblox_api.get_all_developer_products(experience_id).await?;
+    let developer_products = roblox_api.get_all_developer_products(target_id).await?;
     for product in developer_products {
         let mut product_resource = RobloxResource::existing(
             &format!("product_{}", product.product_id),
@@ -665,7 +663,7 @@ pub async fn import_graph(
     }
 
     logger::log("Importing passes");
-    let game_passes = roblox_api.get_all_game_passes(experience_id).await?;
+    let game_passes = roblox_api.get_all_game_passes(target_id).await?;
     for pass in game_passes {
         let pass_resource = RobloxResource::existing(
             &format!("pass_{}", pass.target_id),
@@ -696,7 +694,7 @@ pub async fn import_graph(
     }
 
     logger::log("Importing badges");
-    let badges = roblox_api.get_all_badges(experience_id).await?;
+    let badges = roblox_api.get_all_badges(target_id).await?;
     for badge in badges {
         let badge_resource = RobloxResource::existing(
             &format!("badge_{}", badge.id),
@@ -727,7 +725,7 @@ pub async fn import_graph(
     }
 
     logger::log("Importing assets");
-    let assets = roblox_api.get_all_asset_aliases(experience_id).await?;
+    let assets = roblox_api.get_all_asset_aliases(target_id).await?;
     for asset in assets {
         let resource_data = match asset.asset.type_id {
             1 => Some((

@@ -492,18 +492,19 @@ pub fn get_desired_graph(
     }
 }
 
-pub fn import_graph(
-    roblox_api: &mut RobloxApi,
+pub async fn import_graph(
+    roblox_api: &RobloxApi,
     experience_id: AssetId,
 ) -> Result<ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>, String> {
     let mut resources: Vec<RobloxResource> = Vec::new();
 
+    logger::log("Importing experience");
     let GetExperienceResponse {
         root_place_id: start_place_id,
         is_active: is_experience_active,
         creator_target_id,
         creator_type,
-    } = roblox_api.get_experience(experience_id)?;
+    } = roblox_api.get_experience(experience_id).await?;
 
     let group_id = match creator_type {
         CreatorType::User => None,
@@ -530,7 +531,10 @@ pub fn import_graph(
         &[&experience],
     ));
 
-    let experience_configuration = roblox_api.get_experience_configuration(experience_id)?;
+    logger::log("Importing experience configuration");
+    let experience_configuration = roblox_api
+        .get_experience_configuration(experience_id)
+        .await?;
     resources.push(RobloxResource::existing(
         "experienceConfiguration_singleton",
         RobloxInputs::ExperienceConfiguration(experience_configuration),
@@ -541,7 +545,8 @@ pub fn import_graph(
     // We intentionally do not import the game icon because we do not know of an API which returns
     // the correct ID for it to be removed.
 
-    let thumbnails = roblox_api.get_experience_thumbnails(experience_id)?;
+    logger::log("Importing experience thumbnails");
+    let thumbnails = roblox_api.get_experience_thumbnails(experience_id).await?;
     let mut thumbnail_resources: Vec<RobloxResource> = Vec::new();
     for thumbnail in thumbnails {
         thumbnail_resources.push(RobloxResource::existing(
@@ -567,7 +572,8 @@ pub fn import_graph(
     ));
     resources.extend(thumbnail_resources);
 
-    let places = roblox_api.get_all_places(experience_id)?;
+    logger::log("Importing places");
+    let places = roblox_api.get_all_places(experience_id).await?;
     for place in places {
         let resource_id = if place.is_root_place {
             "start".to_owned()
@@ -605,7 +611,8 @@ pub fn import_graph(
         ));
     }
 
-    let social_links = roblox_api.list_social_links(experience_id)?;
+    logger::log("Importing social links");
+    let social_links = roblox_api.list_social_links(experience_id).await?;
     for social_link in social_links {
         let domain = social_link
             .url
@@ -625,13 +632,14 @@ pub fn import_graph(
         ));
     }
 
-    let developer_products = roblox_api.get_all_developer_products(experience_id)?;
+    logger::log("Importing products");
+    let developer_products = roblox_api.get_all_developer_products(experience_id).await?;
     for product in developer_products {
         let mut product_resource = RobloxResource::existing(
             &format!("product_{}", product.product_id),
             RobloxInputs::Product(ProductInputs {
                 name: product.name,
-                description: product.description,
+                description: product.description.unwrap_or_default(),
                 price: product.price_in_robux,
             }),
             RobloxOutputs::Product(ProductOutputs {
@@ -656,7 +664,8 @@ pub fn import_graph(
         resources.push(product_resource);
     }
 
-    let game_passes = roblox_api.get_all_game_passes(experience_id)?;
+    logger::log("Importing passes");
+    let game_passes = roblox_api.get_all_game_passes(experience_id).await?;
     for pass in game_passes {
         let pass_resource = RobloxResource::existing(
             &format!("pass_{}", pass.target_id),
@@ -686,7 +695,8 @@ pub fn import_graph(
         resources.push(pass_resource);
     }
 
-    let badges = roblox_api.get_all_badges(experience_id)?;
+    logger::log("Importing badges");
+    let badges = roblox_api.get_all_badges(experience_id).await?;
     for badge in badges {
         let badge_resource = RobloxResource::existing(
             &format!("badge_{}", badge.id),
@@ -716,7 +726,8 @@ pub fn import_graph(
         resources.push(badge_resource);
     }
 
-    let assets = roblox_api.get_all_asset_aliases(experience_id)?;
+    logger::log("Importing assets");
+    let assets = roblox_api.get_all_asset_aliases(experience_id).await?;
     for asset in assets {
         let resource_data = match asset.asset.type_id {
             1 => Some((

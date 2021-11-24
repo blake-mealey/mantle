@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
@@ -283,12 +284,12 @@ pub struct RobloxResourceManager {
 }
 
 impl RobloxResourceManager {
-    pub fn new(project_path: &Path, payment_source: CreatorType) -> Self {
-        Self {
-            roblox_api: RobloxApi::new(RobloxAuth::new()),
+    pub async fn new(project_path: &Path, payment_source: CreatorType) -> Result<Self, String> {
+        Ok(Self {
+            roblox_api: RobloxApi::new(RobloxAuth::new().await?).await?,
             project_path: project_path.to_path_buf(),
             payment_source,
-        }
+        })
     }
 
     fn get_path(&self, file: String) -> PathBuf {
@@ -296,9 +297,10 @@ impl RobloxResourceManager {
     }
 }
 
+#[async_trait]
 impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
-    fn get_create_price(
-        &mut self,
+    async fn get_create_price(
+        &self,
         inputs: RobloxInputs,
         _dependency_outputs: Vec<RobloxOutputs>,
     ) -> Result<Option<u32>, String> {
@@ -307,10 +309,10 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
             RobloxInputs::AudioAsset(inputs) => {
                 let GetCreateAudioAssetPriceResponse {
                     price, can_afford, ..
-                } = self.roblox_api.get_create_audio_asset_price(
-                    self.get_path(inputs.file_path),
-                    inputs.group_id,
-                )?;
+                } = self
+                    .roblox_api
+                    .get_create_audio_asset_price(self.get_path(inputs.file_path), inputs.group_id)
+                    .await?;
 
                 // TODO: Add support for failing early like this for all other resource types (e.g. return the price and current balance from this function)
                 if !can_afford {
@@ -323,8 +325,8 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
         }
     }
 
-    fn create(
-        &mut self,
+    async fn create(
+        &self,
         inputs: RobloxInputs,
         dependency_outputs: Vec<RobloxOutputs>,
     ) -> Result<RobloxOutputs, String> {
@@ -333,7 +335,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 let CreateExperienceResponse {
                     universe_id,
                     root_place_id,
-                } = self.roblox_api.create_experience(inputs.group_id)?;
+                } = self.roblox_api.create_experience(inputs.group_id).await?;
 
                 Ok(RobloxOutputs::Experience(ExperienceOutputs {
                     asset_id: universe_id,
@@ -344,7 +346,8 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
                 self.roblox_api
-                    .configure_experience(experience.asset_id, &inputs)?;
+                    .configure_experience(experience.asset_id, &inputs)
+                    .await?;
 
                 Ok(RobloxOutputs::ExperienceConfiguration)
             }
@@ -352,7 +355,8 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
                 self.roblox_api
-                    .set_experience_active(experience.asset_id, inputs.is_active)?;
+                    .set_experience_active(experience.asset_id, inputs.is_active)
+                    .await?;
 
                 Ok(RobloxOutputs::ExperienceActivation)
             }
@@ -361,7 +365,8 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
                 let UploadImageResponse { target_id } = self
                     .roblox_api
-                    .upload_icon(experience.asset_id, self.get_path(inputs.file_path))?;
+                    .upload_icon(experience.asset_id, self.get_path(inputs.file_path))
+                    .await?;
 
                 Ok(RobloxOutputs::ExperienceIcon(AssetOutputs {
                     asset_id: target_id,
@@ -372,7 +377,8 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
                 let UploadImageResponse { target_id } = self
                     .roblox_api
-                    .upload_thumbnail(experience.asset_id, self.get_path(inputs.file_path))?;
+                    .upload_thumbnail(experience.asset_id, self.get_path(inputs.file_path))
+                    .await?;
 
                 Ok(RobloxOutputs::ExperienceThumbnail(AssetOutputs {
                     asset_id: target_id,
@@ -383,10 +389,12 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 let thumbnails =
                     all_outputs!(dependency_outputs, RobloxOutputs::ExperienceThumbnail);
 
-                self.roblox_api.set_experience_thumbnail_order(
-                    experience.asset_id,
-                    &thumbnails.iter().map(|t| t.asset_id).collect::<Vec<_>>(),
-                )?;
+                self.roblox_api
+                    .set_experience_thumbnail_order(
+                        experience.asset_id,
+                        &thumbnails.iter().map(|t| t.asset_id).collect::<Vec<_>>(),
+                    )
+                    .await?;
 
                 Ok(RobloxOutputs::ExperienceThumbnailOrder)
             }
@@ -396,7 +404,10 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 let asset_id = if inputs.is_start {
                     experience.start_place_id
                 } else {
-                    self.roblox_api.create_place(experience.asset_id)?.place_id
+                    self.roblox_api
+                        .create_place(experience.asset_id)
+                        .await?
+                        .place_id
                 };
 
                 Ok(RobloxOutputs::Place(AssetOutputs { asset_id }))
@@ -405,11 +416,12 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 let place = single_output!(dependency_outputs, RobloxOutputs::Place);
 
                 self.roblox_api
-                    .upload_place(self.get_path(inputs.file_path), place.asset_id)?;
+                    .upload_place(self.get_path(inputs.file_path), place.asset_id)
+                    .await?;
                 let GetPlaceResponse {
                     current_saved_version,
                     ..
-                } = self.roblox_api.get_place(place.asset_id)?;
+                } = self.roblox_api.get_place(place.asset_id).await?;
 
                 Ok(RobloxOutputs::PlaceFile(PlaceFileOutputs {
                     version: current_saved_version,
@@ -418,29 +430,37 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
             RobloxInputs::PlaceConfiguration(inputs) => {
                 let place = single_output!(dependency_outputs, RobloxOutputs::Place);
 
-                self.roblox_api.configure_place(place.asset_id, &inputs)?;
+                self.roblox_api
+                    .configure_place(place.asset_id, &inputs)
+                    .await?;
 
                 Ok(RobloxOutputs::PlaceConfiguration)
             }
             RobloxInputs::SocialLink(inputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
-                let CreateSocialLinkResponse { id } = self.roblox_api.create_social_link(
-                    experience.asset_id,
-                    inputs.title,
-                    inputs.url,
-                    inputs.link_type,
-                )?;
+                let CreateSocialLinkResponse { id } = self
+                    .roblox_api
+                    .create_social_link(
+                        experience.asset_id,
+                        inputs.title,
+                        inputs.url,
+                        inputs.link_type,
+                    )
+                    .await?;
 
                 Ok(RobloxOutputs::SocialLink(AssetOutputs { asset_id: id }))
             }
             RobloxInputs::ProductIcon(inputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
-                let asset_id = self.roblox_api.create_developer_product_icon(
-                    experience.asset_id,
-                    self.get_path(inputs.file_path),
-                )?;
+                let asset_id = self
+                    .roblox_api
+                    .create_developer_product_icon(
+                        experience.asset_id,
+                        self.get_path(inputs.file_path),
+                    )
+                    .await?;
 
                 Ok(RobloxOutputs::ProductIcon(AssetOutputs { asset_id }))
             }
@@ -448,18 +468,21 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
                 let icon = optional_output!(dependency_outputs, RobloxOutputs::ProductIcon);
 
-                let CreateDeveloperProductResponse { id } =
-                    self.roblox_api.create_developer_product(
+                let CreateDeveloperProductResponse { id } = self
+                    .roblox_api
+                    .create_developer_product(
                         experience.asset_id,
                         inputs.name,
                         inputs.price,
                         inputs.description,
                         icon.map(|i| i.asset_id),
-                    )?;
+                    )
+                    .await?;
 
                 let GetDeveloperProductResponse { product_id, .. } = self
                     .roblox_api
-                    .find_developer_product_by_id(experience.asset_id, id)?;
+                    .find_developer_product_by_id(experience.asset_id, id)
+                    .await?;
 
                 Ok(RobloxOutputs::Product(ProductOutputs {
                     asset_id: product_id,
@@ -472,18 +495,18 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 let CreateGamePassResponse {
                     asset_id,
                     icon_asset_id,
-                } = self.roblox_api.create_game_pass(
-                    experience.start_place_id,
-                    inputs.name.clone(),
-                    inputs.description.clone(),
-                    self.get_path(inputs.icon_file_path),
-                )?;
-                self.roblox_api.update_game_pass(
-                    asset_id,
-                    inputs.name,
-                    inputs.description,
-                    inputs.price,
-                )?;
+                } = self
+                    .roblox_api
+                    .create_game_pass(
+                        experience.start_place_id,
+                        inputs.name.clone(),
+                        inputs.description.clone(),
+                        self.get_path(inputs.icon_file_path),
+                    )
+                    .await?;
+                self.roblox_api
+                    .update_game_pass(asset_id, inputs.name, inputs.description, inputs.price)
+                    .await?;
 
                 Ok(RobloxOutputs::Pass(AssetWithInitialIconOutputs {
                     asset_id,
@@ -500,13 +523,16 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
             RobloxInputs::Badge(inputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
-                let CreateBadgeResponse { id, icon_image_id } = self.roblox_api.create_badge(
-                    experience.asset_id,
-                    inputs.name,
-                    inputs.description,
-                    self.get_path(inputs.icon_file_path),
-                    self.payment_source.clone(),
-                )?;
+                let CreateBadgeResponse { id, icon_image_id } = self
+                    .roblox_api
+                    .create_badge(
+                        experience.asset_id,
+                        inputs.name,
+                        inputs.description,
+                        self.get_path(inputs.icon_file_path),
+                        self.payment_source.clone(),
+                    )
+                    .await?;
 
                 Ok(RobloxOutputs::Badge(AssetWithInitialIconOutputs {
                     asset_id: id,
@@ -527,7 +553,8 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     ..
                 } = self
                     .roblox_api
-                    .create_image_asset(self.get_path(inputs.file_path), inputs.group_id)?;
+                    .create_image_asset(self.get_path(inputs.file_path), inputs.group_id)
+                    .await?;
 
                 Ok(RobloxOutputs::ImageAsset(ImageAssetOutputs {
                     asset_id: backing_asset_id,
@@ -535,11 +562,14 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 }))
             }
             RobloxInputs::AudioAsset(inputs) => {
-                let CreateAudioAssetResponse { id } = self.roblox_api.create_audio_asset(
-                    self.get_path(inputs.file_path),
-                    inputs.group_id,
-                    self.payment_source.clone(),
-                )?;
+                let CreateAudioAssetResponse { id } = self
+                    .roblox_api
+                    .create_audio_asset(
+                        self.get_path(inputs.file_path),
+                        inputs.group_id,
+                        self.payment_source.clone(),
+                    )
+                    .await?;
 
                 Ok(RobloxOutputs::AudioAsset(AssetOutputs { asset_id: id }))
             }
@@ -554,11 +584,9 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     _ => panic!("Missing expected output."),
                 };
 
-                self.roblox_api.create_asset_alias(
-                    experience.asset_id,
-                    asset_id,
-                    inputs.name.clone(),
-                )?;
+                self.roblox_api
+                    .create_asset_alias(experience.asset_id, asset_id, inputs.name.clone())
+                    .await?;
 
                 Ok(RobloxOutputs::AssetAlias(AssetAliasOutputs {
                     name: inputs.name,
@@ -567,96 +595,102 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
         }
     }
 
-    fn get_update_price(
-        &mut self,
+    async fn get_update_price(
+        &self,
         inputs: RobloxInputs,
         outputs: RobloxOutputs,
         dependency_outputs: Vec<RobloxOutputs>,
     ) -> Result<Option<u32>, String> {
         match (inputs.clone(), outputs) {
             (RobloxInputs::AudioAsset(_), RobloxOutputs::AudioAsset(_)) => {
-                self.get_create_price(inputs, dependency_outputs)
+                self.get_create_price(inputs, dependency_outputs).await
             }
             _ => Ok(None),
         }
     }
 
     // TODO: Consider moving `outputs` into `dependency_outputs`.
-    fn update(
-        &mut self,
+    async fn update(
+        &self,
         inputs: RobloxInputs,
         outputs: RobloxOutputs,
         dependency_outputs: Vec<RobloxOutputs>,
     ) -> Result<RobloxOutputs, String> {
         match (inputs.clone(), outputs.clone()) {
             (RobloxInputs::Experience(_), RobloxOutputs::Experience(_)) => {
-                self.delete(outputs, dependency_outputs.clone())?;
-                self.create(inputs, dependency_outputs)
+                self.delete(outputs, dependency_outputs.clone()).await?;
+                self.create(inputs, dependency_outputs).await
             }
             (RobloxInputs::ExperienceConfiguration(_), RobloxOutputs::ExperienceConfiguration) => {
-                self.create(inputs, dependency_outputs)
+                self.create(inputs, dependency_outputs).await
             }
             (RobloxInputs::ExperienceActivation(_), RobloxOutputs::ExperienceActivation) => {
-                self.create(inputs, dependency_outputs)
+                self.create(inputs, dependency_outputs).await
             }
             (RobloxInputs::ExperienceIcon(_), RobloxOutputs::ExperienceIcon(_)) => {
-                self.create(inputs, dependency_outputs)
+                self.create(inputs, dependency_outputs).await
             }
             (RobloxInputs::ExperienceThumbnail(_), RobloxOutputs::ExperienceThumbnail(_)) => {
-                self.delete(outputs, dependency_outputs.clone())?;
-                self.create(inputs, dependency_outputs)
+                self.delete(outputs, dependency_outputs.clone()).await?;
+                self.create(inputs, dependency_outputs).await
             }
             (RobloxInputs::ExperienceThumbnailOrder, RobloxOutputs::ExperienceThumbnailOrder) => {
-                self.create(inputs, dependency_outputs)
+                self.create(inputs, dependency_outputs).await
             }
             // TODO: is this correct?
             (RobloxInputs::Place(_), RobloxOutputs::Place(_)) => {
-                self.create(inputs, dependency_outputs)
+                self.create(inputs, dependency_outputs).await
             }
             (RobloxInputs::PlaceFile(_), RobloxOutputs::PlaceFile(_)) => {
-                self.create(inputs, dependency_outputs)
+                self.create(inputs, dependency_outputs).await
             }
             (RobloxInputs::PlaceConfiguration(_), RobloxOutputs::PlaceConfiguration) => {
-                self.create(inputs, dependency_outputs)
+                self.create(inputs, dependency_outputs).await
             }
             (RobloxInputs::SocialLink(inputs), RobloxOutputs::SocialLink(outputs)) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
-                self.roblox_api.update_social_link(
-                    experience.asset_id,
-                    outputs.asset_id,
-                    inputs.title,
-                    inputs.url,
-                    inputs.link_type,
-                )?;
+                self.roblox_api
+                    .update_social_link(
+                        experience.asset_id,
+                        outputs.asset_id,
+                        inputs.title,
+                        inputs.url,
+                        inputs.link_type,
+                    )
+                    .await?;
 
                 Ok(RobloxOutputs::SocialLink(outputs))
             }
             (RobloxInputs::ProductIcon(_), RobloxOutputs::ProductIcon(_)) => {
-                self.create(inputs, dependency_outputs)
+                self.create(inputs, dependency_outputs).await
             }
             (RobloxInputs::Product(inputs), RobloxOutputs::Product(outputs)) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
                 let icon = optional_output!(dependency_outputs, RobloxOutputs::ProductIcon);
 
-                self.roblox_api.update_developer_product(
-                    experience.asset_id,
-                    outputs.asset_id,
-                    inputs.name,
-                    inputs.price,
-                    inputs.description,
-                    icon.map(|i| i.asset_id),
-                )?;
+                self.roblox_api
+                    .update_developer_product(
+                        experience.asset_id,
+                        outputs.asset_id,
+                        inputs.name,
+                        inputs.price,
+                        inputs.description,
+                        icon.map(|i| i.asset_id),
+                    )
+                    .await?;
 
                 Ok(RobloxOutputs::Product(outputs))
             }
             (RobloxInputs::Pass(inputs), RobloxOutputs::Pass(outputs)) => {
-                self.roblox_api.update_game_pass(
-                    outputs.asset_id,
-                    inputs.name,
-                    inputs.description,
-                    inputs.price,
-                )?;
+                self.roblox_api
+                    .update_game_pass(
+                        outputs.asset_id,
+                        inputs.name,
+                        inputs.description,
+                        inputs.price,
+                    )
+                    .await?;
 
                 Ok(RobloxOutputs::Pass(outputs))
             }
@@ -665,19 +699,22 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
                 let UploadImageResponse { target_id } = self
                     .roblox_api
-                    .update_game_pass_icon(game_pass.asset_id, self.get_path(inputs.file_path))?;
+                    .update_game_pass_icon(game_pass.asset_id, self.get_path(inputs.file_path))
+                    .await?;
 
                 Ok(RobloxOutputs::PassIcon(AssetOutputs {
                     asset_id: target_id,
                 }))
             }
             (RobloxInputs::Badge(inputs), RobloxOutputs::Badge(outputs)) => {
-                self.roblox_api.update_badge(
-                    outputs.asset_id,
-                    inputs.name,
-                    inputs.description,
-                    inputs.enabled,
-                )?;
+                self.roblox_api
+                    .update_badge(
+                        outputs.asset_id,
+                        inputs.name,
+                        inputs.description,
+                        inputs.enabled,
+                    )
+                    .await?;
 
                 Ok(RobloxOutputs::Badge(outputs))
             }
@@ -686,17 +723,18 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
                 let UploadImageResponse { target_id } = self
                     .roblox_api
-                    .update_badge_icon(badge.asset_id, self.get_path(inputs.file_path))?;
+                    .update_badge_icon(badge.asset_id, self.get_path(inputs.file_path))
+                    .await?;
 
                 Ok(RobloxOutputs::BadgeIcon(AssetOutputs {
                     asset_id: target_id,
                 }))
             }
             (RobloxInputs::ImageAsset(_), RobloxOutputs::ImageAsset(_)) => {
-                self.create(inputs, dependency_outputs)
+                self.create(inputs, dependency_outputs).await
             }
             (RobloxInputs::AudioAsset(_), RobloxOutputs::AudioAsset(_)) => {
-                self.create(inputs, dependency_outputs)
+                self.create(inputs, dependency_outputs).await
             }
             (RobloxInputs::AssetAlias(inputs), RobloxOutputs::AssetAlias(outputs)) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
@@ -709,12 +747,14 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     _ => panic!("Missing expected output."),
                 };
 
-                self.roblox_api.update_asset_alias(
-                    experience.asset_id,
-                    asset_id,
-                    outputs.name,
-                    inputs.name.clone(),
-                )?;
+                self.roblox_api
+                    .update_asset_alias(
+                        experience.asset_id,
+                        asset_id,
+                        outputs.name,
+                        inputs.name.clone(),
+                    )
+                    .await?;
 
                 Ok(RobloxOutputs::AssetAlias(AssetAliasOutputs {
                     name: inputs.name,
@@ -725,8 +765,8 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
     }
 
     // TODO: Do we need inputs?
-    fn delete(
-        &mut self,
+    async fn delete(
+        &self,
         outputs: RobloxOutputs,
         dependency_outputs: Vec<RobloxOutputs>,
     ) -> Result<(), String> {
@@ -737,32 +777,37 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     ..Default::default()
                 };
                 self.roblox_api
-                    .configure_experience(outputs.asset_id, &model)?;
+                    .configure_experience(outputs.asset_id, &model)
+                    .await?;
             }
             RobloxOutputs::ExperienceConfiguration => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
                 let model = ExperienceConfigurationModel::default();
                 self.roblox_api
-                    .configure_experience(experience.asset_id, &model)?;
+                    .configure_experience(experience.asset_id, &model)
+                    .await?;
             }
             RobloxOutputs::ExperienceActivation => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
                 self.roblox_api
-                    .set_experience_active(experience.asset_id, false)?;
+                    .set_experience_active(experience.asset_id, false)
+                    .await?;
             }
             RobloxOutputs::ExperienceIcon(outputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
                 self.roblox_api
-                    .remove_experience_icon(experience.start_place_id, outputs.asset_id)?;
+                    .remove_experience_icon(experience.start_place_id, outputs.asset_id)
+                    .await?;
             }
             RobloxOutputs::ExperienceThumbnail(outputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
                 self.roblox_api
-                    .delete_experience_thumbnail(experience.asset_id, outputs.asset_id)?;
+                    .delete_experience_thumbnail(experience.asset_id, outputs.asset_id)
+                    .await?;
             }
             RobloxOutputs::ExperienceThumbnailOrder => {}
             RobloxOutputs::Place(outputs) => {
@@ -770,7 +815,8 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
                 if outputs.asset_id != experience.start_place_id {
                     self.roblox_api
-                        .remove_place_from_experience(experience.asset_id, outputs.asset_id)?;
+                        .remove_place_from_experience(experience.asset_id, outputs.asset_id)
+                        .await?;
                 }
             }
             RobloxOutputs::PlaceFile(_) => {}
@@ -778,62 +824,72 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 let place = single_output!(dependency_outputs, RobloxOutputs::Place);
 
                 let model = PlaceConfigurationModel::default();
-                self.roblox_api.configure_place(place.asset_id, &model)?;
+                self.roblox_api
+                    .configure_place(place.asset_id, &model)
+                    .await?;
             }
             RobloxOutputs::SocialLink(outputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
                 self.roblox_api
-                    .delete_social_link(experience.asset_id, outputs.asset_id)?;
+                    .delete_social_link(experience.asset_id, outputs.asset_id)
+                    .await?;
             }
             RobloxOutputs::ProductIcon(_) => {}
             RobloxOutputs::Product(outputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
                 let utc = Utc::now();
-                self.roblox_api.update_developer_product(
-                    experience.asset_id,
-                    outputs.asset_id,
-                    format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
-                    0,
-                    "".to_owned(),
-                    None,
-                )?;
+                self.roblox_api
+                    .update_developer_product(
+                        experience.asset_id,
+                        outputs.asset_id,
+                        format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
+                        0,
+                        "".to_owned(),
+                        None,
+                    )
+                    .await?;
             }
             RobloxOutputs::Pass(outputs) => {
                 let utc = Utc::now();
-                self.roblox_api.update_game_pass(
-                    outputs.asset_id,
-                    format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
-                    "".to_owned(),
-                    None,
-                )?;
+                self.roblox_api
+                    .update_game_pass(
+                        outputs.asset_id,
+                        format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
+                        "".to_owned(),
+                        None,
+                    )
+                    .await?;
             }
             RobloxOutputs::PassIcon(_) => {}
             RobloxOutputs::Badge(outputs) => {
                 let utc = Utc::now();
-                self.roblox_api.update_badge(
-                    outputs.asset_id,
-                    format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
-                    "".to_owned(),
-                    false,
-                )?;
+                self.roblox_api
+                    .update_badge(
+                        outputs.asset_id,
+                        format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
+                        "".to_owned(),
+                        false,
+                    )
+                    .await?;
             }
             RobloxOutputs::BadgeIcon(_) => {}
             RobloxOutputs::ImageAsset(outputs) => {
                 // TODO: Can we make this not optional and just not import the image asset? Maybe?
                 if let Some(decal_asset_id) = outputs.decal_asset_id {
-                    self.roblox_api.archive_asset(decal_asset_id)?;
+                    self.roblox_api.archive_asset(decal_asset_id).await?;
                 }
             }
             RobloxOutputs::AudioAsset(outputs) => {
-                self.roblox_api.archive_asset(outputs.asset_id)?;
+                self.roblox_api.archive_asset(outputs.asset_id).await?;
             }
             RobloxOutputs::AssetAlias(outputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
                 self.roblox_api
-                    .delete_asset_alias(experience.asset_id, outputs.name)?;
+                    .delete_asset_alias(experience.asset_id, outputs.name)
+                    .await?;
             }
         }
         Ok(())

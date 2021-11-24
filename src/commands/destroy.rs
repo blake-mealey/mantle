@@ -33,11 +33,20 @@ pub async fn run(project: Option<&str>, environment: Option<&str>) -> i32 {
     };
     logger::end_action("Succeeded");
 
-    let mut resource_manager = RobloxResourceManager::new(&project_path, payment_source);
-
     logger::start_action("Destroying resources:");
+    let mut resource_manager = match RobloxResourceManager::new(&project_path, payment_source).await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            logger::end_action(Paint::red(e));
+            return 1;
+        }
+    };
+
     let mut next_graph = ResourceGraph::new(&Vec::new());
-    let results = next_graph.evaluate(&previous_graph, &mut resource_manager, false);
+    let results = next_graph
+        .evaluate(&previous_graph, &mut resource_manager, false)
+        .await;
     match &results {
         Ok(results) => {
             match results {

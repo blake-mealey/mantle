@@ -48,9 +48,23 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, experience_id
         }
     };
 
-    logger::start_action("Import experience:");
-    let mut roblox_api = RobloxApi::new(RobloxAuth::new());
-    let imported_graph = match import_graph(&mut roblox_api, experience_id) {
+    logger::start_action("Import target:");
+    let roblox_auth = match RobloxAuth::new().await {
+        Ok(v) => v,
+        Err(e) => {
+            logger::end_action(Paint::red(e));
+            return 1;
+        }
+    };
+    let roblox_api = match RobloxApi::new(roblox_auth).await {
+        Ok(v) => v,
+        Err(e) => {
+            logger::end_action(Paint::red(e));
+            return 1;
+        }
+    };
+
+    let imported_graph = match import_graph(&roblox_api, experience_id).await {
         Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(format!("Failed: {}", e)));

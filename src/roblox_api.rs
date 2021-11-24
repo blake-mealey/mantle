@@ -738,7 +738,7 @@ impl RobloxApi {
             .get("https://users.roblox.com/v1/users/authenticated");
 
         Self::handle(req).await.map_err(|_| {
-            format!("Authorization validation failed. Check your ROBLOSECURITY cookie.")
+            "Authorization validation failed. Check your ROBLOSECURITY cookie.".to_owned()
         })?;
 
         Ok(())

@@ -96,9 +96,9 @@ fn get_app() -> App<'static, 'static> {
                         .value_name("ENVIRONMENT")
                         .takes_value(true))
                 .arg(
-                    Arg::with_name("experience_id")
-                        .long("experience-id")
-                        .help("The ID of the experience to import.")
+                    Arg::with_name("target_id")
+                        .long("target-id")
+                        .help("The ID of the target to import.")
                         .value_name("ID")
                         .takes_value(true)
                         .required(true))
@@ -137,7 +137,7 @@ pub async fn run_with(args: Vec<String>) -> i32 {
             commands::import::run(
                 import_matches.value_of("PROJECT"),
                 import_matches.value_of("environment"),
-                import_matches.value_of("experience_id").unwrap(),
+                import_matches.value_of("target_id").unwrap(),
             )
             .await
         }

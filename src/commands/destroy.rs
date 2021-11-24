@@ -64,7 +64,15 @@ pub async fn run(project: Option<&str>, environment: Option<&str>) -> i32 {
     };
 
     logger::start_action("Saving state:");
-    state.environments.remove(&environment_config.name);
+    let resource_list = next_graph.get_resource_list();
+    if resource_list.is_empty() {
+        state.environments.remove(&environment_config.name);
+    } else {
+        state.environments.insert(
+            environment_config.name.clone(),
+            next_graph.get_resource_list(),
+        );
+    }
     match save_state(&project_path, &state_config, &state).await {
         Ok(_) => {}
         Err(e) => {

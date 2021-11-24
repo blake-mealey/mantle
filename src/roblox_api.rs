@@ -87,7 +87,6 @@ pub struct GetExperienceResponse {
 #[derive(Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct CreatePlaceResponse {
-    pub success: bool,
     pub place_id: AssetId,
 }
 
@@ -120,9 +119,7 @@ impl From<GetPlaceResponse> for PlaceConfigurationModel {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct RemovePlaceResponse {
-    pub success: bool,
-}
+struct RemovePlaceResponse {}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -162,7 +159,7 @@ pub struct GetDeveloperProductResponse {
     pub product_id: AssetId,
     pub developer_product_id: AssetId,
     pub name: String,
-    pub description: String,
+    pub description: Option<String>,
     pub icon_image_asset_id: Option<AssetId>,
     pub price_in_robux: u32,
 }
@@ -243,7 +240,6 @@ pub struct GetAssetResponse {
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct CreateImageAssetResponse {
-    pub success: bool,
     pub asset_id: AssetId,
     pub backing_asset_id: AssetId,
 }
@@ -459,7 +455,7 @@ impl ExperienceAvatarAssetOverride {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(rename_all = "PascalCase")]
 pub struct ExperiencePermissionsModel {
     pub is_third_party_purchase_allowed: bool,
@@ -473,22 +469,40 @@ pub struct ExperienceConfigurationModel {
     pub playable_devices: Vec<ExperiencePlayableDevice>,
     pub is_friends_only: Option<bool>,
 
+    #[serde(default)]
     pub allow_private_servers: bool,
     pub private_server_price: Option<u32>,
     pub is_for_sale: bool,
     pub price: Option<u32>,
 
+    #[serde(default)]
     pub studio_access_to_apis_allowed: bool,
+    #[serde(default)]
     pub permissions: ExperiencePermissionsModel,
 
     pub universe_avatar_type: ExperienceAvatarType,
     pub universe_animation_type: ExperienceAnimationType,
     pub universe_collision_type: ExperienceCollisionType,
+    #[serde(default = "default_min_scales")]
     pub universe_avatar_min_scales: ExperienceAvatarScales,
+    #[serde(default = "default_max_scales")]
     pub universe_avatar_max_scales: ExperienceAvatarScales,
+    #[serde(default = "default_asset_overrides")]
     pub universe_avatar_asset_overrides: Vec<ExperienceAvatarAssetOverride>,
 
     pub is_archived: bool,
+}
+
+fn default_min_scales() -> ExperienceAvatarScales {
+    ExperienceConfigurationModel::default().universe_avatar_min_scales
+}
+
+fn default_max_scales() -> ExperienceAvatarScales {
+    ExperienceConfigurationModel::default().universe_avatar_max_scales
+}
+
+fn default_asset_overrides() -> Vec<ExperienceAvatarAssetOverride> {
+    ExperienceConfigurationModel::default().universe_avatar_asset_overrides
 }
 
 impl Default for ExperienceConfigurationModel {

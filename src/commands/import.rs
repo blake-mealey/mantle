@@ -48,7 +48,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, experience_id
         }
     };
 
-    logger::start_action("Import experience:");
+    logger::start_action("Import target:");
     let roblox_auth = match RobloxAuth::new().await {
         Ok(v) => v,
         Err(e) => {

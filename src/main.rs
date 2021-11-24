@@ -1,3 +1,5 @@
+extern crate cookie;
+
 mod cli;
 mod commands;
 mod config;

@@ -1,97 +1,50 @@
 use std::env;
 
-use ureq::Cookie;
+use cookie::Cookie;
+use reqwest::{
+    cookie::Jar,
+    header::{self, HeaderMap, HeaderValue},
+    Client,
+};
+use url::Url;
 
-pub enum AuthType {
-    Cookie,
-    CookieAndCsrfToken,
-    CookieAndCsrfTokenAndVerificationToken { verification_token: String },
-}
-
-pub trait RequestExt {
-    fn set_auth(self, auth_type: AuthType, auth: &mut RobloxAuth) -> Result<ureq::Request, String>;
-}
-
-impl RequestExt for ureq::Request {
-    fn set_auth(self, auth_type: AuthType, auth: &mut RobloxAuth) -> Result<ureq::Request, String> {
-        match auth_type {
-            AuthType::Cookie => Ok(self.set("cookie", &auth.get_roblosecurity_cookie()?)),
-            AuthType::CookieAndCsrfToken => Ok(self
-                .set("cookie", &auth.get_roblosecurity_cookie()?)
-                .set("x-csrf-token", &auth.get_csrf_token()?)),
-            AuthType::CookieAndCsrfTokenAndVerificationToken { verification_token } => Ok(self
-                .set(
-                    "cookie",
-                    &format!(
-                        "{}; {}",
-                        auth.get_roblosecurity_cookie()?,
-                        Cookie::new("__RequestVerificationToken", verification_token).to_string()
-                    ),
-                )
-                .set("x-csrf-token", &auth.get_csrf_token()?)),
-        }
-    }
-}
-
-#[derive(Default)]
 pub struct RobloxAuth {
-    roblosecurity: Option<String>,
-    csrf_token: Option<String>,
+    pub jar: Jar,
+    pub headers: HeaderMap,
 }
 
 impl RobloxAuth {
-    pub fn new() -> Self {
-        Default::default()
-    }
+    pub async fn new() -> Result<Self, String> {
+        let roblosecurity_cookie = get_roblosecurity_cookie()?;
 
-    pub fn get_roblosecurity(&mut self) -> Result<String, String> {
-        if self.roblosecurity.is_none() {
-            self.roblosecurity = match env::var("ROBLOSECURITY").ok() {
-                Some(v) => Some(v),
-                None => get_roblosecurity_from_roblox_studio(),
-            };
-            if self.roblosecurity.is_none() {
-                return Err("Missing the ROBLOSECURITY environment variable".to_string());
-            }
-        }
-        Ok(self.roblosecurity.clone().unwrap())
-    }
+        let jar = Jar::default();
+        let url = "https://roblox.com".parse::<Url>().unwrap();
+        jar.add_cookie_str(&roblosecurity_cookie, &url);
 
-    pub fn get_roblosecurity_cookie(&mut self) -> Result<String, String> {
-        Ok(Cookie::new(".ROBLOSECURITY", self.get_roblosecurity()?).to_string())
-    }
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert("X-CSRF-Token", get_csrf_token(&roblosecurity_cookie).await?);
 
-    pub fn get_csrf_token(&mut self) -> Result<String, String> {
-        if self.csrf_token.is_none() {
-            let res = ureq::post("https://auth.roblox.com")
-                .set_auth(AuthType::Cookie, self)?
-                .send_string("");
-            self.csrf_token = match res {
-                Ok(_) => {
-                    return Err("Request for csrf token returned 200 (expected 403)".to_owned())
-                }
-                Err(ureq::Error::Status(_code, response)) => match response.status() {
-                    403 => Some(
-                        response
-                            .header("x-csrf-token")
-                            .map(|v| v.to_owned())
-                            .ok_or_else(|| {
-                                "Request for csrf token did not return an x-csrf-token header"
-                                    .to_owned()
-                            })?,
-                    ),
-                    status => {
-                        return Err(format!(
-                            "Request for csrf token returned {} (expected 403)",
-                            status
-                        ))
-                    }
-                },
-                Err(e) => return Err(format!("Request for csrf token failed: {}", e)),
-            };
-        }
-        Ok(self.csrf_token.clone().unwrap())
+        Ok(Self { jar, headers })
     }
+}
+
+fn get_roblosecurity_cookie() -> Result<String, String> {
+    let roblosecurity = match get_roblosecurity_from_environment() {
+        Some(v) => v,
+        None => match get_roblosecurity_from_roblox_studio() {
+            Some(v) => v,
+            None => return Err("Missing the ROBLOSECURITY environment variable".to_string()),
+        },
+    };
+
+    Ok(Cookie::build(".ROBLOSECURITY", roblosecurity)
+        .domain(".roblox.com")
+        .finish()
+        .to_string())
+}
+
+fn get_roblosecurity_from_environment() -> Option<String> {
+    env::var("ROBLOSECURITY").ok()
 }
 
 #[cfg(windows)]
@@ -123,4 +76,33 @@ fn get_roblosecurity_from_roblox_studio() -> Option<String> {
 #[cfg(not(windows))]
 fn get_roblosecurity_from_roblox_studio() -> Option<String> {
     None
+}
+
+async fn get_csrf_token(roblosecurity_cookie: &str) -> Result<HeaderValue, String> {
+    let res = Client::new()
+        .post("https://auth.roblox.com")
+        .header(header::COOKIE, roblosecurity_cookie)
+        .header(header::CONTENT_LENGTH, 0)
+        .send()
+        .await;
+    match res {
+        Ok(response) => {
+            let status_code = response.status();
+            if status_code == 403 {
+                response
+                    .headers()
+                    .get("X-CSRF-Token")
+                    .map(|v| v.to_owned())
+                    .ok_or_else(|| {
+                        "Request for CSRF token did not return an X-CSRF-Token header".to_owned()
+                    })
+            } else {
+                Err(format!(
+                    "Request for CSRF token returned {} (expected 403)",
+                    status_code
+                ))
+            }
+        }
+        Err(error) => return Err(format!("Request for CSRF token failed: {}", error)),
+    }
 }

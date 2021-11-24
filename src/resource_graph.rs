@@ -3,6 +3,7 @@ use std::{
     marker::PhantomData,
 };
 
+use async_trait::async_trait;
 use difference::Changeset;
 use serde::Serialize;
 use yansi::Paint;
@@ -53,35 +54,36 @@ pub trait Resource<TInputs, TOutputs>: Clone {
     fn set_outputs(&mut self, outputs: TOutputs);
 }
 
+#[async_trait]
 pub trait ResourceManager<TInputs, TOutputs> {
-    fn get_create_price(
-        &mut self,
+    async fn get_create_price(
+        &self,
         inputs: TInputs,
         dependency_outputs: Vec<TOutputs>,
     ) -> Result<Option<u32>, String>;
 
-    fn create(
-        &mut self,
+    async fn create(
+        &self,
         inputs: TInputs,
         dependency_outputs: Vec<TOutputs>,
     ) -> Result<TOutputs, String>;
 
-    fn get_update_price(
-        &mut self,
+    async fn get_update_price(
+        &self,
         inputs: TInputs,
         outputs: TOutputs,
         dependency_outputs: Vec<TOutputs>,
     ) -> Result<Option<u32>, String>;
 
-    fn update(
-        &mut self,
+    async fn update(
+        &self,
         inputs: TInputs,
         outputs: TOutputs,
         dependency_outputs: Vec<TOutputs>,
     ) -> Result<TOutputs, String>;
 
-    fn delete(
-        &mut self,
+    async fn delete(
+        &self,
         outputs: TOutputs,
         dependency_outputs: Vec<TOutputs>,
     ) -> Result<(), String>;
@@ -314,7 +316,7 @@ where
         }
     }
 
-    fn evaluate_delete<TManager>(
+    async fn evaluate_delete<TManager>(
         &self,
         previous_graph: &ResourceGraph<TResource, TInputs, TOutputs>,
         manager: &mut TManager,
@@ -340,18 +342,21 @@ where
         logger::log("Inputs:");
         logger::log_changeset(get_changeset(&inputs_hash, ""));
 
-        match manager.delete(
-            resource
-                .get_outputs()
-                .expect("Existing resource should have outputs."),
-            dependency_outputs,
-        ) {
+        match manager
+            .delete(
+                resource
+                    .get_outputs()
+                    .expect("Existing resource should have outputs."),
+                dependency_outputs,
+            )
+            .await
+        {
             Ok(()) => OperationResult::SucceededDelete,
             Err(error) => OperationResult::Failed(error),
         }
     }
 
-    fn evaluate_create_or_update<TManager>(
+    async fn evaluate_create_or_update<TManager>(
         &self,
         previous_graph: &ResourceGraph<TResource, TInputs, TOutputs>,
         manager: &mut TManager,
@@ -411,11 +416,14 @@ where
                 .get_outputs()
                 .expect("Existing resource should have outputs.");
 
-            match manager.get_update_price(
-                resource.get_inputs(),
-                outputs.clone(),
-                dependency_outputs.clone(),
-            ) {
+            match manager
+                .get_update_price(
+                    resource.get_inputs(),
+                    outputs.clone(),
+                    dependency_outputs.clone(),
+                )
+                .await
+            {
                 Ok(Some(price)) if price > 0 => {
                     if allow_purchases {
                         logger::log("");
@@ -434,7 +442,10 @@ where
                 Ok(_) => {}
             };
 
-            match manager.update(resource.get_inputs(), outputs, dependency_outputs) {
+            match manager
+                .update(resource.get_inputs(), outputs, dependency_outputs)
+                .await
+            {
                 Ok(outputs) => OperationResult::SucceededUpdate(outputs),
                 Err(error) => OperationResult::Failed(error),
             }
@@ -457,7 +468,10 @@ where
             logger::log("Inputs:");
             logger::log_changeset(get_changeset("", &inputs_hash));
 
-            match manager.get_create_price(resource.get_inputs(), dependency_outputs.clone()) {
+            match manager
+                .get_create_price(resource.get_inputs(), dependency_outputs.clone())
+                .await
+            {
                 Ok(Some(price)) if price > 0 => {
                     if allow_purchases {
                         logger::log("");
@@ -476,14 +490,17 @@ where
                 Ok(_) => {}
             };
 
-            match manager.create(resource.get_inputs(), dependency_outputs) {
+            match manager
+                .create(resource.get_inputs(), dependency_outputs)
+                .await
+            {
                 Ok(outputs) => OperationResult::SucceededCreate(outputs),
                 Err(error) => OperationResult::Failed(error),
             }
         }
     }
 
-    pub fn evaluate<TManager>(
+    pub async fn evaluate<TManager>(
         &mut self,
         previous_graph: &ResourceGraph<TResource, TInputs, TOutputs>,
         manager: &mut TManager,
@@ -503,7 +520,9 @@ where
                 continue;
             }
 
-            let operation_result = self.evaluate_delete(previous_graph, manager, resource_id);
+            let operation_result = self
+                .evaluate_delete(previous_graph, manager, resource_id)
+                .await;
             self.handle_operation_result(
                 &mut results,
                 &mut failures_count,
@@ -515,12 +534,9 @@ where
 
         let resource_order = self.get_topological_order()?;
         for resource_id in resource_order.iter() {
-            let operation_result = self.evaluate_create_or_update(
-                previous_graph,
-                manager,
-                resource_id,
-                allow_purchases,
-            );
+            let operation_result = self
+                .evaluate_create_or_update(previous_graph, manager, resource_id, allow_purchases)
+                .await;
             self.handle_operation_result(
                 &mut results,
                 &mut failures_count,

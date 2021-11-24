@@ -18,6 +18,7 @@ environments:
         start:
           configuration:
             name: Preview - Start name
+  - name: other
 
 target:
   experience:
@@ -73,9 +74,8 @@ target:
         icon: badge-1.png
     assets:
       - assets/*
-
-state:
-  remote:
-    region: [us-west-2]
-    bucket: mantle-states
-    key: project-fixtures/dev
+# state:
+#   remote:
+#     region: [us-west-2]
+#     bucket: mantle-states
+#     key: project-fixtures/dev

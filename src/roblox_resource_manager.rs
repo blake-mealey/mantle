@@ -365,7 +365,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
                 let UploadImageResponse { target_id } = self
                     .roblox_api
-                    .upload_icon(experience.asset_id, self.get_path(inputs.file_path))
+                    .upload_experience_icon(experience.asset_id, self.get_path(inputs.file_path))
                     .await?;
 
                 Ok(RobloxOutputs::ExperienceIcon(AssetOutputs {
@@ -377,7 +377,10 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
                 let UploadImageResponse { target_id } = self
                     .roblox_api
-                    .upload_thumbnail(experience.asset_id, self.get_path(inputs.file_path))
+                    .upload_experience_thumbnail(
+                        experience.asset_id,
+                        self.get_path(inputs.file_path),
+                    )
                     .await?;
 
                 Ok(RobloxOutputs::ExperienceThumbnail(AssetOutputs {

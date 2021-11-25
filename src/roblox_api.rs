@@ -946,23 +946,28 @@ impl RobloxApi {
         Ok(())
     }
 
-    // TODO: Generic form
-    pub async fn upload_icon(
+    async fn upload_thumbnail(
+        &self,
+        post_url: String,
+        icon_file: PathBuf,
+    ) -> Result<UploadImageResponse, String> {
+        let req = self.client.post(&post_url).multipart(
+            MultipartForm::new().part("request.files", Self::get_file_part(icon_file).await?),
+        );
+
+        Self::handle_as_json(req).await
+    }
+
+    pub async fn upload_experience_icon(
         &self,
         experience_id: AssetId,
         icon_file: PathBuf,
     ) -> Result<UploadImageResponse, String> {
-        let req = self
-            .client
-            .post(&format!(
-                "https://publish.roblox.com/v1/games/{}/icon",
-                experience_id
-            ))
-            .multipart(
-                MultipartForm::new().part("request.files", Self::get_file_part(icon_file).await?),
-            );
-
-        Self::handle_as_json(req).await
+        self.upload_thumbnail(
+            format!("https://publish.roblox.com/v1/games/{}/icon", experience_id),
+            icon_file,
+        )
+        .await
     }
 
     pub async fn remove_experience_icon(
@@ -983,23 +988,19 @@ impl RobloxApi {
         Ok(())
     }
 
-    pub async fn upload_thumbnail(
+    pub async fn upload_experience_thumbnail(
         &self,
         experience_id: AssetId,
         thumbnail_file: PathBuf,
     ) -> Result<UploadImageResponse, String> {
-        let req = self
-            .client
-            .post(&format!(
+        self.upload_thumbnail(
+            format!(
                 "https://publish.roblox.com/v1/games/{}/thumbnail/image",
                 experience_id
-            ))
-            .multipart(
-                MultipartForm::new()
-                    .part("request.files", Self::get_file_part(thumbnail_file).await?),
-            );
-
-        Self::handle_as_json(req).await
+            ),
+            thumbnail_file,
+        )
+        .await
     }
 
     pub async fn get_experience_thumbnails(
@@ -1453,17 +1454,14 @@ impl RobloxApi {
         game_pass_id: AssetId,
         icon_file: PathBuf,
     ) -> Result<UploadImageResponse, String> {
-        let req = self
-            .client
-            .post(&format!(
+        self.upload_thumbnail(
+            format!(
                 "https://publish.roblox.com/v1/game-passes/{}/icon",
                 game_pass_id
-            ))
-            .multipart(
-                MultipartForm::new().part("request.files", Self::get_file_part(icon_file).await?),
-            );
-
-        Self::handle_as_json(req).await
+            ),
+            icon_file,
+        )
+        .await
     }
 
     pub async fn create_badge(
@@ -1557,17 +1555,11 @@ impl RobloxApi {
         badge_id: AssetId,
         icon_file: PathBuf,
     ) -> Result<UploadImageResponse, String> {
-        let req = self
-            .client
-            .post(&format!(
-                "https://publish.roblox.com/v1/badges/{}/icon",
-                badge_id
-            ))
-            .multipart(
-                MultipartForm::new().part("request.files", Self::get_file_part(icon_file).await?),
-            );
-
-        Self::handle_as_json(req).await
+        self.upload_thumbnail(
+            format!("https://publish.roblox.com/v1/badges/{}/icon", badge_id),
+            icon_file,
+        )
+        .await
     }
 
     pub async fn create_asset_alias(

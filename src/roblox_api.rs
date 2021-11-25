@@ -3,10 +3,13 @@ use std::{clone::Clone, ffi::OsStr, fs, path::PathBuf, sync::Arc};
 use reqwest::{
     header,
     multipart::{Form as MultipartForm, Part},
-    Body, StatusCode,
+    Body, RequestBuilder, StatusCode,
 };
 use scraper::{Html, Selector};
-use serde::{de, Deserialize, Serialize};
+use serde::{
+    de::{self, DeserializeOwned},
+    Deserialize, Serialize,
+};
 use serde_json::json;
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use tokio::fs::File;
@@ -197,6 +200,13 @@ pub struct CreateGamePassResponse {
 pub struct CreateBadgeResponse {
     pub id: AssetId,
     pub icon_image_id: AssetId,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CursorPageResponse<T> {
+    pub next_page_cursor: Option<String>,
+    pub data: Vec<T>,
 }
 
 #[derive(Deserialize)]
@@ -1513,15 +1523,14 @@ impl RobloxApi {
         Ok(())
     }
 
-    pub async fn list_badges(
+    async fn get_cursor_page<T>(
         &self,
-        experience_id: AssetId,
+        mut req: RequestBuilder,
         page_cursor: Option<String>,
-    ) -> Result<ListBadgesResponse, String> {
-        let mut req = self.client.get(&format!(
-            "https://badges.roblox.com/v1/universes/{}/badges",
-            experience_id
-        ));
+    ) -> Result<CursorPageResponse<T>, String>
+    where
+        T: DeserializeOwned,
+    {
         if let Some(page_cursor) = page_cursor {
             req = req.query(&[("cursor", &page_cursor)]);
         }
@@ -1529,16 +1538,16 @@ impl RobloxApi {
         Self::handle_as_json(req).await
     }
 
-    pub async fn get_all_badges(
-        &self,
-        experience_id: AssetId,
-    ) -> Result<Vec<ListBadgeResponse>, String> {
-        let mut all_badges = Vec::new();
+    async fn get_all_cursor_paged_items<T>(&self, req: RequestBuilder) -> Result<Vec<T>, String>
+    where
+        T: DeserializeOwned,
+    {
+        let mut all_items = Vec::new();
 
         let mut page_cursor: Option<String> = None;
         loop {
-            let res = self.list_badges(experience_id, page_cursor).await?;
-            all_badges.extend(res.data);
+            let res = self.get_cursor_page(req.clone(), page_cursor).await?;
+            all_items.extend(res.data);
 
             if res.next_page_cursor.is_none() {
                 break;
@@ -1547,7 +1556,19 @@ impl RobloxApi {
             page_cursor = res.next_page_cursor;
         }
 
-        Ok(all_badges)
+        Ok(all_items)
+    }
+
+    pub async fn get_all_badges(
+        &self,
+        experience_id: AssetId,
+    ) -> Result<Vec<ListBadgeResponse>, String> {
+        let req = self.client.get(&format!(
+            "https://badges.roblox.com/v1/universes/{}/badges",
+            experience_id
+        ));
+
+        self.get_all_cursor_paged_items(req).await
     }
 
     pub async fn update_badge_icon(

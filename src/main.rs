@@ -6,6 +6,7 @@ mod config;
 mod logger;
 mod project;
 mod resource_graph;
+mod resource_reconciler;
 mod roblox_api;
 mod roblox_auth;
 mod roblox_resource_manager;

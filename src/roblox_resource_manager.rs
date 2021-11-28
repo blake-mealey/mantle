@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     resource_graph::{
         all_outputs, optional_output, single_output, Resource, ResourceId, ResourceManager,
+        UpdateType,
     },
     roblox_api::{
         CreateAudioAssetResponse, CreateBadgeResponse, CreateDeveloperProductResponse,
@@ -609,6 +610,51 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
         }
     }
 
+    fn get_update_type(&self, inputs: RobloxInputs) -> UpdateType {
+        match inputs {
+            RobloxInputs::Experience(_) => UpdateType::Recreate { delete_first: true },
+            RobloxInputs::ExperienceConfiguration(_) => UpdateType::Recreate {
+                delete_first: false,
+            },
+            RobloxInputs::ExperienceActivation(_) => UpdateType::Recreate {
+                delete_first: false,
+            },
+            RobloxInputs::ExperienceIcon(_) => UpdateType::Recreate {
+                delete_first: false,
+            },
+            RobloxInputs::ExperienceThumbnail(_) => UpdateType::Recreate { delete_first: true },
+            RobloxInputs::ExperienceThumbnailOrder => UpdateType::Recreate {
+                delete_first: false,
+            },
+            // TODO: is this correct?
+            RobloxInputs::Place(_) => UpdateType::Recreate {
+                delete_first: false,
+            },
+            RobloxInputs::PlaceFile(_) => UpdateType::Recreate {
+                delete_first: false,
+            },
+            RobloxInputs::PlaceConfiguration(_) => UpdateType::Recreate {
+                delete_first: false,
+            },
+            RobloxInputs::SocialLink(_) => UpdateType::UpdateInPlace,
+            RobloxInputs::ProductIcon(_) => UpdateType::Recreate {
+                delete_first: false,
+            },
+            RobloxInputs::Product(_) => UpdateType::UpdateInPlace,
+            RobloxInputs::Pass(_) => UpdateType::UpdateInPlace,
+            RobloxInputs::PassIcon(_) => UpdateType::UpdateInPlace,
+            RobloxInputs::Badge(_) => UpdateType::UpdateInPlace,
+            RobloxInputs::BadgeIcon(_) => UpdateType::UpdateInPlace,
+            RobloxInputs::ImageAsset(_) => UpdateType::Recreate {
+                delete_first: false,
+            },
+            RobloxInputs::AudioAsset(_) => UpdateType::Recreate {
+                delete_first: false,
+            },
+            RobloxInputs::AssetAlias(_) => UpdateType::UpdateInPlace,
+        }
+    }
+
     // TODO: Consider moving `outputs` into `dependency_outputs`.
     async fn update(
         &self,
@@ -764,7 +810,6 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
         }
     }
 
-    // TODO: Do we need inputs?
     async fn delete(
         &self,
         outputs: RobloxOutputs,

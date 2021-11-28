@@ -54,6 +54,11 @@ pub trait Resource<TInputs, TOutputs>: Clone {
     fn set_outputs(&mut self, outputs: TOutputs);
 }
 
+pub enum UpdateType {
+    UpdateInPlace,
+    Recreate { delete_first: bool },
+}
+
 #[async_trait]
 pub trait ResourceManager<TInputs, TOutputs> {
     async fn get_create_price(
@@ -68,6 +73,9 @@ pub trait ResourceManager<TInputs, TOutputs> {
         dependency_outputs: Vec<TOutputs>,
     ) -> Result<TOutputs, String>;
 
+    fn get_update_type(&self, inputs: TInputs) -> UpdateType;
+
+    // TODO: remove
     async fn get_update_price(
         &self,
         inputs: TInputs,
@@ -75,6 +83,7 @@ pub trait ResourceManager<TInputs, TOutputs> {
         dependency_outputs: Vec<TOutputs>,
     ) -> Result<Option<u32>, String>;
 
+    // TODO: rename to `update_in_place`
     async fn update(
         &self,
         inputs: TInputs,
@@ -116,6 +125,7 @@ where
     TResource: Resource<TInputs, TOutputs>,
     TInputs: Clone,
     TOutputs: Clone,
+    TOutputs: Serialize,
 {
     phantom_inputs: std::marker::PhantomData<TInputs>,
     phantom_outputs: std::marker::PhantomData<TOutputs>,
@@ -140,6 +150,18 @@ where
         }
     }
 
+    pub fn empty() -> Self {
+        Self::new(&Vec::new())
+    }
+
+    pub fn get_resource(&self, resource_id: &str) -> Option<&TResource> {
+        self.resources.get(resource_id)
+    }
+
+    pub fn insert_resource(&mut self, resource: TResource) {
+        self.resources.insert(resource.get_id(), resource);
+    }
+
     pub fn get_outputs(&self, resource_id: &str) -> Option<TOutputs> {
         self.resources
             .get(resource_id)
@@ -154,7 +176,7 @@ where
             .collect()
     }
 
-    fn get_topological_order(&self) -> Result<Vec<ResourceId>, String> {
+    pub fn get_topological_order(&self) -> Result<Vec<ResourceId>, String> {
         let mut dependency_graph = self.get_dependency_graph();
 
         let mut start_nodes: Vec<ResourceId> = dependency_graph
@@ -196,7 +218,7 @@ where
             .collect()
     }
 
-    fn get_dependency_outputs(&self, resource: &TResource) -> Option<Vec<TOutputs>> {
+    pub fn get_dependency_outputs(&self, resource: &TResource) -> Option<Vec<TOutputs>> {
         let mut dependency_outputs: Vec<TOutputs> = Vec::new();
         for dependency in resource.get_dependencies() {
             let resource = self.resources.get(&dependency);
@@ -213,7 +235,7 @@ where
         Some(dependency_outputs)
     }
 
-    fn get_dependency_outputs_hash(&self, dependency_outputs: Vec<TOutputs>) -> String {
+    pub fn get_dependency_outputs_hash(dependency_outputs: Vec<TOutputs>) -> String {
         // TODO: Should we separate hashes from displays?
         let hash = serde_yaml::to_string(&dependency_outputs)
             .map_err(|e| format!("Failed to compute dependency outputs hash\n\t{}", e))
@@ -331,7 +353,7 @@ where
             .expect("Previous graph should be complete.");
 
         let inputs_hash = resource.get_inputs_hash();
-        let dependencies_hash = self.get_dependency_outputs_hash(dependency_outputs.clone());
+        let dependencies_hash = Self::get_dependency_outputs_hash(dependency_outputs.clone());
         logger::start_action(format!(
             "{} Deleting: {}",
             Paint::red("-"),
@@ -379,7 +401,7 @@ where
                 .get_dependency_outputs(previous_resource)
                 .expect("Previous graph should be complete.");
             let previous_dependencies_hash =
-                self.get_dependency_outputs_hash(previous_dependency_outputs);
+                Self::get_dependency_outputs_hash(previous_dependency_outputs);
 
             // TODO: How can we determine between update/noop?
             let dependency_outputs = match dependency_outputs {
@@ -395,7 +417,7 @@ where
                     );
                 }
             };
-            let dependencies_hash = self.get_dependency_outputs_hash(dependency_outputs.clone());
+            let dependencies_hash = Self::get_dependency_outputs_hash(dependency_outputs.clone());
 
             if previous_hash == inputs_hash && previous_dependencies_hash == dependencies_hash {
                 // No changes
@@ -461,7 +483,7 @@ where
                     );
                 }
             };
-            let dependencies_hash = self.get_dependency_outputs_hash(dependency_outputs.clone());
+            let dependencies_hash = Self::get_dependency_outputs_hash(dependency_outputs.clone());
 
             logger::log("Dependencies:");
             logger::log_changeset(get_changeset(&dependencies_hash, &dependencies_hash));

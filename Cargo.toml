@@ -20,6 +20,7 @@ rusoto_s3 = "0.47.0"
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.6.9"
 async-trait = "0.1.51"
+async-recursion = "0.3.2"
 chrono = "0.4"
 yansi = "0.5.0"
 scraper = "0.12.0"

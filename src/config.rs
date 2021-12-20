@@ -464,7 +464,7 @@ impl From<PlaceTargetConfigurationConfig> for PlaceConfigurationModel {
                 ServerFillTargetConfig::Maximum => SocialSlotType::Empty,
                 ServerFillTargetConfig::ReservedSlots(_) => SocialSlotType::Custom,
             };
-            model.custom_social_slot_count = match server_fill {
+            model.custom_social_slots_count = match server_fill {
                 ServerFillTargetConfig::ReservedSlots(count) => Some(count),
                 _ => None,
             }

@@ -112,7 +112,7 @@ impl From<GetPlaceResponse> for PlaceConfigurationModel {
             max_player_count: response.max_player_count,
             allow_copying: response.allow_copying,
             social_slot_type: response.social_slot_type,
-            custom_social_slot_count: response.custom_social_slots_count,
+            custom_social_slots_count: response.custom_social_slots_count,
         }
     }
 }
@@ -577,7 +577,7 @@ pub struct PlaceConfigurationModel {
     pub max_player_count: u32,
     pub allow_copying: bool,
     pub social_slot_type: SocialSlotType,
-    pub custom_social_slot_count: Option<u32>,
+    pub custom_social_slots_count: Option<u32>,
 }
 
 impl Default for PlaceConfigurationModel {
@@ -588,7 +588,7 @@ impl Default for PlaceConfigurationModel {
             max_player_count: 50,
             allow_copying: false,
             social_slot_type: SocialSlotType::Automatic,
-            custom_social_slot_count: None,
+            custom_social_slots_count: None,
         }
     }
 }

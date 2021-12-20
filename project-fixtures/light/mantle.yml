@@ -1,0 +1,18 @@
+environments:
+  - name: staging
+    branches: [dev, dev/*]
+
+target:
+  experience:
+    places:
+      start:
+        configuration:
+          name: Lightweight Mantle Test
+          serverFill:
+            reservedSlots: 5
+
+state:
+  remote:
+    region: [us-west-2]
+    bucket: mantle-states
+    key: project-fixtures/light

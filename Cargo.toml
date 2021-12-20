@@ -1,6 +1,6 @@
 [package]
 name = "mantle"
-version = "0.10.1"
+version = "0.10.2"
 authors = ["Blake Mealey <blakemealey@gmail.com>"]
 edition = "2018"
 

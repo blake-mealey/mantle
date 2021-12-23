@@ -16,7 +16,7 @@ use sha2::{Digest, Sha256};
 use tokio::io::AsyncReadExt;
 use yansi::Paint;
 
-use crate::{
+use super::{
     config::{
         AssetTargetConfig, Config, EnvironmentConfig, ExperienceTargetConfig, OwnerConfig,
         PlayabilityTargetConfig, RemoteStateConfig, StateConfig, TargetConfig,

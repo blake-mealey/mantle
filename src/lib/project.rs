@@ -5,7 +5,9 @@ use std::{
 
 use yansi::Paint;
 
-use crate::{
+use crate::util::run_command;
+
+use super::{
     config::{
         load_config_file, EnvironmentConfig, ExperienceTargetConfig, OwnerConfig, PaymentsConfig,
         StateConfig, TargetConfig,
@@ -15,7 +17,6 @@ use crate::{
     roblox_api::CreatorType,
     roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource},
     state::{get_desired_graph, get_previous_state, ResourceStateVLatest},
-    util::run_command,
 };
 
 fn parse_project(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {

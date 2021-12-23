@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, fs};
 
 use yansi::Paint;
 
-use crate::{
+use crate::lib::{
     logger,
     project::{load_project, Project},
     resource_graph::Resource,

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::roblox_resource_manager::RobloxResource;
+use super::super::roblox_resource_manager::RobloxResource;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ResourceStateV3 {

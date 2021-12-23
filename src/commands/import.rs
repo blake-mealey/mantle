@@ -1,6 +1,6 @@
 use yansi::Paint;
 
-use crate::{
+use crate::lib::{
     logger,
     project::{load_project, Project},
     roblox_api::RobloxApi,

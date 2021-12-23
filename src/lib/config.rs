@@ -4,7 +4,7 @@ use rusoto_core::Region;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::{
+use super::{
     roblox_api::{
         AssetTypeId, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
         ExperienceConfigurationModel, ExperienceGenre, ExperiencePlayableDevice,

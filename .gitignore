@@ -8,3 +8,5 @@
 *.rbxlx.lock
 
 *.png
+
+*.DS_Store

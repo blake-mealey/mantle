@@ -1,4 +1,4 @@
-use std::{clone::Clone, ffi::OsStr, fs, path::PathBuf, sync::Arc};
+use std::{clone::Clone, ffi::OsStr, fs, path::PathBuf, str, sync::Arc};
 
 use reqwest::{
     header,
@@ -593,6 +593,11 @@ impl Default for PlaceConfigurationModel {
     }
 }
 
+enum PlaceFileFormat {
+    Xml,
+    Binary,
+}
+
 pub struct RobloxApi {
     client: reqwest::Client,
 }
@@ -745,23 +750,48 @@ impl RobloxApi {
     }
 
     pub async fn upload_place(&self, place_file: PathBuf, place_id: AssetId) -> Result<(), String> {
-        let data = match fs::read_to_string(&place_file) {
-            Ok(v) => v,
-            Err(e) => {
+        let extension = place_file.extension().ok_or(format!(
+            "No file extension on place file {} (expected .rbxl or .rbxlx).",
+            place_file.display()
+        ))?;
+
+        let file_format = match extension.to_str() {
+            Some("rbxl") => PlaceFileFormat::Binary,
+            Some("rbxlx") => PlaceFileFormat::Xml,
+            _ => {
                 return Err(format!(
-                    "Unable to read place file: {}\n\t{}",
-                    place_file.display(),
-                    e
+                    "Unknown file extension on place file {} (expected .rbxl or .rbxlx).",
+                    place_file.display()
                 ))
             }
+        };
+
+        let data = fs::read(&place_file).map_err(|e| {
+            format!(
+                "Unable to read place file: {}\n\t{}",
+                place_file.display(),
+                e
+            )
+        })?;
+
+        let body: Body = match file_format {
+            PlaceFileFormat::Binary => data.into(),
+            PlaceFileFormat::Xml => String::from_utf8(data)
+                .map_err(|_| "Unable to read place file")?
+                .into(),
+        };
+
+        let content_type = match file_format {
+            PlaceFileFormat::Binary => "application/octet-stream",
+            PlaceFileFormat::Xml => "application/xml",
         };
 
         let req = self
             .client
             .post("https://data.roblox.com/Data/Upload.ashx")
             .query(&[("assetId", place_id.to_string())])
-            .header("Content-Type", "application/xml")
-            .body(data);
+            .header("Content-Type", content_type)
+            .body(body);
 
         Self::handle(req).await?;
 

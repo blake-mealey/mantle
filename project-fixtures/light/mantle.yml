@@ -6,6 +6,7 @@ target:
   experience:
     places:
       start:
+        file: place.rbxl
         configuration:
           name: Lightweight Mantle Test
           serverFill:

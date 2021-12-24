@@ -1,11 +1,10 @@
 use std::{
     path::{Path, PathBuf},
+    process::Command,
     str,
 };
 
 use yansi::Paint;
-
-use crate::util::run_command;
 
 use super::{
     config::{
@@ -18,6 +17,14 @@ use super::{
     roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource},
     state::{get_desired_graph, get_previous_state, ResourceStateVLatest},
 };
+
+fn run_command(command: &str) -> std::io::Result<std::process::Output> {
+    if cfg!(target_os = "windows") {
+        return Command::new("cmd").arg("/C").arg(command).output();
+    } else {
+        return Command::new("sh").arg("-c").arg(command).output();
+    }
+}
 
 fn parse_project(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {
     let project = project.unwrap_or(".");

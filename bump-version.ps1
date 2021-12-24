@@ -1,5 +1,5 @@
 param(
-  [Parameter()]
+  [Parameter(Mandatory = $True)]
   [ValidateSet("Major","Minor","Patch")]
   [string]$VersionPart = "Patch"
 )

@@ -18,7 +18,7 @@ function Get-PackageVersion() {
   }
 
   $PackageMeta = ConvertFrom-Json -InputObject $PackageMetaRaw
-  return ($PackageMeta.packages | where { $_.name -eq "mantle" }).version
+  return ($PackageMeta.packages | where { $_.name -eq "rbx_mantle" }).version
 }
 
 function Undo-Changes() {

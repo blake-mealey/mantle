@@ -1,8 +1,22 @@
 [package]
-name = "mantle"
+name = "rbx_mantle"
+description = "Infra-as-code for Roblox"
+homepage = "https://mantle-docs.vercel.app"
+repository = "https://github.com/blake-mealey/mantle"
 version = "0.10.3"
 authors = ["Blake Mealey <blakemealey@gmail.com>"]
+license = "MIT"
 edition = "2018"
+include = [
+    "src",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE"
+]
+
+[[bin]]
+name = "mantle"
+path = "src/main.rs"
 
 [dependencies]
 serde_json = { version = "1.0.59" }

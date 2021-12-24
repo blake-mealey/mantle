@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use crate::{
+use super::{
     resource_graph::{
         all_outputs, optional_output, single_output, Resource, ResourceId, ResourceManager,
     },

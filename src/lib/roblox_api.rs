@@ -13,7 +13,7 @@ use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
 use url::Url;
 
-use crate::{roblox_auth::RobloxAuth, roblox_resource_manager::AssetId};
+use super::{roblox_auth::RobloxAuth, roblox_resource_manager::AssetId};
 
 #[derive(Deserialize, Debug)]
 struct RobloxApiErrorModel {

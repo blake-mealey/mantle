@@ -8,7 +8,7 @@ use difference::Changeset;
 use serde::Serialize;
 use yansi::Paint;
 
-use crate::logger;
+use super::logger;
 
 macro_rules! all_outputs {
     ($expr:expr, $enum:path) => {{

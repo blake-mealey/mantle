@@ -3,12 +3,16 @@ use std::str;
 use yansi::Paint;
 
 use crate::{
-    config::TargetConfig,
-    logger,
-    project::{load_project, Project},
-    resource_graph::{EvaluateResults, ResourceGraph},
-    roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource, RobloxResourceManager},
-    state::save_state,
+    lib::{
+        config::TargetConfig,
+        logger,
+        project::{load_project, Project},
+        resource_graph::{EvaluateResults, ResourceGraph},
+        roblox_resource_manager::{
+            RobloxInputs, RobloxOutputs, RobloxResource, RobloxResourceManager,
+        },
+        state::save_state,
+    },
     util::run_command,
 };
 

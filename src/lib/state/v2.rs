@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
+use super::super::{
     resource_graph::{Resource, ResourceId},
     roblox_resource_manager::*,
 };

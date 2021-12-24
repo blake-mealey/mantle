@@ -1,20 +1,23 @@
-use std::str;
+use std::{process::Command, str};
 
 use yansi::Paint;
 
-use crate::{
-    lib::{
-        config::TargetConfig,
-        logger,
-        project::{load_project, Project},
-        resource_graph::{EvaluateResults, ResourceGraph},
-        roblox_resource_manager::{
-            RobloxInputs, RobloxOutputs, RobloxResource, RobloxResourceManager,
-        },
-        state::save_state,
-    },
-    util::run_command,
+use crate::lib::{
+    config::TargetConfig,
+    logger,
+    project::{load_project, Project},
+    resource_graph::{EvaluateResults, ResourceGraph},
+    roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource, RobloxResourceManager},
+    state::save_state,
 };
+
+fn run_command(command: &str) -> std::io::Result<std::process::Output> {
+    if cfg!(target_os = "windows") {
+        return Command::new("cmd").arg("/C").arg(command).output();
+    } else {
+        return Command::new("sh").arg("-c").arg(command).output();
+    }
+}
 
 fn tag_commit(
     target_config: &TargetConfig,

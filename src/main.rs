@@ -3,7 +3,6 @@ extern crate cookie;
 mod cli;
 mod commands;
 mod lib;
-mod util;
 
 #[tokio::main]
 async fn main() {

@@ -18,6 +18,9 @@ include = [
 name = "mantle"
 path = "src/main.rs"
 
+[lib]
+path = "src/lib/mod.rs"
+
 [dependencies]
 serde_json = { version = "1.0.59" }
 serde_yaml = { version = "0.8" }

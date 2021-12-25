@@ -1,10 +1,17 @@
-use std::{collections::HashMap, default, fmt, fs, path::Path, str};
+use std::{
+    collections::HashMap,
+    default, fmt, fs,
+    path::{Path, PathBuf},
+    str,
+};
 
 use rusoto_core::Region;
 use serde::{Deserialize, Serialize};
 use url::Url;
+use yansi::Paint;
 
 use super::{
+    logger,
     roblox_api::{
         AssetTypeId, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
         ExperienceConfigurationModel, ExperienceGenre, ExperiencePlayableDevice,
@@ -473,26 +480,51 @@ impl From<PlaceTargetConfigurationConfig> for PlaceConfigurationModel {
     }
 }
 
-pub fn load_config_file(config_file: &Path) -> Result<Config, String> {
-    let data = match fs::read_to_string(config_file) {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(format!(
-                "Unable to read config file: {}\n\t{}",
-                config_file.display(),
-                e
-            ))
-        }
+fn parse_project_path(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {
+    let project = project.unwrap_or(".");
+    let project_path = Path::new(project).to_owned();
+
+    let (project_dir, config_file) = if project_path.is_dir() {
+        (project_path.clone(), project_path.join("mantle.yml"))
+    } else if project_path.is_file() {
+        (project_path.parent().unwrap().into(), project_path)
+    } else {
+        return Err(format!("Unable to load project path: {}", project));
     };
 
-    match serde_yaml::from_str::<Config>(&data) {
-        Ok(v) => Ok(v),
-        Err(e) => {
-            return Err(format!(
-                "Unable to parse config file {}\n\t{}",
-                config_file.display(),
-                e
-            ))
-        }
+    if config_file.exists() {
+        return Ok((project_dir, config_file));
     }
+
+    Err(format!("Config file {} not found", config_file.display()))
+}
+
+fn load_config_file(config_file: &Path) -> Result<Config, String> {
+    let data = fs::read_to_string(config_file).map_err(|e| {
+        format!(
+            "Unable to read config file: {}\n\t{}",
+            config_file.display(),
+            e
+        )
+    })?;
+
+    serde_yaml::from_str::<Config>(&data).map_err(|e| {
+        format!(
+            "Unable to parse config file {}\n\t{}",
+            config_file.display(),
+            e
+        )
+    })
+}
+
+pub fn load_project_config(project: Option<&str>) -> Result<(PathBuf, Config), String> {
+    let (project_path, config_path) = parse_project_path(project)?;
+    let config = load_config_file(&config_path)?;
+
+    logger::log(format!(
+        "Loaded config file {}",
+        Paint::cyan(config_path.display())
+    ));
+
+    Ok((project_path, config))
 }

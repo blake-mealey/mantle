@@ -1,6 +1,7 @@
 use yansi::Paint;
 
 use crate::lib::{
+    config::load_project_config,
     logger,
     project::{load_project, Project},
     roblox_api::RobloxApi,
@@ -11,14 +12,20 @@ use crate::lib::{
 
 pub async fn run(project: Option<&str>, environment: Option<&str>, target_id: &str) -> i32 {
     logger::start_action("Loading project:");
+    let (project_path, config) = match load_project_config(project) {
+        Ok(v) => v,
+        Err(e) => {
+            logger::end_action(Paint::red(e));
+            return 1;
+        }
+    };
     let Project {
-        project_path,
-        previous_graph,
+        current_graph,
         mut state,
         environment_config,
         state_config,
         ..
-    } = match load_project(project, environment).await {
+    } = match load_project(project_path.clone(), config, environment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
             logger::end_action("No import necessary");
@@ -30,7 +37,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, target_id: &s
         }
     };
 
-    if !previous_graph.get_resource_list().is_empty() {
+    if !current_graph.get_resource_list().is_empty() {
         logger::end_action("Environment state already exists: no need to import.");
         return 0;
     }

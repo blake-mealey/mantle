@@ -3,12 +3,12 @@ use std::{process::Command, str};
 use yansi::Paint;
 
 use crate::lib::{
-    config::TargetConfig,
+    config::{load_project_config, TargetConfig},
     logger,
     project::{load_project, Project},
     resource_graph::{EvaluateResults, ResourceGraph},
     roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource, RobloxResourceManager},
-    state::save_state,
+    state::{get_desired_graph, save_state},
 };
 
 fn run_command(command: &str) -> std::io::Result<std::process::Output> {
@@ -114,16 +114,22 @@ fn log_target_results(
 
 pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchases: bool) -> i32 {
     logger::start_action("Loading project:");
+    let (project_path, config) = match load_project_config(project) {
+        Ok(v) => v,
+        Err(e) => {
+            logger::end_action(Paint::red(e));
+            return 1;
+        }
+    };
     let Project {
-        project_path,
-        mut next_graph,
-        previous_graph,
+        current_graph,
         mut state,
         environment_config,
         target_config,
         payment_source,
         state_config,
-    } = match load_project(project, environment).await {
+        owner_config,
+    } = match load_project(project_path.clone(), config, environment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
             logger::end_action("No deployment necessary");
@@ -134,6 +140,14 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
             return 1;
         }
     };
+    let mut next_graph =
+        match get_desired_graph(project_path.as_path(), &target_config, &owner_config) {
+            Ok(v) => v,
+            Err(e) => {
+                logger::end_action(Paint::red(e));
+                return 1;
+            }
+        };
     logger::end_action("Succeeded");
 
     logger::start_action("Deploying resources:");
@@ -147,7 +161,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
     };
 
     let results = next_graph
-        .evaluate(&previous_graph, &mut resource_manager, allow_purchases)
+        .evaluate(&current_graph, &mut resource_manager, allow_purchases)
         .await;
     match &results {
         Ok(results) => {
@@ -178,7 +192,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
 
     if environment_config.tag_commit && matches!(results, Ok(_)) {
         logger::start_action("Tagging commit:");
-        match tag_commit(&target_config, &next_graph, &previous_graph) {
+        match tag_commit(&target_config, &next_graph, &current_graph) {
             Ok(0) => logger::end_action("No tagging required"),
             Ok(tag_count) => {
                 logger::end_action(format!("Succeeded in pushing {} tag(s)", tag_count))

@@ -3,6 +3,7 @@ use std::str;
 use yansi::Paint;
 
 use crate::lib::{
+    config::load_project_config,
     logger,
     project::{load_project, Project},
     resource_graph::{EvaluateResults, ResourceGraph},
@@ -12,15 +13,21 @@ use crate::lib::{
 
 pub async fn run(project: Option<&str>, environment: Option<&str>) -> i32 {
     logger::start_action("Loading project:");
+    let (project_path, config) = match load_project_config(project) {
+        Ok(v) => v,
+        Err(e) => {
+            logger::end_action(Paint::red(e));
+            return 1;
+        }
+    };
     let Project {
-        project_path,
-        previous_graph,
+        current_graph,
         mut state,
         environment_config,
         payment_source,
         state_config,
         ..
-    } = match load_project(project, environment).await {
+    } = match load_project(project_path.clone(), config, environment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
             logger::end_action("No deployment necessary");
@@ -45,7 +52,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>) -> i32 {
 
     let mut next_graph = ResourceGraph::new(&Vec::new());
     let results = next_graph
-        .evaluate(&previous_graph, &mut resource_manager, false)
+        .evaluate(&current_graph, &mut resource_manager, false)
         .await;
     match &results {
         Ok(results) => {

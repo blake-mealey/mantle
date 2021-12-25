@@ -3,6 +3,7 @@ use std::{collections::BTreeMap, fs};
 use yansi::Paint;
 
 use crate::lib::{
+    config::load_project_config,
     logger,
     project::{load_project, Project},
     resource_graph::Resource,
@@ -15,19 +16,27 @@ pub async fn run(
     format: &str,
 ) -> i32 {
     logger::start_action("Load outputs:");
-    let Project { previous_graph, .. } = match load_project(project, environment).await {
-        Ok(Some(v)) => v,
-        Ok(None) => {
-            logger::end_action("No outputs available");
-            return 0;
-        }
+    let (project_path, config) = match load_project_config(project) {
+        Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(e));
             return 1;
         }
     };
+    let Project { current_graph, .. } =
+        match load_project(project_path.clone(), config, environment).await {
+            Ok(Some(v)) => v,
+            Ok(None) => {
+                logger::end_action("No outputs available");
+                return 0;
+            }
+            Err(e) => {
+                logger::end_action(Paint::red(e));
+                return 1;
+            }
+        };
 
-    let resources = previous_graph.get_resource_list();
+    let resources = current_graph.get_resource_list();
     let outputs_map = resources
         .iter()
         .map(|r| (r.get_id(), r.get_outputs()))

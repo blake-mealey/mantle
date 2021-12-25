@@ -1,21 +1,17 @@
-use std::{
-    path::{Path, PathBuf},
-    process::Command,
-    str,
-};
+use std::{path::PathBuf, process::Command, str};
 
 use yansi::Paint;
 
 use super::{
     config::{
-        load_config_file, EnvironmentConfig, ExperienceTargetConfig, OwnerConfig, PaymentsConfig,
+        Config, EnvironmentConfig, ExperienceTargetConfig, OwnerConfig, PaymentsConfig,
         StateConfig, TargetConfig,
     },
     logger,
     resource_graph::ResourceGraph,
     roblox_api::CreatorType,
     roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource},
-    state::{get_desired_graph, get_previous_state, ResourceStateVLatest},
+    state::{get_previous_state, ResourceStateVLatest},
 };
 
 fn run_command(command: &str) -> std::io::Result<std::process::Output> {
@@ -24,25 +20,6 @@ fn run_command(command: &str) -> std::io::Result<std::process::Output> {
     } else {
         return Command::new("sh").arg("-c").arg(command).output();
     }
-}
-
-fn parse_project(project: Option<&str>) -> Result<(PathBuf, PathBuf), String> {
-    let project = project.unwrap_or(".");
-    let project_path = Path::new(project).to_owned();
-
-    let (project_dir, config_file) = if project_path.is_dir() {
-        (project_path.clone(), project_path.join("mantle.yml"))
-    } else if project_path.is_file() {
-        (project_path.parent().unwrap().into(), project_path)
-    } else {
-        return Err(format!("Unable to load project path: {}", project));
-    };
-
-    if config_file.exists() {
-        return Ok((project_dir, config_file));
-    }
-
-    Err(format!("Config file {} not found", config_file.display()))
 }
 
 fn get_current_branch() -> Result<String, String> {
@@ -116,28 +93,20 @@ fn get_target_config(
 }
 
 pub struct Project {
-    pub project_path: PathBuf,
-    pub next_graph: ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>,
-    pub previous_graph: ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>,
+    pub current_graph: ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>,
     pub state: ResourceStateVLatest,
     pub environment_config: EnvironmentConfig,
     pub target_config: TargetConfig,
     pub payment_source: CreatorType,
     pub state_config: StateConfig,
+    pub owner_config: OwnerConfig,
 }
 
 pub async fn load_project(
-    project: Option<&str>,
+    project_path: PathBuf,
+    config: Config,
     environment: Option<&str>,
 ) -> Result<Option<Project>, String> {
-    let (project_path, config_file) = parse_project(project)?;
-
-    let config = load_config_file(&config_file)?;
-    logger::log(format!(
-        "Loaded config file {}",
-        Paint::cyan(config_file.display())
-    ));
-
     let current_branch = get_current_branch()?;
 
     let environment_config = match environment {
@@ -205,16 +174,14 @@ pub async fn load_project(
     // Get our resource graphs
     let previous_graph =
         ResourceGraph::new(state.environments.get(&environment_config.name).unwrap());
-    let next_graph = get_desired_graph(project_path.as_path(), &target_config, &config.owner)?;
 
     Ok(Some(Project {
-        project_path,
-        next_graph,
-        previous_graph,
+        current_graph: previous_graph,
         state,
         environment_config: environment_config.clone(),
         target_config,
         payment_source,
         state_config: config.state.clone(),
+        owner_config: config.owner,
     }))
 }

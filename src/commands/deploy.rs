@@ -1,4 +1,4 @@
-use std::{process::Command, str};
+use std::{path::PathBuf, process::Command, str};
 
 use yansi::Paint;
 
@@ -11,15 +11,24 @@ use crate::lib::{
     state::{get_desired_graph, save_state},
 };
 
-fn run_command(command: &str) -> std::io::Result<std::process::Output> {
+fn run_command(dir: PathBuf, command: &str) -> std::io::Result<std::process::Output> {
     if cfg!(target_os = "windows") {
-        return Command::new("cmd").arg("/C").arg(command).output();
+        return Command::new("cmd")
+            .current_dir(dir)
+            .arg("/C")
+            .arg(command)
+            .output();
     } else {
-        return Command::new("sh").arg("-c").arg(command).output();
+        return Command::new("sh")
+            .current_dir(dir)
+            .arg("-c")
+            .arg(command)
+            .output();
     }
 }
 
 fn tag_commit(
+    project_path: PathBuf,
     target_config: &TargetConfig,
     next_graph: &ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>,
     previous_graph: &ResourceGraph<RobloxResource, RobloxInputs, RobloxOutputs>,
@@ -53,7 +62,7 @@ fn tag_commit(
                     logger::log(format!("Tagging commit with {}", Paint::cyan(tag.clone())));
 
                     tag_count += 1;
-                    run_command(&format!("git tag {}", tag))
+                    run_command(project_path.clone(), &format!("git tag {}", tag))
                         .map_err(|e| format!("Unable to tag the current commit\n\t{}", e))?;
                 }
             }
@@ -61,7 +70,7 @@ fn tag_commit(
     }
 
     if tag_count > 0 {
-        run_command("git push --tags")
+        run_command(project_path, "git push --tags")
             .map_err(|e| format!("Unable to push tags to remote\n\t{}", e))?;
     }
 
@@ -192,7 +201,12 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
 
     if environment_config.tag_commit && matches!(results, Ok(_)) {
         logger::start_action("Tagging commit:");
-        match tag_commit(&target_config, &next_graph, &current_graph) {
+        match tag_commit(
+            project_path.clone(),
+            &target_config,
+            &next_graph,
+            &current_graph,
+        ) {
             Ok(0) => logger::end_action("No tagging required"),
             Ok(tag_count) => {
                 logger::end_action(format!("Succeeded in pushing {} tag(s)", tag_count))

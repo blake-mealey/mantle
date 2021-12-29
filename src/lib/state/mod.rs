@@ -759,9 +759,12 @@ pub async fn import_graph(
                 resource_outputs,
                 &[],
             );
-            resources.push(RobloxResource::new(
+            resources.push(RobloxResource::existing(
                 &format!("assetAlias_{}", asset.name),
-                RobloxInputs::AssetAlias(AssetAliasInputs { name: asset.name }),
+                RobloxInputs::AssetAlias(AssetAliasInputs {
+                    name: asset.name.clone(),
+                }),
+                RobloxOutputs::AssetAlias(AssetAliasOutputs { name: asset.name }),
                 &[&experience, &asset_resource],
             ));
             resources.push(asset_resource);

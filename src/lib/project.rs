@@ -14,16 +14,24 @@ use super::{
     state::{get_previous_state, ResourceStateVLatest},
 };
 
-fn run_command(command: &str) -> std::io::Result<std::process::Output> {
+fn run_command(dir: PathBuf, command: &str) -> std::io::Result<std::process::Output> {
     if cfg!(target_os = "windows") {
-        return Command::new("cmd").arg("/C").arg(command).output();
+        return Command::new("cmd")
+            .current_dir(dir)
+            .arg("/C")
+            .arg(command)
+            .output();
     } else {
-        return Command::new("sh").arg("-c").arg(command).output();
+        return Command::new("sh")
+            .current_dir(dir)
+            .arg("-c")
+            .arg(command)
+            .output();
     }
 }
 
-fn get_current_branch() -> Result<String, String> {
-    let output = run_command("git symbolic-ref --short HEAD");
+fn get_current_branch(project_path: PathBuf) -> Result<String, String> {
+    let output = run_command(project_path, "git symbolic-ref --short HEAD");
     let result = match output {
         Ok(v) => v,
         Err(e) => {
@@ -107,7 +115,7 @@ pub async fn load_project(
     config: Config,
     environment: Option<&str>,
 ) -> Result<Option<Project>, String> {
-    let current_branch = get_current_branch()?;
+    let current_branch = get_current_branch(project_path.clone())?;
 
     let environment_config = match environment {
         Some(name) => {

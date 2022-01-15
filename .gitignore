@@ -10,3 +10,5 @@
 *.png
 
 *.DS_Store
+
+*.log

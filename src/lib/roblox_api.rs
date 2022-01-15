@@ -1,4 +1,4 @@
-use std::{clone::Clone, ffi::OsStr, fs, path::PathBuf, str, sync::Arc};
+use std::{clone::Clone, ffi::OsStr, fmt, fs, path::PathBuf, str, sync::Arc};
 
 use reqwest::{
     header,
@@ -73,6 +73,18 @@ pub struct CreateExperienceResponse {
 pub enum CreatorType {
     User,
     Group,
+}
+impl fmt::Display for CreatorType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                CreatorType::User => "User",
+                CreatorType::Group => "Group",
+            }
+        )
+    }
 }
 
 #[derive(Deserialize)]
@@ -605,6 +617,7 @@ pub struct RobloxApi {
 impl RobloxApi {
     pub async fn new(roblox_auth: RobloxAuth) -> Result<Self, String> {
         let client = reqwest::Client::builder()
+            .connection_verbose(true)
             .user_agent("Roblox/WinInet")
             .cookie_provider(Arc::new(roblox_auth.jar))
             .default_headers(roblox_auth.headers)
@@ -1515,10 +1528,7 @@ impl RobloxApi {
                     .part("request.files", Self::get_file_part(icon_file_path).await?)
                     .text("request.name", name)
                     .text("request.description", description)
-                    .text(
-                        "request.paymentSourceType",
-                        serde_json::to_string(&payment_source).unwrap(),
-                    ),
+                    .text("request.paymentSourceType", payment_source.to_string()),
             );
 
         Self::handle_as_json(req).await

@@ -5,11 +5,11 @@ use yansi::Paint;
 use super::{
     config::{
         Config, EnvironmentConfig, ExperienceTargetConfig, OwnerConfig, PaymentsConfig,
-        StateConfig, TargetConfig,
+        StateConfig, TargetConfig, TargetNamePrefixConfig,
     },
     logger,
     resource_graph::ResourceGraph,
-    roblox_api::CreatorType,
+    roblox_api::{CreatorType, DEFAULT_PLACE_NAME},
     roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource},
     state::{get_previous_state, ResourceStateVLatest},
 };
@@ -83,18 +83,42 @@ fn override_yaml(a: &mut serde_yaml::Value, b: serde_yaml::Value) {
 }
 
 fn get_target_config(
+    environment: EnvironmentConfig,
     target: TargetConfig,
-    overrides: serde_yaml::Value,
 ) -> Result<TargetConfig, String> {
     let target = match target {
-        TargetConfig::Experience(experience) => {
-            let mut as_value = serde_yaml::to_value(experience)
-                .map_err(|e| format!("Failed to serialize target: {}", e))?;
-            override_yaml(&mut as_value, overrides);
-            TargetConfig::Experience(
-                serde_yaml::from_value::<ExperienceTargetConfig>(as_value)
-                    .map_err(|e| format!("Failed to deserialize target: {}", e))?,
-            )
+        TargetConfig::Experience(mut experience) => {
+            // Apply the name prefix to all places in the experience
+            if let Some(target_name_prefix) = environment.target_name_prefix {
+                let name_prefix = match target_name_prefix {
+                    TargetNamePrefixConfig::Custom(prefix) => prefix,
+                    TargetNamePrefixConfig::EnvironmentName => {
+                        format!("[{}] ", environment.name.to_uppercase())
+                    }
+                };
+                if let Some(places) = &mut experience.places {
+                    for (_, place) in places.iter_mut() {
+                        if let Some(config) = &mut place.configuration {
+                            let name = match config.name.clone() {
+                                Some(name) => name,
+                                None => DEFAULT_PLACE_NAME.to_owned(),
+                            };
+                            config.name = Some(format!("{}{}", name_prefix, name));
+                        }
+                    }
+                }
+            }
+
+            // Apply overrides last (they are the final trump)
+            if let Some(overrides) = environment.overrides {
+                let mut as_value = serde_yaml::to_value(experience)
+                    .map_err(|e| format!("Failed to serialize target: {}", e))?;
+                override_yaml(&mut as_value, overrides);
+                experience = serde_yaml::from_value::<ExperienceTargetConfig>(as_value)
+                    .map_err(|e| format!("Failed to deserialize target: {}", e))?;
+            };
+
+            TargetConfig::Experience(experience)
         }
     };
     Ok(target)
@@ -155,10 +179,7 @@ pub async fn load_project(
         }
     };
 
-    let target_config = match &environment_config.overrides {
-        Some(overrides) => get_target_config(config.target.clone(), overrides.clone())?,
-        None => config.target.clone(),
-    };
+    let target_config = get_target_config(environment_config.clone(), config.target.clone())?;
 
     let payment_source = match config.payments {
         PaymentsConfig::Owner => match config.owner {

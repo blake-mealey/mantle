@@ -15,6 +15,8 @@ use url::Url;
 
 use super::{roblox_auth::RobloxAuth, roblox_resource_manager::AssetId};
 
+pub const DEFAULT_PLACE_NAME: &str = "Untitled Game";
+
 #[derive(Deserialize, Debug)]
 struct RobloxApiErrorModel {
     // There are some other possible properties but we currently have no use for them so they are not
@@ -595,7 +597,7 @@ pub struct PlaceConfigurationModel {
 impl Default for PlaceConfigurationModel {
     fn default() -> Self {
         PlaceConfigurationModel {
-            name: "Untitled Game".to_owned(),
+            name: DEFAULT_PLACE_NAME.to_owned(),
             description: "Created with Mantle".to_owned(),
             max_player_count: 50,
             allow_copying: false,

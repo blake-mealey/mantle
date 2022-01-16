@@ -1,6 +1,9 @@
 environments:
   - name: staging
     branches: [dev, dev/*]
+    # targetNamePrefix:
+    #   custom: 'Test - '
+    targetNamePrefix: environmentName
 
 target:
   experience:

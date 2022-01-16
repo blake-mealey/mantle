@@ -106,6 +106,15 @@ pub struct EnvironmentConfig {
     pub tag_commit: bool,
 
     pub overrides: Option<serde_yaml::Value>,
+
+    pub target_name_prefix: Option<TargetNamePrefixConfig>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub enum TargetNamePrefixConfig {
+    EnvironmentName,
+    Custom(String),
 }
 
 #[derive(Serialize, Deserialize, Clone)]

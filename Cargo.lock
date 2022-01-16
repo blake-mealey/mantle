@@ -1220,7 +1220,7 @@ dependencies = [
 
 [[package]]
 name = "rbx_mantle"
-version = "0.10.7"
+version = "0.10.8"
 dependencies = [
  "async-trait",
  "base64",

@@ -108,6 +108,8 @@ pub struct EnvironmentConfig {
     pub overrides: Option<serde_yaml::Value>,
 
     pub target_name_prefix: Option<TargetNamePrefixConfig>,
+
+    pub target_access: Option<TargetAccessConfig>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -115,6 +117,14 @@ pub struct EnvironmentConfig {
 pub enum TargetNamePrefixConfig {
     EnvironmentName,
     Custom(String),
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub enum TargetAccessConfig {
+    Public,
+    Private,
+    Friends,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -274,7 +284,7 @@ pub enum AssetTargetConfig {
     FileWithAlias { file: String, name: String },
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ExperienceTargetConfigurationConfig {
     // basic info
@@ -449,7 +459,7 @@ pub struct PlaceTargetConfig {
     pub configuration: Option<PlaceTargetConfigurationConfig>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaceTargetConfigurationConfig {
     pub name: Option<String>,

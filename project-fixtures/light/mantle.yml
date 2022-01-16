@@ -1,9 +1,8 @@
 environments:
   - name: staging
     branches: [dev, dev/*]
-    # targetNamePrefix:
-    #   custom: 'Test - '
     targetNamePrefix: environmentName
+    targetAccess: private
 
 target:
   experience:

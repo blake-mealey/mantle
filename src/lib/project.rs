@@ -4,8 +4,9 @@ use yansi::Paint;
 
 use super::{
     config::{
-        Config, EnvironmentConfig, ExperienceTargetConfig, OwnerConfig, PaymentsConfig,
-        StateConfig, TargetConfig, TargetNamePrefixConfig,
+        Config, EnvironmentConfig, ExperienceTargetConfig, ExperienceTargetConfigurationConfig,
+        OwnerConfig, PaymentsConfig, PlaceTargetConfigurationConfig, PlayabilityTargetConfig,
+        StateConfig, TargetAccessConfig, TargetConfig, TargetNamePrefixConfig,
     },
     logger,
     resource_graph::ResourceGraph,
@@ -104,8 +105,30 @@ fn get_target_config(
                                 None => DEFAULT_PLACE_NAME.to_owned(),
                             };
                             config.name = Some(format!("{}{}", name_prefix, name));
+                        } else {
+                            place.configuration = Some(PlaceTargetConfigurationConfig {
+                                name: Some(format!("{}{}", name_prefix, DEFAULT_PLACE_NAME)),
+                                ..Default::default()
+                            })
                         }
                     }
+                }
+            }
+
+            // Apply the access to all places in the experience
+            if let Some(target_access) = environment.target_access {
+                let playability = Some(match target_access {
+                    TargetAccessConfig::Public => PlayabilityTargetConfig::Public,
+                    TargetAccessConfig::Private => PlayabilityTargetConfig::Private,
+                    TargetAccessConfig::Friends => PlayabilityTargetConfig::Friends,
+                });
+                if let Some(config) = &mut experience.configuration {
+                    config.playability = playability
+                } else {
+                    experience.configuration = Some(ExperienceTargetConfigurationConfig {
+                        playability,
+                        ..Default::default()
+                    });
                 }
             }
 

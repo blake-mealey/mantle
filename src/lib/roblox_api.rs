@@ -639,9 +639,23 @@ impl RobloxApi {
                         Ok(error) => Some(error.reason_or_status_code(status_code)),
                         Err(_) => None,
                     }
-                } else if content_type == "text/html" {
-                    // println!("{}", response.text().await.unwrap());
-                    None
+                } else if content_type == "text/html"
+                    || content_type == "text/html; charset=utf-8"
+                    || content_type == "text/html; charset=us-ascii"
+                {
+                    match response.text().await {
+                        Ok(text) => {
+                            let html = Html::parse_fragment(&text);
+                            let selector =
+                                Selector::parse(".request-error-page-content .error-message")
+                                    .unwrap();
+
+                            html.select(&selector)
+                                .next()
+                                .map(|e| e.text().map(|t| t.trim()).collect::<Vec<_>>().join(" "))
+                        }
+                        Err(_) => None,
+                    }
                 } else {
                     response.text().await.ok()
                 }

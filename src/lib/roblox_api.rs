@@ -639,7 +639,9 @@ impl RobloxApi {
                         Ok(error) => Some(error.reason_or_status_code(status_code)),
                         Err(_) => None,
                     }
-                } else if content_type == "text/html" || content_type == "text/html; charset=utf-8"
+                } else if content_type == "text/html"
+                    || content_type == "text/html; charset=utf-8"
+                    || content_type == "text/html; charset=us-ascii"
                 {
                     match response.text().await {
                         Ok(text) => {

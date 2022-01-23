@@ -76,6 +76,6 @@ target:
 
 state:
   remote:
-    region: [us-west-2]
+    region: us-west-2
     bucket: mantle-states
     key: project-fixtures/dev

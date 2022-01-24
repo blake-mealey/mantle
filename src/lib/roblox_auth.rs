@@ -79,10 +79,8 @@ fn get_roblosecurity_from_roblox_studio() -> Option<String> {
 
 #[cfg(target_os = "macos")]
 fn get_roblosecurity_from_roblox_studio() -> Option<String> {
-    let list = plist::Value::from_file(
-        "/Users/blake/Library/Preferences/com.roblox.RobloxStudioBrowser.plist",
-    )
-    .ok()?;
+    let path = dirs::home_dir()?.join("Library/Preferences/com.roblox.RobloxStudioBrowser.plist");
+    let list = plist::Value::from_file(path).ok()?;
 
     let value = list
         .as_dictionary()

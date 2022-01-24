@@ -47,16 +47,7 @@ fn get_roblosecurity_from_environment() -> Option<String> {
     env::var("ROBLOSECURITY").ok()
 }
 
-#[cfg(windows)]
-fn get_roblosecurity_from_roblox_studio() -> Option<String> {
-    use winreg::{enums::HKEY_CURRENT_USER, RegKey};
-
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let key = hkcu
-        .open_subkey("SOFTWARE\\Roblox\\RobloxStudioBrowser\\roblox.com")
-        .ok()?;
-    let value: String = key.get_value(".ROBLOSECURITY").ok()?;
-
+fn parse_roblosecurity_from_roblox_studio(value: &str) -> Option<String> {
     for item in value.split(',') {
         let parts = item.split("::").collect::<Vec<_>>();
         match &parts[..] {
@@ -73,7 +64,43 @@ fn get_roblosecurity_from_roblox_studio() -> Option<String> {
     None
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "windows")]
+fn get_roblosecurity_from_roblox_studio() -> Option<String> {
+    use winreg::{enums::HKEY_CURRENT_USER, RegKey};
+
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let key = hkcu
+        .open_subkey("SOFTWARE\\Roblox\\RobloxStudioBrowser\\roblox.com")
+        .ok()?;
+    let value: String = key.get_value(".ROBLOSECURITY").ok()?;
+
+    parse_roblosecurity_from_roblox_studio(value)
+}
+
+#[cfg(target_os = "macos")]
+fn get_roblosecurity_from_roblox_studio() -> Option<String> {
+    let list = plist::Value::from_file(
+        "/Users/blake/Library/Preferences/com.roblox.RobloxStudioBrowser.plist",
+    )
+    .ok()?;
+
+    let value = list
+        .as_dictionary()
+        .and_then(|dict| {
+            dict.into_iter().find_map(|(key, value)| {
+                if key.ends_with("ROBLOSECURITY") {
+                    Some(value)
+                } else {
+                    None
+                }
+            })
+        })?
+        .as_string()?;
+
+    parse_roblosecurity_from_roblox_studio(value)
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn get_roblosecurity_from_roblox_studio() -> Option<String> {
     None
 }

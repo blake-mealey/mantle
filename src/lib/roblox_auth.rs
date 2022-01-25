@@ -47,6 +47,7 @@ fn get_roblosecurity_from_environment() -> Option<String> {
     env::var("ROBLOSECURITY").ok()
 }
 
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 fn parse_roblosecurity_from_roblox_studio(value: &str) -> Option<String> {
     for item in value.split(',') {
         let parts = item.split("::").collect::<Vec<_>>();

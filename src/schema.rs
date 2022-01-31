@@ -53,5 +53,9 @@ fn main() {
         .into_generator()
         .into_root_schema_for::<Config>();
 
+    #[cfg(debug_assertions)]
     println!("{}", serde_json::to_string_pretty(&schema).unwrap());
+
+    #[cfg(not(debug_assertions))]
+    println!("{}", serde_json::to_string(&schema).unwrap());
 }

@@ -949,18 +949,13 @@ impl From<&ExperienceTargetConfigurationConfig> for ExperienceConfigurationModel
                 PlayabilityTargetConfig::Private => None,
             }
         }
-        model.is_for_sale = match config.paid_access {
-            PaidAccessTargetConfig::Disabled => false,
-            _ => true,
-        };
+        model.is_for_sale = !matches!(config.paid_access, PaidAccessTargetConfig::Disabled);
         model.price = match config.paid_access {
             PaidAccessTargetConfig::Price(price) => Some(price),
             _ => None,
         };
-        model.allow_private_servers = match config.private_servers {
-            PrivateServersTargetConfig::Disabled => false,
-            _ => true,
-        };
+        model.allow_private_servers =
+            !matches!(config.private_servers, PrivateServersTargetConfig::Disabled);
         model.private_server_price = match config.private_servers {
             PrivateServersTargetConfig::Free => Some(0),
             PrivateServersTargetConfig::Price(price) => Some(price),

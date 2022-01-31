@@ -18,6 +18,10 @@ include = [
 name = "mantle"
 path = "src/main.rs"
 
+[[bin]]
+name = "schema"
+path = "src/schema.rs"
+
 [lib]
 path = "src/lib/mod.rs"
 
@@ -45,6 +49,7 @@ base64 = "0.13.0"
 serde_repr = "0.1.7"
 log = "0.4.14"
 env_logger = "0.9.0"
+schemars = { version = "=0.8.8-blake.2", git = "https://github.com/blake-mealey/schemars", branch = "raw-comments", features = ["derive", "url", "preserve_order"] }
 dirs = "1.0.4"
 
 [target.'cfg(target_os = "windows")'.dependencies]

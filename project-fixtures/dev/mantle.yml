@@ -1,19 +1,20 @@
 environments:
-  - name: staging
+  - label: staging
     branches: [dev, dev/*]
-    overrides:
+    # targetNamePrefix: environmentLabel
+    targetOverrides:
       places:
         start:
           configuration:
             name: Staging - Start name
-  - name: production
+  - label: production
     branches: [main]
     # tagCommit: true
-    overrides:
+    targetOverrides:
       configuration:
         playability: friends
-  - name: preview
-    overrides:
+  - label: preview
+    targetOverrides:
       places:
         start:
           configuration:
@@ -29,11 +30,6 @@ target:
       avatarType: r15
       avatarAnimationType: playerChoice
       avatarCollisionType: outerBox
-      icon: game-icon.png
-      thumbnails:
-        - game-thumbnail-1.png
-        - game-thumbnail-2.png
-        - game-thumbnail-3.png
     places:
       start:
         file: start.rbxlx
@@ -51,6 +47,11 @@ target:
         file: start.rbxlx
         configuration:
           name: Second World
+    icon: game-icon.png
+    thumbnails:
+      - game-thumbnail-1.png
+      - game-thumbnail-2.png
+      - game-thumbnail-3.png
     socialLinks:
       - title: Follow me on Twitter!
         url: https://twitter.com/blakemdev

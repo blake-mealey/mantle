@@ -214,40 +214,6 @@ fn get_desired_experience_graph(
             RobloxInputs::ExperienceConfiguration(experience_configuration.into()),
             &[&experience],
         ));
-
-        if let Some(icon_path) = &experience_configuration.icon {
-            resources.push(RobloxResource::new(
-                "experienceIcon_singleton",
-                RobloxInputs::ExperienceIcon(FileInputs {
-                    file_path: icon_path.clone(),
-                    file_hash: get_file_hash(project_path.join(icon_path))?,
-                }),
-                &[&experience],
-            ));
-        }
-
-        if let Some(thumbnails) = &experience_configuration.thumbnails {
-            let mut thumbnail_resources: Vec<RobloxResource> = Vec::new();
-            for thumbnail_path in thumbnails {
-                thumbnail_resources.push(RobloxResource::new(
-                    &format!("experienceThumbnail_{}", thumbnail_path),
-                    RobloxInputs::ExperienceThumbnail(FileInputs {
-                        file_path: thumbnail_path.clone(),
-                        file_hash: get_file_hash(project_path.join(thumbnail_path))?,
-                    }),
-                    &[&experience],
-                ));
-            }
-            let mut thumbnail_order_dependencies: Vec<&RobloxResource> =
-                thumbnail_resources.iter().collect();
-            thumbnail_order_dependencies.push(&experience);
-            resources.push(RobloxResource::new(
-                "experienceThumbnailOrder_singleton",
-                RobloxInputs::ExperienceThumbnailOrder,
-                &thumbnail_order_dependencies,
-            ));
-            resources.extend(thumbnail_resources);
-        }
     }
 
     if let Some(places) = &target_config.places {
@@ -286,6 +252,40 @@ fn get_desired_experience_graph(
         }
     } else {
         return Err("No start place specified".to_owned());
+    }
+
+    if let Some(icon_path) = &target_config.icon {
+        resources.push(RobloxResource::new(
+            "experienceIcon_singleton",
+            RobloxInputs::ExperienceIcon(FileInputs {
+                file_path: icon_path.clone(),
+                file_hash: get_file_hash(project_path.join(icon_path))?,
+            }),
+            &[&experience],
+        ));
+    }
+
+    if let Some(thumbnails) = &target_config.thumbnails {
+        let mut thumbnail_resources: Vec<RobloxResource> = Vec::new();
+        for thumbnail_path in thumbnails {
+            thumbnail_resources.push(RobloxResource::new(
+                &format!("experienceThumbnail_{}", thumbnail_path),
+                RobloxInputs::ExperienceThumbnail(FileInputs {
+                    file_path: thumbnail_path.clone(),
+                    file_hash: get_file_hash(project_path.join(thumbnail_path))?,
+                }),
+                &[&experience],
+            ));
+        }
+        let mut thumbnail_order_dependencies: Vec<&RobloxResource> =
+            thumbnail_resources.iter().collect();
+        thumbnail_order_dependencies.push(&experience);
+        resources.push(RobloxResource::new(
+            "experienceThumbnailOrder_singleton",
+            RobloxInputs::ExperienceThumbnailOrder,
+            &thumbnail_order_dependencies,
+        ));
+        resources.extend(thumbnail_resources);
     }
 
     if let Some(social_links) = &target_config.social_links {

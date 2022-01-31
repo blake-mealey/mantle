@@ -22,7 +22,7 @@ use super::{
 };
 
 #[derive(JsonSchema, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Config {
     /// default('personal')
     /// skip_properties()
@@ -210,7 +210,7 @@ pub enum RegionRef {
 }
 
 #[derive(JsonSchema, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RemoteStateConfig {
     /// skip_properties()
     ///
@@ -250,7 +250,7 @@ impl fmt::Display for RemoteStateConfig {
 }
 
 #[derive(JsonSchema, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct EnvironmentConfig {
     /// The label of the environment that is used to identify the environment
     /// via the `--environment` flag. Must be unique across all environments.
@@ -354,7 +354,7 @@ pub enum TargetOverridesConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ExperienceTargetConfig {
     /// The Experience's Roblox configuration.
     ///
@@ -401,6 +401,13 @@ pub struct ExperienceTargetConfig {
     ///           serverFill: robloxOptimized
     /// ```
     pub places: Option<HashMap<String, PlaceTargetConfig>>,
+
+    /// A file path to an image that will be used as the experience's icon.
+    pub icon: Option<String>,
+
+    /// An array of file paths to images that will be used as the experience's thumbnails. The order
+    /// used here will be the order they appear on the Roblox webpage.
+    pub thumbnails: Option<Vec<String>>,
 
     /// A list of social links that will appear on the experience's webpage.
     ///
@@ -528,7 +535,7 @@ pub struct ExperienceTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SocialLinkTargetConfig {
     /// The display name of the social link on the Roblox website.
     pub title: String,
@@ -597,7 +604,7 @@ pub enum CollisionTypeTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Constraint {
     /// The minimum value (float)
     pub min: Option<f32>,
@@ -606,7 +613,7 @@ pub struct Constraint {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AvatarScaleConstraintsTargetConfig {
     /// The constraints to apply to the height of the avatar.
     pub height: Option<Constraint>,
@@ -625,7 +632,7 @@ pub struct AvatarScaleConstraintsTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AvatarAssetOverridesTargetConfig {
     /// The asset ID to override the avatar's face.
     pub face: Option<AssetId>,
@@ -660,7 +667,7 @@ pub struct AvatarAssetOverridesTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProductTargetConifg {
     /// The display name of the developer product on the Roblox website and in the experience.
     pub name: String,
@@ -679,7 +686,7 @@ pub struct ProductTargetConifg {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PassTargetConfig {
     /// The display name of the game pass on the Roblox website and in the experience.
     pub name: String,
@@ -698,7 +705,7 @@ pub struct PassTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct BadgeTargetConfig {
     /// The display name of the badge on the Roblox website and in the experience.
     pub name: String,
@@ -726,7 +733,7 @@ pub enum AssetTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ExperienceTargetConfigurationConfig {
     /// default('all')
     ///
@@ -737,13 +744,6 @@ pub struct ExperienceTargetConfigurationConfig {
     ///
     /// The devices that the experience can be played on.
     pub playable_devices: Option<Vec<PlayableDeviceTargetConfig>>,
-
-    /// A file path to an image that will be used as the experience's icon.
-    pub icon: Option<String>,
-
-    /// An array of file paths to images that will be used as the experience's thumbnails. The order
-    /// used here will be the order they appear on the Roblox webpage.
-    pub thumbnails: Option<Vec<String>>,
 
     /// default('private')
     ///
@@ -977,7 +977,7 @@ pub enum ServerFillTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PlaceTargetConfig {
     /// A file path to a Roblox place (either `.rbxl` or `.rbxlx`).
     pub file: Option<String>,
@@ -987,7 +987,7 @@ pub struct PlaceTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PlaceTargetConfigurationConfig {
     /// default('Untitled Game')
     ///

@@ -1,6 +1,4 @@
-mod lib;
-
-use lib::config::Config;
+use rbx_mantle::config::Config;
 use schemars::{
     gen::SchemaSettings,
     schema::SchemaObject,
@@ -31,7 +29,7 @@ impl Visitor for MarkdownVisitor {
                     })
                     .collect::<Vec<_>>()
                     .join("\n");
-                metadata.default = default.map(|v| serde_json::Value::String(v));
+                metadata.default = default.map(serde_json::Value::String);
                 if skip_properties {
                     schema.extensions.insert(
                         "x-skip-properties".to_owned(),

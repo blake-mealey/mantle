@@ -699,6 +699,7 @@ checksum = "bc633605454125dec4b66843673f01c7df2b89479b32e0ed634e43a91cff62a5"
 dependencies = [
  "autocfg",
  "hashbrown",
+ "serde",
 ]
 
 [[package]]
@@ -1470,6 +1471,7 @@ version = "0.8.8-blake.2"
 source = "git+https://github.com/blake-mealey/schemars?branch=raw-comments#7c0bf9940c16a894059904a2a0583e35cf224d1e"
 dependencies = [
  "dyn-clone",
+ "indexmap",
  "schemars_derive",
  "serde",
  "serde_json",

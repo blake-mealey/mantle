@@ -26,47 +26,36 @@ use super::{
 pub struct Config {
     /// default('personal')
     /// skip_properties()
+    ///
     /// The owner of the resources that will be created.
     ///
-    /// If set to `'personal'`, all resources will be created under the authorizer user.
+    /// | Value         | Description                                                     |
+    /// |---------------|-----------------------------------------------------------------|
+    /// | `'personal'`  | All resources will be created in the authorizer user's account. |
+    /// | `group: <id>` | All resources will be created in the specified group's account. |
     ///
-    /// If set to a group, all resources will be created under the provided group ID.
+    /// ```yml title="Personal Example (Default)"
+    /// owner: personal
+    /// ```
     ///
     /// ```yml title="Group Example"
     /// owner:
     ///   group: 5723117
     /// ```
-    ///
-    /// ```yml title="Personal Example (Default)"
-    /// owner: personal
-    /// ```
     #[serde(default)]
     pub owner: OwnerConfig,
 
     /// default('owner')
-    /// Where Robux should come from to purchase resources (if `--allow-purchases` is enabled).
     ///
-    /// If set to `'owner'`, all payments will come from the balance of the owner specified by the
-    /// top-level `owner` field.
+    /// Determines which account should make payments when creating resources
+    /// that cost Robux. Note that Mantle will never make purchases unless the
+    /// `--allow-purchases` flag is enabled.
     ///
-    /// If set to `'personal'`, all payments will come from the balance of the authorized user.
-    ///
-    /// If set to `'group'`, all payments will come from the balance of the group specified by the
-    /// top-level `owner` field. Payments can only be set to `'group'` when `owner` is also set to a
-    /// group because Roblox does not allow groups to pay for purchases of resources outside of
-    /// themselves.
-    ///
-    /// ```yml title="Personal Example"
-    /// payments: personal
-    /// ```
-    ///
-    /// ```yml title="Group Example"
-    /// payments: group
-    /// ```
-    ///
-    /// ```yml title="Owner Example (Default)"
-    /// payments: owner
-    /// ```
+    /// | Value        | Description                                                                                                                                                                                                                                                              |
+    /// |--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+    /// | `'owner'`    | All payments will come from the balance of the user or group specified by the [`owner`](#owner) property.                                                                                                                                                                |
+    /// | `'personal'` | All payments will come from the balance of the authorized user.                                                                                                                                                                                                          |
+    /// | `'group'`    | All payments will come from the balance of the group specified by the [`owner`](#owner) property. Payments can only be set to `'group'` when the owner is also set to a group because Roblox does not currently allow groups to pay for resources outside of themselves. |
     #[serde(default)]
     pub payments: PaymentsConfig,
 
@@ -85,10 +74,9 @@ pub struct Config {
     /// ```
     pub environments: Vec<EnvironmentConfig>,
 
-    /// Defines the target resource which Mantle will deploy to. Currently Mantle only supports
-    /// targeting Experiences, but in the future it will target other types like Plugins and Models.
-    ///
-    /// Currently the only supported target resource type is an Experience.
+    /// Defines the target resource which Mantle will deploy to. Currently
+    /// Mantle only supports targeting Experiences, but in the future it will
+    /// support other types like Plugins and Models.
     ///
     /// ```yml title="Example"
     /// target:
@@ -97,13 +85,24 @@ pub struct Config {
     pub target: TargetConfig,
 
     /// default('local')
+    ///
     /// Defines how Mantle should manage state files (locally or remotely).
     ///
-    /// If set to `'local'`, Mantle will save and load its state to and from a local `.mantle-state.yml`
-    /// file.
+    /// | Value              | Description                                                                                                                                                                                                           |
+    /// |--------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+    /// | `'local'`          | Mantle will save and load its state to and from a local `.mantle-state.yml` file.                                                                                                                                     |
+    /// | `remote: <config>` | Mantle will save and load its state to and from a remote file stored in a cloud provider. Currently the only supported provider is Amazon S3. For more information, see the [Remote State](/docs/remote-state) guide. |
     ///
     /// ```yml title="Local State Example (Default)"
     /// state: local
+    /// ```
+    ///
+    /// ```yml title="Remote State Example"
+    /// state:
+    ///   remote:
+    ///     region: us-west-1
+    ///     bucket: my-mantle-states
+    ///     key: pirate-wars
     /// ```
     #[serde(default)]
     pub state: StateConfig,
@@ -141,8 +140,8 @@ pub enum StateConfig {
     /// ```yml title="Remote State Example"
     /// state:
     ///   remote:
-    ///     region: us-west-2
-    ///     bucket: mantle-states
+    ///     region: us-west-1
+    ///     bucket: my-mantle-states
     ///     key: pirate-wars
     /// ```
     Remote(RemoteStateConfig),
@@ -214,6 +213,7 @@ pub enum RegionRef {
 #[serde(rename_all = "camelCase")]
 pub struct RemoteStateConfig {
     /// skip_properties()
+    ///
     /// The AWS region your S3 bucket is located in. If for some reason you need
     /// to use a region that is not defined, you can supply a custom one:
     ///
@@ -224,7 +224,7 @@ pub struct RemoteStateConfig {
     ///       custom:
     ///         name: region-name
     ///         endpoint: region-endpoint
-    ///     bucket: mantle-states
+    ///     bucket: my-mantle-states
     ///     key: pirate-wars
     /// ```
     #[serde(with = "RegionRef")]
@@ -266,51 +266,59 @@ pub struct EnvironmentConfig {
     /// is recommended to only enable this on your production environment. Tags will be of the
     /// format `<name>-v<version>` where `<name>` is the name of the place and `<version>` is the
     /// place's Roblox version.
+    ///
+    /// For example, a start place with Roblox version 23 would have the tag `start-v23`.
     #[serde(default)]
     pub tag_commit: bool,
 
     /// skip_properties()
+    ///
     /// Adds a prefix to the target's name configuration. The implementation is dependent on the
     /// target's type. For Experience targets, all place names will be updated with the prefix.
     ///
-    /// If set to `'environmentName'`, the target name prefix will use the format `[<ENVIRONMENT>] `
-    /// where `<ENVIRONMENT>` is the value of the environment's `name` field in all caps.
-    ///
-    /// If set to a custom string, the target name prefix will use the user-specified string.
+    /// | Value               | Description                                                                                                                                                                                                                                                                                                                            |
+    /// |---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+    /// | `'environmentName'` | The target name prefix will use the format `[<ENVIRONMENT>] ` where `<ENVIRONMENT>` is the value of the environment's [`name`](#environments--name) property in all caps. For example, if the environment's name was `'dev'` and the target's name was "Made with Mantle", the resulting target name will be "[DEV] Made with Mantle". |
+    /// | `custom: <prefix>`  | The target name prefix will be the supplied value.                                                                                                                                                                                                                                                                                     |
     ///
     /// ```yml title="Environment Name Example"
     /// environments:
-    ///   - name: staging
+    ///   - name: dev
     ///     targetNamePrefix: environmentName
-    ///   - name: production
+    ///   - name: prod
     /// ```
     ///
     /// ```yml title="Custom Example"
     /// environments:
-    ///   - name: staging
+    ///   - name: dev
     ///     targetNamePrefix:
     ///       custom: 'Prefix: '
-    ///   - name: production
+    ///   - name: prod
     /// ```
     pub target_name_prefix: Option<TargetNamePrefixConfig>,
 
-    /// Overrides the target's access. The implementation is dependent on the target's type. For
-    /// Experience targets, the `configuration.playability` field will be overridden.
+    /// Overrides the target's access. The implementation is dependent on the
+    /// target's type. For Experience targets, the
+    /// [`playability`](#target-experience-configuration-playability) property
+    /// will be overridden.
     ///
-    /// If set to `'public'`, the target will be accessible to all Roblox users.
-    ///
-    /// If set to `'private'`, the target will only be accessible to the authorized user.
-    ///
-    /// If set to `'friends'`, the target will only be accessible to the authorized user and that user's
-    /// Roblox friends.
+    /// | Value       | Description                                                                               |
+    /// |-------------|-------------------------------------------------------------------------------------------|
+    /// | `'public'`  | The target will be accessible to all Roblox users.                                        |
+    /// | `'private'` | The target will only be accessible to the authorized user.                                |
+    /// | `'friends'` | The target will only be accessible to the authorized user and that user's Roblox friends. |
     pub target_access: Option<TargetAccessConfig>,
 
     // TODO: This could break future target types. It is implemented this way in order to support schemars
     /// skip_properties()
-    /// Environment-specific overrides for the target resource definition. This will override all
-    /// configuration, including changes made by the `targetNamePrefix` and `targetAccess` fields.
     ///
-    /// Override the target configuration. Should match the type of the target configuration.
+    /// Environment-specific overrides for the target resource definition. This
+    /// will override all configuration, including changes made by the
+    /// [`targetNamePrefix`](#environments--targetnameprefix) and
+    /// [`targetAccess`](#environments--targetaccess) properties.
+    ///
+    /// Override the target configuration. Should match the type of the target
+    /// configuration.
     pub overrides: Option<TargetOverridesConfig>,
 }
 
@@ -332,6 +340,7 @@ pub enum TargetAccessConfig {
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum TargetConfig {
+    /// The target resource will be an Experience.
     Experience(ExperienceTargetConfig),
 }
 
@@ -341,11 +350,9 @@ pub enum TargetOverridesConfig {
     Experience(ExperienceTargetConfig),
 }
 
-/// # Experience
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ExperienceTargetConfig {
-    /// # Configuration
     /// The Experience's Roblox configuration.
     ///
     /// ```yml title="Example"
@@ -363,13 +370,17 @@ pub struct ExperienceTargetConfig {
     ///         - marketing/game-thumbnail-default.png
     /// ```
     ///
-    /// In order to configure the name and description of an experience, use the `name` and
-    /// `description` fields of the `PlaceConfiguration` for the experience's start place.
+    /// :::tip
+    /// In order to configure the name and description of an experience, use the
+    /// [`name`](#target-experience-places-label-configuration-name) and
+    /// [`description`](#target-experience-places-label-configuration-description)
+    /// properties of the experience's start place
+    /// :::
     pub configuration: Option<ExperienceTargetConfigurationConfig>,
 
-    /// # Places
-    /// The places to create in the experience. There must be at least one place supplied with the
-    /// name `'start'`, which will be used as the start place for the experience.
+    /// The experience's places. There must be at least one place supplied with
+    /// the name `'start'`, which will be used as the start place for the
+    /// experience.
     ///
     /// ```yml title="Example"
     /// target:
@@ -388,7 +399,6 @@ pub struct ExperienceTargetConfig {
     /// ```
     pub places: Option<HashMap<String, PlaceTargetConfig>>,
 
-    /// # Social Links
     /// A list of social links that will appear on the experience's webpage.
     ///
     /// ```yml title="Example"
@@ -400,7 +410,6 @@ pub struct ExperienceTargetConfig {
     /// ```
     pub social_links: Option<Vec<SocialLinkTargetConfig>>,
 
-    /// # Products
     /// Products that can be purchased within your experience for Robux.
     ///
     /// ```yml title="Example"
@@ -427,7 +436,6 @@ pub struct ExperienceTargetConfig {
     ///    date-time in `YYYY-MM-DD hh::mm::ss.ns` format.
     pub products: Option<HashMap<String, ProductTargetConifg>>,
 
-    /// # Passes
     /// Passes that can be purchased within your experience for Robux.
     ///
     /// ```yml title="Example"
@@ -449,7 +457,6 @@ pub struct ExperienceTargetConfig {
     ///    in `YYYY-MM-DD hh::mm::ss.ns` format.
     pub passes: Option<HashMap<String, PassTargetConfig>>,
 
-    /// # Badges
     /// Badges that can be awarded within your experience.
     ///
     /// ```yml title="Example"
@@ -476,16 +483,20 @@ pub struct ExperienceTargetConfig {
     ///    in `YYYY-MM-DD hh::mm::ss.ns` format.
     pub badges: Option<HashMap<String, BadgeTargetConfig>>,
 
-    /// # Assets
+    /// skip_properties()
+    ///
     /// A list of assets to include in your experience.
     ///
-    /// If set to `'file'`, the value should be a file path or glob to an asset or list of assets. The
-    /// `rbxgameasset` name of each matched file will be its file name without the extension. For
-    /// example, `assets/pirate-flag.png` will be given the `rbxgameasset` name `pirate-flag` and will
-    /// be accessible in the experience with `rbxgameasset://Images/pirate-flag`.
+    /// If set to a string, the value should be a file path or glob to an asset
+    /// or list of assets. The `rbxgameasset` name of each matched file will be
+    /// its file name without the extension. For example,
+    /// `assets/pirate-flag.png` will be given the `rbxgameasset` name
+    /// `pirate-flag` and will be accessible in the experience with
+    /// `rbxgameasset://Images/pirate-flag`.
     ///
-    /// If set to an object, `file` should be set to a file path (it will not be interpreted as a glob),
-    /// and `name` will be the name of the `rbxgameasset`.
+    /// If set to an object, `file` should be set to a file path (it will not be
+    /// interpreted as a glob), and `name` will be the name of the
+    /// `rbxgameasset`.
     ///
     /// ```yml title="Example"
     /// target:
@@ -497,13 +508,14 @@ pub struct ExperienceTargetConfig {
     /// ```
     ///
     /// :::caution
-    /// By default, Mantle does not have permission to make purchases with Robux. Since
-    /// creating and updating audio assets costs Robux, you will need to use the `--allow-purchases`
-    /// flag when you want to create or update them.
+    /// By default, Mantle does not have permission to make purchases
+    /// with Robux. Since creating and updating audio assets costs Robux, you
+    /// will need to use the `--allow-purchases` flag when you want to create or
+    /// update them.
     /// :::
     ///
-    /// Each file will be uploaded as the asset type matching its file extension. Supported asset types
-    /// and their file extensions:
+    /// Each file will be uploaded as the asset type matching its file
+    /// extension. Supported asset types and their file extensions:
     ///
     /// | Asset type | File extensions                                 |
     /// | :--------- | :---------------------------------------------- |
@@ -593,23 +605,18 @@ pub struct Constraint {
 #[derive(JsonSchema, Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub struct AvatarScaleConstraintsTargetConfig {
-    /// # Height
     /// The constraints to apply to the height of the avatar.
     pub height: Option<Constraint>,
 
-    /// # Width
     /// The constraints to apply to the width of the avatar.
     pub width: Option<Constraint>,
 
-    /// # Head
     /// The constraints to apply to the head of the avatar.
     pub head: Option<Constraint>,
 
-    /// # Body Type
     /// The constraints to apply to the body type of the avatar.
     pub body_type: Option<Constraint>,
 
-    /// # Proportions
     /// The constraints to apply to the proportions of the avatar.
     pub proportions: Option<Constraint>,
 }
@@ -656,6 +663,7 @@ pub struct ProductTargetConifg {
     pub name: String,
 
     /// default('')
+    ///
     /// The description of the developer product on the Roblox website and in the experience.
     pub description: Option<String>,
 
@@ -674,6 +682,7 @@ pub struct PassTargetConfig {
     pub name: String,
 
     /// default('')
+    ///
     /// The description of the game pass on the Roblox website and in the experience.
     pub description: Option<String>,
 
@@ -692,6 +701,7 @@ pub struct BadgeTargetConfig {
     pub name: String,
 
     /// default('')
+    ///
     /// The description of the badge on the Roblox website and in the experience.
     pub description: Option<String>,
 
@@ -700,6 +710,7 @@ pub struct BadgeTargetConfig {
     pub icon: String,
 
     /// default(true)
+    ///
     /// Whether or not the badge is enabled.
     pub enabled: Option<bool>,
 }
@@ -715,10 +726,12 @@ pub enum AssetTargetConfig {
 #[serde(rename_all = "camelCase")]
 pub struct ExperienceTargetConfigurationConfig {
     /// default('all')
+    ///
     /// The experience's genre.
     pub genre: Option<GenreTargetConfig>,
 
     /// default(['computer', 'phone', 'tablet'])
+    ///
     /// The devices that the experience can be played on.
     pub playable_devices: Option<Vec<PlayableDeviceTargetConfig>>,
 
@@ -730,14 +743,14 @@ pub struct ExperienceTargetConfigurationConfig {
     pub thumbnails: Option<Vec<String>>,
 
     /// default('private')
+    ///
     /// Determines who has access to play the experience.
     ///
-    /// If set to `'public'`, the epxerience will be playable by all Roblox users.
-    ///
-    /// If set to `'private'`, the experience will only be playable by the authorized user.
-    ///
-    /// If set to `'friends'`, the experience will only be playable by the authorized user and that
-    /// user's Roblox friends.
+    /// | Value       | Description                                                                                 |
+    /// |-------------|---------------------------------------------------------------------------------------------|
+    /// | `'public'`  | The experience will be playable by all Roblox users.                                        |
+    /// | `'private'` | The experience will only be playable by the authorized user.                                |
+    /// | `'friends'` | The experience will only be playable to the authorized user and that user's Roblox friends. |
     pub playability: Option<PlayabilityTargetConfig>,
 
     /// If set, paid access will be enabled with the specified price. Otherwise, paid access will be
@@ -750,32 +763,43 @@ pub struct ExperienceTargetConfigurationConfig {
     pub private_server_price: Option<u32>,
 
     /// default(false)
+    ///
     /// Whether or not studio should be able to use Roblox APIs for this place.
     pub enable_studio_access_to_apis: Option<bool>,
 
     /// default(false)
+    ///
     /// Whether or not this experience should allow third-party sales.
     pub allow_third_party_sales: Option<bool>,
 
     /// default(false)
+    ///
     /// Whether or not this experience should allow third-party teleports.
     pub allow_third_party_teleports: Option<bool>,
 
     /// default('r15')
+    ///
     /// The types of avatars that players can use in this experience.
     pub avatar_type: Option<AvatarTypeTargetConfig>,
 
     /// default('playerChoice')
+    ///
     /// The type of avatar animation that players can use in this experience.
     pub avatar_animation_type: Option<AnimationTypeTargetConfig>,
 
     /// default('outerBox')
+    ///
     /// The type of avatar collision that players can use in this experience.
     pub avatar_collision_type: Option<CollisionTypeTargetConfig>,
 
     /// skip_properties()
-    /// The scale constraints to apply to player avatars in the experience. Defaults to Roblox's
-    /// defaults.
+    ///
+    /// The scale constraints to apply to player avatars in the experience.
+    /// Defaults to Roblox's defaults. Each entry may include a `min`, `max`, or
+    /// both. If one is excluded, the default will be used.
+    ///
+    /// Supported properties: `bodyType`, `head`, `height`, `proportions`,
+    /// `width`.
     ///
     /// ```yml title="Example"
     /// target:
@@ -793,8 +817,12 @@ pub struct ExperienceTargetConfigurationConfig {
     pub avatar_scale_constraints: Option<AvatarScaleConstraintsTargetConfig>,
 
     /// skip_properties()
-    /// The asset overrides to apply to player avatars in the experience. Defaults to Roblox's
-    /// defaults.
+    ///
+    /// The asset overrides to apply to player avatars in the experience.
+    /// Defaults to Roblox's defaults.
+    ///
+    /// Supported properties: `face`, `head`, `leftArm`, `leftLeg`, `rightArm`,
+    /// `rightLeg`, `torso`, `tshirt`, `shirt`, `pants`
     ///
     /// ```yml title="Example"
     /// target:
@@ -959,34 +987,49 @@ pub struct PlaceTargetConfig {
 #[serde(rename_all = "camelCase")]
 pub struct PlaceTargetConfigurationConfig {
     /// default('Untitled Game')
+    ///
     /// The display name of the place on the Roblox website and in-game. If the
     /// place is an experience's start place, it will be the experience's
     /// display name as well.
     pub name: Option<String>,
 
     /// default('Created with Mantle')
+    ///
     /// The descirption of the place on the Roblox website and in-game. If the
     /// place is an experience's start place, it will be the experience's
     /// description as well.
     pub description: Option<String>,
 
     /// default(50)
+    ///
     /// The maximum number of players that can be in a server for the place.
     pub max_player_count: Option<u32>,
 
     /// default(false)
+    ///
     /// Whether or not other Roblox users can clone your place.
     pub allow_copying: Option<bool>,
 
+    /// default('robloxOptimized')
+    /// skip_properties()
+    ///
     /// Determines how Roblox will fill your servers.
     ///
-    /// If set to `'robloxOptimized'`, Roblox will attempt to automatically leave some space for friends
-    /// to join.
+    /// | Value                    | Description                                                                          |
+    /// |--------------------------|--------------------------------------------------------------------------------------|
+    /// | `'robloxOptimized'`      | Roblox will attempt to automatically leave some space for friends to join.           |
+    /// | `'maximum'`              | Roblox will never leave room for friends to join.                                    |
+    /// | `reservedSlots: <count>` | Roblox will always leave the provided number of slots available for friends to join. |
     ///
-    /// If set to `'maximum'`, Roblox will never leave room for friends to join.
-    ///
-    /// If set to reserved slots, Roblox will always leave the provided number of slots available for
-    /// friends to join.
+    /// ```yml title="Maximum Example"
+    /// target:
+    ///   experience:
+    ///     places:
+    ///       start:
+    ///         file: game.rbxlx
+    ///         configuration:
+    ///           serverFill: maximum
+    /// ```
     ///
     /// ```yml title="Reserved Slots Example"
     /// target:
@@ -996,7 +1039,7 @@ pub struct PlaceTargetConfigurationConfig {
     ///         file: game.rbxlx
     ///         configuration:
     ///           serverFill:
-    ///             reservedSlots: 10
+    ///             reservedSlots: 5
     /// ```
     pub server_fill: Option<ServerFillTargetConfig>,
 }

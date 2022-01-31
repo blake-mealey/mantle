@@ -18,13 +18,7 @@ where
 {
     text.to_string()
         .split('\n')
-        .map(|line| {
-            format!(
-                "{}{}",
-                prefix.to_string(),
-                Paint::new(line).with_style(style)
-            )
-        })
+        .map(|line| format!("{}{}", prefix, Paint::new(line).with_style(style)))
         .collect::<Vec<_>>()
         .join("\n")
 }

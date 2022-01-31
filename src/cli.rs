@@ -21,7 +21,7 @@ fn get_app() -> App<'static, 'static> {
                     Arg::with_name("environment")
                         .long("environment")
                         .short("e")
-                        .help("The environment to deploy to. If not specified, attempts to match the current git branch to each environment's `branches` field.")
+                        .help("The label of the environment to deploy to. If not specified, attempts to match the current git branch to each environment's `branches` property.")
                         .value_name("ENVIRONMENT")
                         .takes_value(true))
                 .arg(
@@ -42,7 +42,7 @@ fn get_app() -> App<'static, 'static> {
                     Arg::with_name("environment")
                         .long("environment")
                         .short("e")
-                        .help("The environment to destroy. If not specified, attempts to match the current git branch to each environment's `branches` field.")
+                        .help("The label of the environment to destroy. If not specified, attempts to match the current git branch to each environment's `branches` property.")
                         .value_name("ENVIRONMENT")
                         .takes_value(true))
         )
@@ -59,7 +59,7 @@ fn get_app() -> App<'static, 'static> {
                     Arg::with_name("environment")
                         .long("environment")
                         .short("e")
-                        .help("The environment to print the outputs of. If not specified, attempts to match the current git branch to each environment's `branches` field.")
+                        .help("The label of the environment to print the outputs of. If not specified, attempts to match the current git branch to each environment's `branches` property.")
                         .value_name("ENVIRONMENT")
                         .takes_value(true))
                 .arg(
@@ -92,7 +92,7 @@ fn get_app() -> App<'static, 'static> {
                     Arg::with_name("environment")
                         .long("environment")
                         .short("e")
-                        .help("The environment to print the outputs of. If not specified, attempts to match the current git branch to each environment's `branches` field.")
+                        .help("The label of the environment to print the outputs of. If not specified, attempts to match the current git branch to each environment's `branches` property.")
                         .value_name("ENVIRONMENT")
                         .takes_value(true))
                 .arg(

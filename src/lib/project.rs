@@ -93,8 +93,8 @@ fn get_target_config(
             if let Some(target_name_prefix) = environment.target_name_prefix {
                 let name_prefix = match target_name_prefix {
                     TargetNamePrefixConfig::Custom(prefix) => prefix,
-                    TargetNamePrefixConfig::EnvironmentName => {
-                        format!("[{}] ", environment.name.to_uppercase())
+                    TargetNamePrefixConfig::EnvironmentLabel => {
+                        format!("[{}] ", environment.label.to_uppercase())
                     }
                 };
                 if let Some(places) = &mut experience.places {
@@ -133,7 +133,7 @@ fn get_target_config(
             }
 
             // Apply overrides last (they are the final trump)
-            if let Some(overrides) = environment.overrides {
+            if let Some(overrides) = environment.target_overrides {
                 let overrides = serde_yaml::to_value(overrides).unwrap();
                 let mut as_value = serde_yaml::to_value(experience)
                     .map_err(|e| format!("Failed to serialize target: {}", e))?;
@@ -166,17 +166,17 @@ pub async fn load_project(
     let current_branch = get_current_branch(project_path.clone())?;
 
     let environment_config = match environment {
-        Some(name) => {
-            if let Some(result) = config.environments.iter().find(|d| d.name == name) {
+        Some(label) => {
+            if let Some(result) = config.environments.iter().find(|d| d.label == label) {
                 logger::log(format!(
                     "Selected provided environment configuration {}",
-                    Paint::cyan(name)
+                    Paint::cyan(label)
                 ));
                 result
             } else {
                 return Err(format!(
                     "No environment configuration found with name {}",
-                    name
+                    label
                 ));
             }
         }
@@ -188,7 +188,7 @@ pub async fn load_project(
             {
                 logger::log(format!(
                     "Selected environment configuration {} because the current branch {} matched one of [{}]",
-                    Paint::cyan(result.name.clone()),
+                    Paint::cyan(result.label.clone()),
                     Paint::cyan(current_branch),
                     result.branches.iter().map(|b|Paint::cyan(b).to_string()).collect::<Vec<String>>().join(", ")
                 ));
@@ -226,7 +226,7 @@ pub async fn load_project(
 
     // Get our resource graphs
     let previous_graph =
-        ResourceGraph::new(state.environments.get(&environment_config.name).unwrap());
+        ResourceGraph::new(state.environments.get(&environment_config.label).unwrap());
 
     Ok(Some(Project {
         current_graph: previous_graph,

@@ -82,7 +82,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, target_id: &s
 
     logger::start_action("Saving state:");
     state.environments.insert(
-        environment_config.name.clone(),
+        environment_config.label.clone(),
         imported_graph.get_resource_list(),
     );
     match save_state(&project_path, &state_config, &state).await {

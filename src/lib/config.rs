@@ -22,7 +22,7 @@ use super::{
 };
 
 #[derive(JsonSchema, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Config {
     /// default('personal')
     /// skip_properties()
@@ -63,12 +63,12 @@ pub struct Config {
     ///
     /// ```yml title="Example"
     /// environments:
-    ///   - name: staging
+    ///   - label: staging
     ///     branches: [dev, dev/*]
-    ///     overrides:
+    ///     targetOverrides:
     ///       configuration:
-    ///         genre: building
-    ///   - name: production
+    ///         icon: marketing/beta-game-icon.png
+    ///   - label: production
     ///     branches: [main]
     ///     targetAccess: public
     /// ```
@@ -210,7 +210,7 @@ pub enum RegionRef {
 }
 
 #[derive(JsonSchema, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RemoteStateConfig {
     /// skip_properties()
     ///
@@ -250,24 +250,27 @@ impl fmt::Display for RemoteStateConfig {
 }
 
 #[derive(JsonSchema, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct EnvironmentConfig {
-    /// The name of the environment that is used to identify the environment via the `--environment`
-    /// flag. Must be unique across all environments.
-    pub name: String,
+    /// The label of the environment that is used to identify the environment
+    /// via the `--environment` flag. Must be unique across all environments.
+    pub label: String,
 
-    /// An array of file globs to match against Git branches. If the `--environment` flag is not
-    /// specified, Mantle will pick the first environment which contains a matching file glob for
-    /// the current Git branch. If no environments match, Mantle will exit with a success code.
+    /// An array of file globs to match against Git branches. If the
+    /// `--environment` flag is not specified, Mantle will pick the first
+    /// environment which contains a matching file glob for the current Git
+    /// branch. If no environments match, Mantle will exit with a success code.
     #[serde(default)]
     pub branches: Vec<String>,
 
-    /// Whether or not to tag the commit with place file versions after successful deployments. It
-    /// is recommended to only enable this on your production environment. Tags will be of the
-    /// format `<name>-v<version>` where `<name>` is the name of the place and `<version>` is the
-    /// place's Roblox version.
+    /// Whether or not to tag the commit with place file versions after
+    /// successful deployments. It is recommended to only enable this on your
+    /// production environment. Tags will be of the format `<label>-v<version>`
+    /// where `<label>` is the label of the place and `<version>` is the place's
+    /// Roblox version.
     ///
-    /// For example, a start place with Roblox version 23 would have the tag `start-v23`.
+    /// For example, a start place with Roblox version 23 would have the tag
+    /// `start-v23`.
     #[serde(default)]
     pub tag_commit: bool,
 
@@ -276,24 +279,24 @@ pub struct EnvironmentConfig {
     /// Adds a prefix to the target's name configuration. The implementation is dependent on the
     /// target's type. For Experience targets, all place names will be updated with the prefix.
     ///
-    /// | Value               | Description                                                                                                                                                                                                                                                                                                                            |
-    /// |---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-    /// | `'environmentName'` | The target name prefix will use the format `[<ENVIRONMENT>] ` where `<ENVIRONMENT>` is the value of the environment's [`name`](#environments--name) property in all caps. For example, if the environment's name was `'dev'` and the target's name was "Made with Mantle", the resulting target name will be "[DEV] Made with Mantle". |
-    /// | `custom: <prefix>`  | The target name prefix will be the supplied value.                                                                                                                                                                                                                                                                                     |
+    /// | Value                | Description                                                                                                                                                                                                                                                                                                                               |
+    /// |----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+    /// | `'environmentLabel'` | The target name prefix will use the format `[<ENVIRONMENT>] ` where `<ENVIRONMENT>` is the value of the environment's [`label`](#environments--label) property in all caps. For example, if the environment's label was `'dev'` and the target's name was "Made with Mantle", the resulting target name will be "[DEV] Made with Mantle". |
+    /// | `custom: <prefix>`   | The target name prefix will be the supplied value.                                                                                                                                                                                                                                                                                        |
     ///
-    /// ```yml title="Environment Name Example"
+    /// ```yml title="Environment Label Example"
     /// environments:
-    ///   - name: dev
-    ///     targetNamePrefix: environmentName
-    ///   - name: prod
+    ///   - label: dev
+    ///     targetNamePrefix: environmentLabel
+    ///   - label: prod
     /// ```
     ///
     /// ```yml title="Custom Example"
     /// environments:
-    ///   - name: dev
+    ///   - label: dev
     ///     targetNamePrefix:
     ///       custom: 'Prefix: '
-    ///   - name: prod
+    ///   - label: prod
     /// ```
     pub target_name_prefix: Option<TargetNamePrefixConfig>,
 
@@ -319,13 +322,13 @@ pub struct EnvironmentConfig {
     ///
     /// Override the target configuration. Should match the type of the target
     /// configuration.
-    pub overrides: Option<TargetOverridesConfig>,
+    pub target_overrides: Option<TargetOverridesConfig>,
 }
 
 #[derive(JsonSchema, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum TargetNamePrefixConfig {
-    EnvironmentName,
+    EnvironmentLabel,
     Custom(String),
 }
 
@@ -351,7 +354,7 @@ pub enum TargetOverridesConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ExperienceTargetConfig {
     /// The Experience's Roblox configuration.
     ///
@@ -379,7 +382,7 @@ pub struct ExperienceTargetConfig {
     pub configuration: Option<ExperienceTargetConfigurationConfig>,
 
     /// The experience's places. There must be at least one place supplied with
-    /// the name `'start'`, which will be used as the start place for the
+    /// the label `'start'`, which will be used as the start place for the
     /// experience.
     ///
     /// ```yml title="Example"
@@ -398,6 +401,13 @@ pub struct ExperienceTargetConfig {
     ///           serverFill: robloxOptimized
     /// ```
     pub places: Option<HashMap<String, PlaceTargetConfig>>,
+
+    /// A file path to an image that will be used as the experience's icon.
+    pub icon: Option<String>,
+
+    /// An array of file paths to images that will be used as the experience's thumbnails. The order
+    /// used here will be the order they appear on the Roblox webpage.
+    pub thumbnails: Option<Vec<String>>,
 
     /// A list of social links that will appear on the experience's webpage.
     ///
@@ -525,7 +535,7 @@ pub struct ExperienceTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SocialLinkTargetConfig {
     /// The display name of the social link on the Roblox website.
     pub title: String,
@@ -564,6 +574,31 @@ pub enum PlayabilityTargetConfig {
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub enum PaidAccessTargetConfig {
+    Disabled,
+    Price(u32),
+}
+impl default::Default for PaidAccessTargetConfig {
+    fn default() -> Self {
+        PaidAccessTargetConfig::Disabled
+    }
+}
+
+#[derive(JsonSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub enum PrivateServersTargetConfig {
+    Disabled,
+    Free,
+    Price(u32),
+}
+impl default::Default for PrivateServersTargetConfig {
+    fn default() -> Self {
+        PrivateServersTargetConfig::Disabled
+    }
+}
+
+#[derive(JsonSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub enum AvatarTypeTargetConfig {
     R6,
     R15,
@@ -594,7 +629,7 @@ pub enum CollisionTypeTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Constraint {
     /// The minimum value (float)
     pub min: Option<f32>,
@@ -603,7 +638,7 @@ pub struct Constraint {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AvatarScaleConstraintsTargetConfig {
     /// The constraints to apply to the height of the avatar.
     pub height: Option<Constraint>,
@@ -622,7 +657,7 @@ pub struct AvatarScaleConstraintsTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AvatarAssetOverridesTargetConfig {
     /// The asset ID to override the avatar's face.
     pub face: Option<AssetId>,
@@ -657,7 +692,7 @@ pub struct AvatarAssetOverridesTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProductTargetConifg {
     /// The display name of the developer product on the Roblox website and in the experience.
     pub name: String,
@@ -676,7 +711,7 @@ pub struct ProductTargetConifg {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PassTargetConfig {
     /// The display name of the game pass on the Roblox website and in the experience.
     pub name: String,
@@ -695,7 +730,7 @@ pub struct PassTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct BadgeTargetConfig {
     /// The display name of the badge on the Roblox website and in the experience.
     pub name: String,
@@ -723,7 +758,7 @@ pub enum AssetTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ExperienceTargetConfigurationConfig {
     /// default('all')
     ///
@@ -734,13 +769,6 @@ pub struct ExperienceTargetConfigurationConfig {
     ///
     /// The devices that the experience can be played on.
     pub playable_devices: Option<Vec<PlayableDeviceTargetConfig>>,
-
-    /// A file path to an image that will be used as the experience's icon.
-    pub icon: Option<String>,
-
-    /// An array of file paths to images that will be used as the experience's thumbnails. The order
-    /// used here will be the order they appear on the Roblox webpage.
-    pub thumbnails: Option<Vec<String>>,
 
     /// default('private')
     ///
@@ -753,14 +781,59 @@ pub struct ExperienceTargetConfigurationConfig {
     /// | `'friends'` | The experience will only be playable to the authorized user and that user's Roblox friends. |
     pub playability: Option<PlayabilityTargetConfig>,
 
-    /// If set, paid access will be enabled with the specified price. Otherwise, paid access will be
-    /// disabled. Should not be used with `privateServerPrice`.
-    pub paid_access_price: Option<u32>,
+    /// default('disabled')
+    /// skip_properties()
+    ///
+    /// Determines whether or not paid access is be enabled, and if it is, how
+    /// much it costs. This should not be enabled when
+    /// [`privateServers`](#target-experience-configuration-privateservers) are
+    /// also enabled as they are incompatible.
+    ///
+    /// | Value            | Description                                                             |
+    /// |------------------|-------------------------------------------------------------------------|
+    /// | `'disabled'`     | Paid access will be disabled.                                           |
+    /// | `price: <price>` | Paid access will be enabled and will cost the provided number of Robux. |
+    ///
+    /// ```yml title="Enabled Example"
+    /// target:
+    ///   experience:
+    ///     configuration:
+    ///       paidAccess:
+    ///         price: 100
+    /// ```
+    #[serde(default)]
+    pub paid_access: PaidAccessTargetConfig,
 
-    /// If set, private servers will be enabled with the specified price. Otherwise, private servers
-    /// will be disabled. To enable for free, set to `0`. Should not be used with
-    /// `privateServerPrice`.
-    pub private_server_price: Option<u32>,
+    /// default('disabled')
+    /// skip_properties()
+    ///
+    /// Determines whether or not private servers are enabled, and if they are,
+    /// how much they cost. This should not be enabled when
+    /// [`paidAccess`](#target-experience-configuration-paidaccess) is also
+    /// enabled as they are incompatible.
+    ///
+    /// | Value            | Description                                                                 |
+    /// |------------------|-----------------------------------------------------------------------------|
+    /// | `'disabled'`     | Private servers will be disabled.                                           |
+    /// | `'free'`         | Private servers will be enabled and will be free to purchase.               |
+    /// | `price: <price>` | Private servers will be enabled and will cost the provided number of Robux. |
+    ///
+    /// ```yml title="Enabled for Free Example"
+    /// target:
+    ///   experience:
+    ///     configuration:
+    ///       privateServers: free
+    /// ```
+    ///
+    /// ```yml title="Enabled for Price Example"
+    /// target:
+    ///   experience:
+    ///     configuration:
+    ///       privateServers:
+    ///         price: 100
+    /// ```
+    #[serde(default)]
+    pub private_servers: PrivateServersTargetConfig,
 
     /// default(false)
     ///
@@ -876,10 +949,18 @@ impl From<&ExperienceTargetConfigurationConfig> for ExperienceConfigurationModel
                 PlayabilityTargetConfig::Private => None,
             }
         }
-        model.is_for_sale = config.clone().paid_access_price.is_some();
-        model.price = config.paid_access_price;
-        model.allow_private_servers = config.private_server_price.is_some();
-        model.private_server_price = config.private_server_price;
+        model.is_for_sale = !matches!(config.paid_access, PaidAccessTargetConfig::Disabled);
+        model.price = match config.paid_access {
+            PaidAccessTargetConfig::Price(price) => Some(price),
+            _ => None,
+        };
+        model.allow_private_servers =
+            !matches!(config.private_servers, PrivateServersTargetConfig::Disabled);
+        model.private_server_price = match config.private_servers {
+            PrivateServersTargetConfig::Free => Some(0),
+            PrivateServersTargetConfig::Price(price) => Some(price),
+            _ => None,
+        };
         if let Some(enable_studio_access_to_apis) = config.enable_studio_access_to_apis {
             model.studio_access_to_apis_allowed = enable_studio_access_to_apis;
         }
@@ -974,7 +1055,7 @@ pub enum ServerFillTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PlaceTargetConfig {
     /// A file path to a Roblox place (either `.rbxl` or `.rbxlx`).
     pub file: Option<String>,
@@ -984,7 +1065,7 @@ pub struct PlaceTargetConfig {
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PlaceTargetConfigurationConfig {
     /// default('Untitled Game')
     ///

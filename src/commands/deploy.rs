@@ -37,8 +37,8 @@ fn tag_commit(
 
     match target_config {
         TargetConfig::Experience(target_config) => {
-            for name in target_config.places.as_ref().unwrap().keys() {
-                let resource_id = format!("placeFile_{}", name);
+            for label in target_config.places.as_ref().unwrap().keys() {
+                let resource_id = format!("placeFile_{}", label);
 
                 let previous_outputs = previous_graph.get_outputs(&resource_id);
                 let next_outputs = next_graph.get_outputs(&resource_id);
@@ -55,10 +55,10 @@ fn tag_commit(
                 if let Some(version) = tag_version {
                     logger::log(format!(
                         "Place {} was updated to version {}",
-                        Paint::cyan(name),
+                        Paint::cyan(label),
                         Paint::cyan(version)
                     ));
-                    let tag = format!("{}-v{}", name, version);
+                    let tag = format!("{}-v{}", label, version);
                     logger::log(format!("Tagging commit with {}", Paint::cyan(tag.clone())));
 
                     tag_count += 1;
@@ -100,8 +100,8 @@ fn log_target_results(
             logger::log("");
 
             logger::log("Places:");
-            for name in target_config.places.as_ref().unwrap().keys() {
-                let resource_id = format!("place_{}", name);
+            for label in target_config.places.as_ref().unwrap().keys() {
+                let resource_id = format!("place_{}", label);
 
                 let place_outputs = match graph.get_outputs(&resource_id) {
                     Some(RobloxOutputs::Place(outputs)) => Some(outputs),
@@ -110,10 +110,10 @@ fn log_target_results(
                 if let Some(outputs) = place_outputs {
                     logger::log(format!(
                         "  {}: https://www.roblox.com/games/{}",
-                        name, outputs.asset_id
+                        label, outputs.asset_id
                     ));
                 } else {
-                    logger::log(format!("  {}: {}", name, Paint::red("no outputs")));
+                    logger::log(format!("  {}: {}", label, Paint::red("no outputs")));
                 }
             }
         }
@@ -217,7 +217,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
 
     logger::start_action("Saving state:");
     state.environments.insert(
-        environment_config.name.clone(),
+        environment_config.label.clone(),
         next_graph.get_resource_list(),
     );
     match save_state(&project_path, &state_config, &state).await {

@@ -161,14 +161,14 @@ pub async fn get_previous_state(
         },
     };
 
-    if state.environments.get(&environment_config.name).is_none() {
+    if state.environments.get(&environment_config.label).is_none() {
         logger::log(format!(
             "No previous state for environment {}",
-            Paint::cyan(environment_config.name.clone())
+            Paint::cyan(environment_config.label.clone())
         ));
         state
             .environments
-            .insert(environment_config.name.clone(), Vec::new());
+            .insert(environment_config.label.clone(), Vec::new());
     }
 
     Ok(state)
@@ -214,40 +214,6 @@ fn get_desired_experience_graph(
             RobloxInputs::ExperienceConfiguration(experience_configuration.into()),
             &[&experience],
         ));
-
-        if let Some(icon_path) = &experience_configuration.icon {
-            resources.push(RobloxResource::new(
-                "experienceIcon_singleton",
-                RobloxInputs::ExperienceIcon(FileInputs {
-                    file_path: icon_path.clone(),
-                    file_hash: get_file_hash(project_path.join(icon_path))?,
-                }),
-                &[&experience],
-            ));
-        }
-
-        if let Some(thumbnails) = &experience_configuration.thumbnails {
-            let mut thumbnail_resources: Vec<RobloxResource> = Vec::new();
-            for thumbnail_path in thumbnails {
-                thumbnail_resources.push(RobloxResource::new(
-                    &format!("experienceThumbnail_{}", thumbnail_path),
-                    RobloxInputs::ExperienceThumbnail(FileInputs {
-                        file_path: thumbnail_path.clone(),
-                        file_hash: get_file_hash(project_path.join(thumbnail_path))?,
-                    }),
-                    &[&experience],
-                ));
-            }
-            let mut thumbnail_order_dependencies: Vec<&RobloxResource> =
-                thumbnail_resources.iter().collect();
-            thumbnail_order_dependencies.push(&experience);
-            resources.push(RobloxResource::new(
-                "experienceThumbnailOrder_singleton",
-                RobloxInputs::ExperienceThumbnailOrder,
-                &thumbnail_order_dependencies,
-            ));
-            resources.extend(thumbnail_resources);
-        }
     }
 
     if let Some(places) = &target_config.places {
@@ -255,11 +221,11 @@ fn get_desired_experience_graph(
             return Err("No start place specified".to_owned());
         }
 
-        for (name, place) in places.iter() {
+        for (label, place) in places.iter() {
             let place_resource = RobloxResource::new(
-                &format!("place_{}", name),
+                &format!("place_{}", label),
                 RobloxInputs::Place(PlaceInputs {
-                    is_start: name == "start",
+                    is_start: label == "start",
                 }),
                 &[&experience],
             );
@@ -267,7 +233,7 @@ fn get_desired_experience_graph(
 
             if let Some(file) = &place.file {
                 resources.push(RobloxResource::new(
-                    &format!("placeFile_{}", name),
+                    &format!("placeFile_{}", label),
                     RobloxInputs::PlaceFile(FileInputs {
                         file_path: file.clone(),
                         file_hash: get_file_hash(project_path.join(file))?,
@@ -278,7 +244,7 @@ fn get_desired_experience_graph(
 
             if let Some(configuration) = &place.configuration {
                 resources.push(RobloxResource::new(
-                    &format!("placeConfiguration_{}", name),
+                    &format!("placeConfiguration_{}", label),
                     RobloxInputs::PlaceConfiguration(configuration.clone().into()),
                     &[&place_resource],
                 ));
@@ -286,6 +252,40 @@ fn get_desired_experience_graph(
         }
     } else {
         return Err("No start place specified".to_owned());
+    }
+
+    if let Some(icon_path) = &target_config.icon {
+        resources.push(RobloxResource::new(
+            "experienceIcon_singleton",
+            RobloxInputs::ExperienceIcon(FileInputs {
+                file_path: icon_path.clone(),
+                file_hash: get_file_hash(project_path.join(icon_path))?,
+            }),
+            &[&experience],
+        ));
+    }
+
+    if let Some(thumbnails) = &target_config.thumbnails {
+        let mut thumbnail_resources: Vec<RobloxResource> = Vec::new();
+        for thumbnail_path in thumbnails {
+            thumbnail_resources.push(RobloxResource::new(
+                &format!("experienceThumbnail_{}", thumbnail_path),
+                RobloxInputs::ExperienceThumbnail(FileInputs {
+                    file_path: thumbnail_path.clone(),
+                    file_hash: get_file_hash(project_path.join(thumbnail_path))?,
+                }),
+                &[&experience],
+            ));
+        }
+        let mut thumbnail_order_dependencies: Vec<&RobloxResource> =
+            thumbnail_resources.iter().collect();
+        thumbnail_order_dependencies.push(&experience);
+        resources.push(RobloxResource::new(
+            "experienceThumbnailOrder_singleton",
+            RobloxInputs::ExperienceThumbnailOrder,
+            &thumbnail_order_dependencies,
+        ));
+        resources.extend(thumbnail_resources);
     }
 
     if let Some(social_links) = &target_config.social_links {
@@ -323,9 +323,9 @@ fn get_desired_experience_graph(
     }
 
     if let Some(products) = &target_config.products {
-        for (name, product) in products {
+        for (label, product) in products {
             let mut product_resource = RobloxResource::new(
-                &format!("product_{}", name),
+                &format!("product_{}", label),
                 RobloxInputs::Product(ProductInputs {
                     name: product.name.clone(),
                     description: product.description.clone().unwrap_or_default(),
@@ -336,7 +336,7 @@ fn get_desired_experience_graph(
 
             if let Some(icon_path) = &product.icon {
                 let icon_resource = RobloxResource::new(
-                    &format!("productIcon_{}", name),
+                    &format!("productIcon_{}", label),
                     RobloxInputs::ProductIcon(FileInputs {
                         file_path: icon_path.clone(),
                         file_hash: get_file_hash(project_path.join(icon_path))?,
@@ -352,9 +352,9 @@ fn get_desired_experience_graph(
     }
 
     if let Some(passes) = &target_config.passes {
-        for (name, pass) in passes {
+        for (label, pass) in passes {
             let pass_resource = RobloxResource::new(
-                &format!("pass_{}", name),
+                &format!("pass_{}", label),
                 RobloxInputs::Pass(PassInputs {
                     name: pass.name.clone(),
                     description: pass.description.clone().unwrap_or_default(),
@@ -364,7 +364,7 @@ fn get_desired_experience_graph(
                 &[&experience],
             );
             resources.push(RobloxResource::new(
-                &format!("passIcon_{}", name),
+                &format!("passIcon_{}", label),
                 RobloxInputs::PassIcon(FileInputs {
                     file_path: pass.icon.clone(),
                     file_hash: get_file_hash(project_path.join(pass.icon.clone()))?,
@@ -376,9 +376,9 @@ fn get_desired_experience_graph(
     }
 
     if let Some(badges) = &target_config.badges {
-        for (name, badge) in badges {
+        for (label, badge) in badges {
             let badge_resource = RobloxResource::new(
-                &format!("badge_{}", name),
+                &format!("badge_{}", label),
                 RobloxInputs::Badge(BadgeInputs {
                     name: badge.name.clone(),
                     description: badge.description.clone().unwrap_or_default(),
@@ -388,7 +388,7 @@ fn get_desired_experience_graph(
                 &[&experience],
             );
             resources.push(RobloxResource::new(
-                &format!("badgeIcon_{}", name),
+                &format!("badgeIcon_{}", label),
                 RobloxInputs::BadgeIcon(FileInputs {
                     file_path: badge.icon.clone(),
                     file_hash: get_file_hash(project_path.join(badge.icon.clone()))?,

@@ -1,7 +1,7 @@
 environments:
-  - name: staging
+  - label: staging
     branches: [dev, dev/*]
-    targetNamePrefix: environmentName
+    targetNamePrefix: environmentLabel
     targetAccess: private
 
 target:
@@ -16,6 +16,6 @@ target:
 
 state:
   remote:
-    region: [us-west-2]
+    region: us-west-2
     bucket: mantle-states
     key: project-fixtures/light

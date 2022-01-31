@@ -75,7 +75,7 @@ fn get_roblosecurity_from_roblox_studio() -> Option<String> {
         .ok()?;
     let value: String = key.get_value(".ROBLOSECURITY").ok()?;
 
-    parse_roblosecurity_from_roblox_studio(value)
+    parse_roblosecurity_from_roblox_studio(&value)
 }
 
 #[cfg(target_os = "macos")]

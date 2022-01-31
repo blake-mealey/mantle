@@ -73,10 +73,10 @@ pub async fn run(project: Option<&str>, environment: Option<&str>) -> i32 {
     logger::start_action("Saving state:");
     let resource_list = next_graph.get_resource_list();
     if resource_list.is_empty() {
-        state.environments.remove(&environment_config.name);
+        state.environments.remove(&environment_config.label);
     } else {
         state.environments.insert(
-            environment_config.name.clone(),
+            environment_config.label.clone(),
             next_graph.get_resource_list(),
         );
     }

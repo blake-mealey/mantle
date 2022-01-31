@@ -63,12 +63,12 @@ pub struct Config {
     ///
     /// ```yml title="Example"
     /// environments:
-    ///   - name: staging
+    ///   - label: staging
     ///     branches: [dev, dev/*]
     ///     overrides:
     ///       configuration:
     ///         genre: building
-    ///   - name: production
+    ///   - label: production
     ///     branches: [main]
     ///     targetAccess: public
     /// ```
@@ -252,22 +252,25 @@ impl fmt::Display for RemoteStateConfig {
 #[derive(JsonSchema, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct EnvironmentConfig {
-    /// The name of the environment that is used to identify the environment via the `--environment`
-    /// flag. Must be unique across all environments.
-    pub name: String,
+    /// The label of the environment that is used to identify the environment
+    /// via the `--environment` flag. Must be unique across all environments.
+    pub label: String,
 
-    /// An array of file globs to match against Git branches. If the `--environment` flag is not
-    /// specified, Mantle will pick the first environment which contains a matching file glob for
-    /// the current Git branch. If no environments match, Mantle will exit with a success code.
+    /// An array of file globs to match against Git branches. If the
+    /// `--environment` flag is not specified, Mantle will pick the first
+    /// environment which contains a matching file glob for the current Git
+    /// branch. If no environments match, Mantle will exit with a success code.
     #[serde(default)]
     pub branches: Vec<String>,
 
-    /// Whether or not to tag the commit with place file versions after successful deployments. It
-    /// is recommended to only enable this on your production environment. Tags will be of the
-    /// format `<name>-v<version>` where `<name>` is the name of the place and `<version>` is the
-    /// place's Roblox version.
+    /// Whether or not to tag the commit with place file versions after
+    /// successful deployments. It is recommended to only enable this on your
+    /// production environment. Tags will be of the format `<label>-v<version>`
+    /// where `<label>` is the label of the place and `<version>` is the place's
+    /// Roblox version.
     ///
-    /// For example, a start place with Roblox version 23 would have the tag `start-v23`.
+    /// For example, a start place with Roblox version 23 would have the tag
+    /// `start-v23`.
     #[serde(default)]
     pub tag_commit: bool,
 
@@ -276,24 +279,24 @@ pub struct EnvironmentConfig {
     /// Adds a prefix to the target's name configuration. The implementation is dependent on the
     /// target's type. For Experience targets, all place names will be updated with the prefix.
     ///
-    /// | Value               | Description                                                                                                                                                                                                                                                                                                                            |
-    /// |---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-    /// | `'environmentName'` | The target name prefix will use the format `[<ENVIRONMENT>] ` where `<ENVIRONMENT>` is the value of the environment's [`name`](#environments--name) property in all caps. For example, if the environment's name was `'dev'` and the target's name was "Made with Mantle", the resulting target name will be "[DEV] Made with Mantle". |
-    /// | `custom: <prefix>`  | The target name prefix will be the supplied value.                                                                                                                                                                                                                                                                                     |
+    /// | Value                | Description                                                                                                                                                                                                                                                                                                                               |
+    /// |----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+    /// | `'environmentLabel'` | The target name prefix will use the format `[<ENVIRONMENT>] ` where `<ENVIRONMENT>` is the value of the environment's [`label`](#environments--label) property in all caps. For example, if the environment's label was `'dev'` and the target's name was "Made with Mantle", the resulting target name will be "[DEV] Made with Mantle". |
+    /// | `custom: <prefix>`   | The target name prefix will be the supplied value.                                                                                                                                                                                                                                                                                        |
     ///
-    /// ```yml title="Environment Name Example"
+    /// ```yml title="Environment Label Example"
     /// environments:
-    ///   - name: dev
-    ///     targetNamePrefix: environmentName
-    ///   - name: prod
+    ///   - label: dev
+    ///     targetNamePrefix: environmentLabel
+    ///   - label: prod
     /// ```
     ///
     /// ```yml title="Custom Example"
     /// environments:
-    ///   - name: dev
+    ///   - label: dev
     ///     targetNamePrefix:
     ///       custom: 'Prefix: '
-    ///   - name: prod
+    ///   - label: prod
     /// ```
     pub target_name_prefix: Option<TargetNamePrefixConfig>,
 
@@ -325,7 +328,7 @@ pub struct EnvironmentConfig {
 #[derive(JsonSchema, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum TargetNamePrefixConfig {
-    EnvironmentName,
+    EnvironmentLabel,
     Custom(String),
 }
 
@@ -379,7 +382,7 @@ pub struct ExperienceTargetConfig {
     pub configuration: Option<ExperienceTargetConfigurationConfig>,
 
     /// The experience's places. There must be at least one place supplied with
-    /// the name `'start'`, which will be used as the start place for the
+    /// the label `'start'`, which will be used as the start place for the
     /// experience.
     ///
     /// ```yml title="Example"

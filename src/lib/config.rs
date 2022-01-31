@@ -574,6 +574,31 @@ pub enum PlayabilityTargetConfig {
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub enum PaidAccessTargetConfig {
+    Disabled,
+    Price(u32),
+}
+impl default::Default for PaidAccessTargetConfig {
+    fn default() -> Self {
+        PaidAccessTargetConfig::Disabled
+    }
+}
+
+#[derive(JsonSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub enum PrivateServersTargetConfig {
+    Disabled,
+    Free,
+    Price(u32),
+}
+impl default::Default for PrivateServersTargetConfig {
+    fn default() -> Self {
+        PrivateServersTargetConfig::Disabled
+    }
+}
+
+#[derive(JsonSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub enum AvatarTypeTargetConfig {
     R6,
     R15,
@@ -756,14 +781,59 @@ pub struct ExperienceTargetConfigurationConfig {
     /// | `'friends'` | The experience will only be playable to the authorized user and that user's Roblox friends. |
     pub playability: Option<PlayabilityTargetConfig>,
 
-    /// If set, paid access will be enabled with the specified price. Otherwise, paid access will be
-    /// disabled. Should not be used with `privateServerPrice`.
-    pub paid_access_price: Option<u32>,
+    /// default('disabled')
+    /// skip_properties()
+    ///
+    /// Determines whether or not paid access is be enabled, and if it is, how
+    /// much it costs. This should not be enabled when
+    /// [`privateServers`](#target-experience-configuration-privateservers) are
+    /// also enabled as they are incompatible.
+    ///
+    /// | Value            | Description                                                             |
+    /// |------------------|-------------------------------------------------------------------------|
+    /// | `'disabled'`     | Paid access will be disabled.                                           |
+    /// | `price: <price>` | Paid access will be enabled and will cost the provided number of Robux. |
+    ///
+    /// ```yml title="Enabled Example"
+    /// target:
+    ///   experience:
+    ///     configuration:
+    ///       paidAccess:
+    ///         price: 100
+    /// ```
+    #[serde(default)]
+    pub paid_access: PaidAccessTargetConfig,
 
-    /// If set, private servers will be enabled with the specified price. Otherwise, private servers
-    /// will be disabled. To enable for free, set to `0`. Should not be used with
-    /// `privateServerPrice`.
-    pub private_server_price: Option<u32>,
+    /// default('disabled')
+    /// skip_properties()
+    ///
+    /// Determines whether or not private servers are enabled, and if they are,
+    /// how much they cost. This should not be enabled when
+    /// [`paidAccess`](#target-experience-configuration-paidaccess) is also
+    /// enabled as they are incompatible.
+    ///
+    /// | Value            | Description                                                                 |
+    /// |------------------|-----------------------------------------------------------------------------|
+    /// | `'disabled'`     | Private servers will be disabled.                                           |
+    /// | `'free'`         | Private servers will be enabled and will be free to purchase.               |
+    /// | `price: <price>` | Private servers will be enabled and will cost the provided number of Robux. |
+    ///
+    /// ```yml title="Enabled for Free Example"
+    /// target:
+    ///   experience:
+    ///     configuration:
+    ///       privateServers: free
+    /// ```
+    ///
+    /// ```yml title="Enabled for Price Example"
+    /// target:
+    ///   experience:
+    ///     configuration:
+    ///       privateServers:
+    ///         price: 100
+    /// ```
+    #[serde(default)]
+    pub private_servers: PrivateServersTargetConfig,
 
     /// default(false)
     ///
@@ -879,10 +949,23 @@ impl From<&ExperienceTargetConfigurationConfig> for ExperienceConfigurationModel
                 PlayabilityTargetConfig::Private => None,
             }
         }
-        model.is_for_sale = config.clone().paid_access_price.is_some();
-        model.price = config.paid_access_price;
-        model.allow_private_servers = config.private_server_price.is_some();
-        model.private_server_price = config.private_server_price;
+        model.is_for_sale = match config.paid_access {
+            PaidAccessTargetConfig::Disabled => false,
+            _ => true,
+        };
+        model.price = match config.paid_access {
+            PaidAccessTargetConfig::Price(price) => Some(price),
+            _ => None,
+        };
+        model.allow_private_servers = match config.private_servers {
+            PrivateServersTargetConfig::Disabled => false,
+            _ => true,
+        };
+        model.private_server_price = match config.private_servers {
+            PrivateServersTargetConfig::Free => Some(0),
+            PrivateServersTargetConfig::Price(price) => Some(price),
+            _ => None,
+        };
         if let Some(enable_studio_access_to_apis) = config.enable_studio_access_to_apis {
             model.studio_access_to_apis_allowed = enable_studio_access_to_apis;
         }

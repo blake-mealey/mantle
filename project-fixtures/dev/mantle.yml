@@ -1,24 +1,13 @@
 environments:
   - label: staging
     branches: [dev, dev/*]
-    # targetNamePrefix: environmentLabel
-    targetOverrides:
-      places:
-        start:
-          configuration:
-            name: Staging - Start name
+    targetNamePrefix: environmentLabel
   - label: production
     branches: [main]
     # tagCommit: true
-    targetOverrides:
-      configuration:
-        playability: friends
+    targetAccess: friends
   - label: preview
-    targetOverrides:
-      places:
-        start:
-          configuration:
-            name: Preview - Start name
+    targetNamePrefix: environmentLabel
 
 target:
   experience:

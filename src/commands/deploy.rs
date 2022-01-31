@@ -2,7 +2,7 @@ use std::{path::PathBuf, process::Command, str};
 
 use yansi::Paint;
 
-use crate::lib::{
+use rbx_mantle::{
     config::{load_project_config, TargetConfig},
     logger,
     project::{load_project, Project},

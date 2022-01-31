@@ -3,7 +3,6 @@ extern crate log;
 
 mod cli;
 mod commands;
-mod lib;
 
 #[tokio::main]
 async fn main() {

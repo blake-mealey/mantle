@@ -133,7 +133,7 @@ fn get_target_config(
             }
 
             // Apply overrides last (they are the final trump)
-            if let Some(overrides) = environment.overrides {
+            if let Some(overrides) = environment.target_overrides {
                 let overrides = serde_yaml::to_value(overrides).unwrap();
                 let mut as_value = serde_yaml::to_value(experience)
                     .map_err(|e| format!("Failed to serialize target: {}", e))?;

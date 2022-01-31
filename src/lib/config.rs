@@ -65,9 +65,9 @@ pub struct Config {
     /// environments:
     ///   - label: staging
     ///     branches: [dev, dev/*]
-    ///     overrides:
+    ///     targetOverrides:
     ///       configuration:
-    ///         genre: building
+    ///         icon: marketing/beta-game-icon.png
     ///   - label: production
     ///     branches: [main]
     ///     targetAccess: public
@@ -322,7 +322,7 @@ pub struct EnvironmentConfig {
     ///
     /// Override the target configuration. Should match the type of the target
     /// configuration.
-    pub overrides: Option<TargetOverridesConfig>,
+    pub target_overrides: Option<TargetOverridesConfig>,
 }
 
 #[derive(JsonSchema, Deserialize, Clone)]

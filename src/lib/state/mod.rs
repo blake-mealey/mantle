@@ -51,8 +51,8 @@ enum VersionedResourceState {
 
 pub type ResourceStateVLatest = ResourceStateV3;
 
-fn get_state_file_path(project_path: &Path) -> PathBuf {
-    project_path.join(".mantle-state.yml")
+fn get_state_file_path(project_path: &Path, key: Option<&str>) -> PathBuf {
+    project_path.join(format!("{}.mantle-state.yml", key.unwrap_or_default()))
 }
 
 fn get_hash(data: &[u8]) -> String {
@@ -78,9 +78,9 @@ fn parse_state(file_name: &str, data: &str) -> Result<ResourceState, String> {
 
 fn get_state_from_file(
     project_path: &Path,
-    file_path: Option<PathBuf>,
+    key: Option<&str>,
 ) -> Result<Option<ResourceState>, String> {
-    let state_file_path = file_path.unwrap_or_else(|| get_state_file_path(project_path));
+    let state_file_path = get_state_file_path(project_path, key);
     logger::log(format!(
         "Loading previous state from local file {}",
         Paint::cyan(state_file_path.display())
@@ -145,9 +145,7 @@ pub async fn get_state_from_source(
 ) -> Result<ResourceStateVLatest, String> {
     let state = match source {
         StateConfig::Local => get_state_from_file(project_path, None)?,
-        StateConfig::LocalCustom(file) => {
-            get_state_from_file(project_path, Some(Path::new(&file).to_owned()))?
-        }
+        StateConfig::LocalKey { key } => get_state_from_file(project_path, Some(&key))?,
         StateConfig::Remote(config) => get_state_from_remote(&config).await?,
     };
 
@@ -816,9 +814,9 @@ pub async fn save_state_to_remote(config: &RemoteStateConfig, data: &[u8]) -> Re
 pub fn save_state_to_file(
     project_path: &Path,
     data: &[u8],
-    file_path: Option<PathBuf>,
+    file_path: Option<&str>,
 ) -> Result<(), String> {
-    let state_file_path = file_path.unwrap_or_else(|| get_state_file_path(project_path));
+    let state_file_path = get_state_file_path(project_path, file_path);
 
     logger::log(format!(
         "Saving to local file {}. It is recommended you commit this file to your source control",
@@ -857,16 +855,6 @@ fn serialize_state(state: &ResourceStateVLatest) -> Result<Vec<u8>, String> {
     Ok(data)
 }
 
-pub async fn save_state_locally(
-    project_path: &Path,
-    state: &ResourceStateVLatest,
-    file_path: Option<PathBuf>,
-) -> Result<(), String> {
-    let data = serialize_state(state)?;
-
-    save_state_to_file(project_path, &data, file_path)
-}
-
 pub async fn save_state(
     project_path: &Path,
     state_config: &StateConfig,
@@ -876,9 +864,7 @@ pub async fn save_state(
 
     match state_config {
         StateConfig::Local => save_state_to_file(project_path, &data, None),
-        StateConfig::LocalCustom(file) => {
-            save_state_to_file(project_path, &data, Some(Path::new(file).to_owned()))
-        }
+        StateConfig::LocalKey { key } => save_state_to_file(project_path, &data, Some(&key)),
         StateConfig::Remote(config) => save_state_to_remote(config, &data).await,
     }
 }

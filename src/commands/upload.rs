@@ -6,7 +6,7 @@ use rbx_mantle::{
     state::{get_state_from_source, save_state},
 };
 
-pub async fn run(project: Option<&str>, file: Option<&str>) -> i32 {
+pub async fn run(project: Option<&str>, key: Option<&str>) -> i32 {
     logger::start_action("Upload state file:");
     let (project_path, config) = match load_project_config(project) {
         Ok(v) => v,
@@ -16,13 +16,15 @@ pub async fn run(project: Option<&str>, file: Option<&str>) -> i32 {
         }
     };
 
-    if matches!(config.state, StateConfig::Local) {
+    if !matches!(config.state, StateConfig::Remote(_)) {
         logger::end_action(Paint::red("Project is not configured with remote state"));
         return 1;
     }
 
-    let state_config = match file {
-        Some(file) => StateConfig::LocalCustom(file.to_owned()),
+    let state_config = match key {
+        Some(key) => StateConfig::LocalKey {
+            key: key.to_owned(),
+        },
         None => StateConfig::Local,
     };
     let state = match get_state_from_source(&project_path, state_config).await {

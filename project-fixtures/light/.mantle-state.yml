@@ -1,0 +1,118 @@
+---
+version: "3"
+environments:
+  staging:
+    - id: experience_singleton
+      inputs:
+        experience:
+          groupId: ~
+      outputs:
+        experience:
+          assetId: 3195103847
+          startPlaceId: 8349666205
+      dependencies: []
+    - id: place_start
+      inputs:
+        place:
+          isStart: true
+      outputs:
+        place:
+          assetId: 8349666205
+      dependencies:
+        - experience_singleton
+    - id: placeFile_start
+      inputs:
+        placeFile:
+          filePath: place.rbxl
+          fileHash: 4f76ee91b191a99fc993beb4344350f717ee1739600acf74e03ffcb8f367a42c
+      outputs:
+        placeFile:
+          version: 6
+      dependencies:
+        - place_start
+    - id: placeConfiguration_start
+      inputs:
+        placeConfiguration:
+          name: "[STAGING] Lightweight Mantle Test"
+          description: Created with Mantle
+          maxPlayerCount: 50
+          allowCopying: false
+          socialSlotType: Custom
+          customSocialSlotsCount: 5
+      outputs: placeConfiguration
+      dependencies:
+        - place_start
+    - id: experienceConfiguration_singleton
+      inputs:
+        experienceConfiguration:
+          genre: All
+          playableDevices:
+            - Computer
+            - Phone
+            - Tablet
+          isFriendsOnly: ~
+          allowPrivateServers: false
+          privateServerPrice: ~
+          isForSale: false
+          price: ~
+          studioAccessToApisAllowed: false
+          permissions:
+            IsThirdPartyPurchaseAllowed: false
+            IsThirdPartyTeleportAllowed: false
+          universeAvatarType: MorphToR15
+          universeAnimationType: PlayerChoice
+          universeCollisionType: OuterBox
+          universeAvatarMinScales:
+            height: "0.9"
+            width: "0.7"
+            head: "0.95"
+            bodyType: "0"
+            proportion: "0"
+          universeAvatarMaxScales:
+            height: "1.05"
+            width: "1"
+            head: "1"
+            bodyType: "1"
+            proportion: "1"
+          universeAvatarAssetOverrides:
+            - assetTypeID: 18
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 17
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 27
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 29
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 28
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 30
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 31
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 2
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 11
+              isPlayerChoice: true
+              assetID: ~
+            - assetTypeID: 12
+              isPlayerChoice: true
+              assetID: ~
+          isArchived: false
+      outputs: experienceConfiguration
+      dependencies:
+        - experience_singleton
+    - id: experienceActivation_singleton
+      inputs:
+        experienceActivation:
+          isActive: false
+      outputs: experienceActivation
+      dependencies:
+        - experience_singleton

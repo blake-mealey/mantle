@@ -15,8 +15,7 @@ fn get_app() -> App<'static, 'static> {
                     Arg::with_name("PROJECT")
                         .index(1)
                         .help("The Mantle project: either the path to a directory containing a 'mantle.yml' file or the path to a configuration file. Defaults to the current directory.")
-                        .takes_value(true)
-                )
+                        .takes_value(true))
                 .arg(
                     Arg::with_name("environment")
                         .long("environment")
@@ -36,8 +35,7 @@ fn get_app() -> App<'static, 'static> {
                     Arg::with_name("PROJECT")
                         .index(1)
                         .help("The Mantle project: either the path to a directory containing a 'mantle.yml' file or the path to a configuration file. Defaults to the current directory.")
-                        .takes_value(true)
-                )
+                        .takes_value(true))
                 .arg(
                     Arg::with_name("environment")
                         .long("environment")
@@ -53,8 +51,7 @@ fn get_app() -> App<'static, 'static> {
                     Arg::with_name("PROJECT")
                         .index(1)
                         .help("The Mantle project: either the path to a directory containing a 'mantle.yml' file or the path to a configuration file. Defaults to the current directory.")
-                        .takes_value(true)
-                )
+                        .takes_value(true))
                 .arg(
                     Arg::with_name("environment")
                         .long("environment")
@@ -86,8 +83,7 @@ fn get_app() -> App<'static, 'static> {
                     Arg::with_name("PROJECT")
                         .index(1)
                         .help("The Mantle project: either the path to a directory containing a 'mantle.yml' file or the path to a configuration file. Defaults to the current directory.")
-                        .takes_value(true)
-                )
+                        .takes_value(true))
                 .arg(
                     Arg::with_name("environment")
                         .long("environment")
@@ -102,6 +98,41 @@ fn get_app() -> App<'static, 'static> {
                         .value_name("ID")
                         .takes_value(true)
                         .required(true))
+        )
+        .subcommand(
+            SubCommand::with_name("state")
+                .about("Manage state files.")
+                .setting(AppSettings::ArgRequiredElseHelp)
+                .subcommand(
+                    SubCommand::with_name("download")
+                        .about("Download the remote state file for a project. Remote state must be configured for the Mantle project.")
+                        .arg(
+                            Arg::with_name("PROJECT")
+                                .index(1)
+                                .help("The Mantle project: either the path to a directory containing a 'mantle.yml' file or the path to a configuration file. Defaults to the current directory.")
+                                .takes_value(true))
+                        .arg(
+                            Arg::with_name("output")
+                                .long("output")
+                                .short("o")
+                                .help("A file path to save the state file to. Defaults to `<PROJECT_DIR>/.mantle-state.yml`.")
+                                .value_name("FILE")
+                                .takes_value(true))
+                )
+                .subcommand(
+                    SubCommand::with_name("upload")
+                        .about("Upload a state file to a remote provider for a project. Remote state must be configured for the Mantle project.")
+                        .arg(
+                            Arg::with_name("PROJECT")
+                                .index(1)
+                                .help("The Mantle project: either the path to a directory containing a 'mantle.yml' file or the path to a configuration file. Defaults to the current directory.")
+                                .takes_value(true))
+                        .arg(
+                            Arg::with_name("FILE")
+                                .index(2)
+                                .help("A file path to a state file to upload. Defaults to `<PROJECT_DIR>/.mantle-state.yml`.")
+                                .takes_value(true))
+                )
         )
 }
 
@@ -141,6 +172,23 @@ pub async fn run_with(args: Vec<String>) -> i32 {
             )
             .await
         }
+        ("state", Some(state_matches)) => match state_matches.subcommand() {
+            ("download", Some(download_matches)) => {
+                commands::download::run(
+                    download_matches.value_of("PROJECT"),
+                    download_matches.value_of("output"),
+                )
+                .await
+            }
+            ("upload", Some(upload_matches)) => {
+                commands::upload::run(
+                    upload_matches.value_of("PROJECT"),
+                    upload_matches.value_of("FILE"),
+                )
+                .await
+            }
+            _ => unreachable!(),
+        },
         _ => unreachable!(),
     }
 }

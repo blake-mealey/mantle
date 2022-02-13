@@ -136,6 +136,7 @@ impl default::Default for PaymentsConfig {
 #[derive(JsonSchema, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum StateConfig {
+    LocalCustom(String),
     Local,
     /// ```yml title="Remote State Example"
     /// state:

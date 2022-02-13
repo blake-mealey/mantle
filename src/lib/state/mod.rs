@@ -76,8 +76,11 @@ fn parse_state(file_name: &str, data: &str) -> Result<ResourceState, String> {
         .map_err(|e| format!("Unable to parse state file {}\n\t{}", file_name, e))
 }
 
-fn get_state_from_file(project_path: &Path) -> Result<Option<ResourceState>, String> {
-    let state_file_path = get_state_file_path(project_path);
+fn get_state_from_file(
+    project_path: &Path,
+    file_path: Option<PathBuf>,
+) -> Result<Option<ResourceState>, String> {
+    let state_file_path = file_path.unwrap_or_else(|| get_state_file_path(project_path));
     logger::log(format!(
         "Loading previous state from local file {}",
         Paint::cyan(state_file_path.display())
@@ -136,18 +139,20 @@ async fn get_state_from_remote(
     }
 }
 
-pub async fn get_previous_state(
+pub async fn get_state_from_source(
     project_path: &Path,
-    config: &Config,
-    environment_config: &EnvironmentConfig,
+    source: StateConfig,
 ) -> Result<ResourceStateVLatest, String> {
-    let state = match config.state.clone() {
-        StateConfig::Local => get_state_from_file(project_path)?,
+    let state = match source {
+        StateConfig::Local => get_state_from_file(project_path, None)?,
+        StateConfig::LocalCustom(file) => {
+            get_state_from_file(project_path, Some(Path::new(&file).to_owned()))?
+        }
         StateConfig::Remote(config) => get_state_from_remote(&config).await?,
     };
 
     // Migrate previous state formats
-    let mut state = match state {
+    Ok(match state {
         Some(ResourceState::Unversioned(state)) => {
             ResourceStateV3::from(ResourceStateV2::from(state))
         }
@@ -161,7 +166,22 @@ pub async fn get_previous_state(
         None => ResourceStateVLatest {
             environments: HashMap::new(),
         },
-    };
+    })
+}
+
+pub async fn get_state(
+    project_path: &Path,
+    config: &Config,
+) -> Result<ResourceStateVLatest, String> {
+    get_state_from_source(project_path, config.state.clone()).await
+}
+
+pub async fn get_previous_state(
+    project_path: &Path,
+    config: &Config,
+    environment_config: &EnvironmentConfig,
+) -> Result<ResourceStateVLatest, String> {
+    let mut state = get_state(project_path, config).await?;
 
     if state.environments.get(&environment_config.label).is_none() {
         logger::log(format!(
@@ -793,8 +813,12 @@ pub async fn save_state_to_remote(config: &RemoteStateConfig, data: &[u8]) -> Re
         .map_err(|e| format!("Failed to save state to remote: {}", e))
 }
 
-pub fn save_state_to_file(project_path: &Path, data: &[u8]) -> Result<(), String> {
-    let state_file_path = get_state_file_path(project_path);
+pub fn save_state_to_file(
+    project_path: &Path,
+    data: &[u8],
+    file_path: Option<PathBuf>,
+) -> Result<(), String> {
+    let state_file_path = file_path.unwrap_or_else(|| get_state_file_path(project_path));
 
     logger::log(format!(
         "Saving to local file {}. It is recommended you commit this file to your source control",
@@ -812,11 +836,7 @@ pub fn save_state_to_file(project_path: &Path, data: &[u8]) -> Result<(), String
     Ok(())
 }
 
-pub async fn save_state(
-    project_path: &Path,
-    state_config: &StateConfig,
-    state: &ResourceStateVLatest,
-) -> Result<(), String> {
+fn serialize_state(state: &ResourceStateVLatest) -> Result<Vec<u8>, String> {
     let utc = Utc::now();
     let mut data = format!("#\n\
                                    # WARNING - Generated file. Do not modify directly unless you know \
@@ -834,8 +854,31 @@ pub async fn save_state(
 
     data.extend(state_data);
 
+    Ok(data)
+}
+
+pub async fn save_state_locally(
+    project_path: &Path,
+    state: &ResourceStateVLatest,
+    file_path: Option<PathBuf>,
+) -> Result<(), String> {
+    let data = serialize_state(state)?;
+
+    save_state_to_file(project_path, &data, file_path)
+}
+
+pub async fn save_state(
+    project_path: &Path,
+    state_config: &StateConfig,
+    state: &ResourceStateVLatest,
+) -> Result<(), String> {
+    let data = serialize_state(state)?;
+
     match state_config {
-        StateConfig::Local => save_state_to_file(project_path, &data),
+        StateConfig::Local => save_state_to_file(project_path, &data, None),
+        StateConfig::LocalCustom(file) => {
+            save_state_to_file(project_path, &data, Some(Path::new(file).to_owned()))
+        }
         StateConfig::Remote(config) => save_state_to_remote(config, &data).await,
     }
 }

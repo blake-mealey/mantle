@@ -864,7 +864,7 @@ pub async fn save_state(
 
     match state_config {
         StateConfig::Local => save_state_to_file(project_path, &data, None),
-        StateConfig::LocalKey { key } => save_state_to_file(project_path, &data, Some(&key)),
+        StateConfig::LocalKey { key } => save_state_to_file(project_path, &data, Some(key)),
         StateConfig::Remote(config) => save_state_to_remote(config, &data).await,
     }
 }

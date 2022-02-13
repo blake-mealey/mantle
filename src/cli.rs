@@ -112,11 +112,10 @@ fn get_app() -> App<'static, 'static> {
                                 .help("The Mantle project: either the path to a directory containing a 'mantle.yml' file or the path to a configuration file. Defaults to the current directory.")
                                 .takes_value(true))
                         .arg(
-                            Arg::with_name("output")
-                                .long("output")
-                                .short("o")
-                                .help("A file path to save the state file to. Defaults to `<PROJECT_DIR>/.mantle-state.yml`.")
-                                .value_name("FILE")
+                            Arg::with_name("key")
+                                .long("key")
+                                .help("A key to prefix the name of the state file (e.g. `--key custom` will result in `custom.mantle-state.yml`).")
+                                .value_name("KEY")
                                 .takes_value(true))
                 )
                 .subcommand(
@@ -128,9 +127,10 @@ fn get_app() -> App<'static, 'static> {
                                 .help("The Mantle project: either the path to a directory containing a 'mantle.yml' file or the path to a configuration file. Defaults to the current directory.")
                                 .takes_value(true))
                         .arg(
-                            Arg::with_name("FILE")
-                                .index(2)
-                                .help("A file path to a state file to upload. Defaults to `<PROJECT_DIR>/.mantle-state.yml`.")
+                            Arg::with_name("key")
+                                .long("key")
+                                .help("The prefix of the name of the state file (e.g. `--key custom` will load from `custom.mantle-state.yml`).")
+                                .value_name("KEY")
                                 .takes_value(true))
                 )
         )
@@ -176,14 +176,14 @@ pub async fn run_with(args: Vec<String>) -> i32 {
             ("download", Some(download_matches)) => {
                 commands::download::run(
                     download_matches.value_of("PROJECT"),
-                    download_matches.value_of("output"),
+                    download_matches.value_of("key"),
                 )
                 .await
             }
             ("upload", Some(upload_matches)) => {
                 commands::upload::run(
                     upload_matches.value_of("PROJECT"),
-                    upload_matches.value_of("FILE"),
+                    upload_matches.value_of("key"),
                 )
                 .await
             }

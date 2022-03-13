@@ -486,12 +486,13 @@ pub struct ExperienceTargetConfig {
     /// ```
     ///
     /// :::caution
-    /// By default, Mantle does not have permission to make purchases with Robux. Since creating badges
-    /// costs Robux, you will need to use the `--allow-purchases` flag when you want to create them.
+    /// Each user can create up to 5 badges for free every day. After that, badges cost 100 Robux each. By
+    /// default, Mantle does not have permission to make purchases with Robux, so if you go over your daily
+    /// quota, you will need to use the `--allow-purchases` flag to create them.
     /// :::
     ///
-    /// Because Roblox does not offer any way to delete badges, when a badge is "deleted" by
-    /// Mantle, it is updated in the following ways:
+    /// Because Roblox does not offer any way to delete badges, when a badge is "deleted" by Mantle, it is
+    /// updated in the following ways:
     ///
     /// 1. It is disabled
     /// 2. Its description is updated to: `Name: <name>\nEnabled: <enabled>\nDescription:\n<description>`

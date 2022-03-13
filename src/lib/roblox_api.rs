@@ -259,14 +259,6 @@ pub struct CreateImageAssetResponse {
 }
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GetCreateAudioAssetPriceResponse {
-    pub price: u32,
-    pub balance: u32,
-    pub can_afford: bool,
-}
-
-#[derive(Deserialize, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct CreateAudioAssetResponse {
     pub id: AssetId,
@@ -328,6 +320,27 @@ pub struct GetSocialLinkResponse {
     pub url: Url,
     #[serde(rename = "type")]
     pub link_type: SocialLinkType,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct CreateAssetQuotasResponse {
+    quotas: Vec<CreateAssetQuota>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "PascalCase")]
+pub enum QuotaDuration {
+    Month,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateAssetQuota {
+    pub duration: QuotaDuration,
+    pub usage: u32,
+    pub capacity: u32,
+    pub expiration_time: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -448,6 +461,11 @@ pub enum AssetTypeId {
     LeftShoeAccessory = 70,
     RightShoeAccessory = 71,
     DressSkirtAccessory = 72,
+}
+impl fmt::Display for AssetTypeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(&self).unwrap(),)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -1773,37 +1791,28 @@ impl RobloxApi {
         Self::handle_as_json_with_status(req).await
     }
 
-    pub async fn get_create_audio_asset_price(
+    pub async fn get_create_asset_quota(
         &self,
-        file_path: PathBuf,
-        group_id: Option<AssetId>,
-    ) -> Result<GetCreateAudioAssetPriceResponse, String> {
-        let data = fs::read(&file_path).map_err(|e| {
-            format!(
-                "Unable to read audio asset file: {}\n\t{}",
-                file_path.display(),
-                e
-            )
-        })?;
-
-        let file_name = format!(
-            "Audio/{}",
-            file_path.file_stem().and_then(OsStr::to_str).unwrap()
-        );
-
+        asset_type: AssetTypeId,
+    ) -> Result<CreateAssetQuota, String> {
         let req = self
             .client
-            .post("https://publish.roblox.com/v1/audio/verify")
-            .query(&[("name", &file_name)])
-            .header(reqwest::header::CONTENT_TYPE, "*/*")
-            .json(&json!({
-                "name": file_name,
-                "fileSize": data.len(),
-                "file": base64::encode(data),
-                "groupId": group_id,
-            }));
+            .get("https://publish.roblox.com/v1/asset-quotas")
+            .query(&[
+                // TODO: Understand what this parameter does
+                ("resourceType", "1"),
+                ("assetType", &asset_type.to_string()),
+            ]);
 
-        Self::handle_as_json(req).await
+        // TODO: Understand how to interpret multiple quota objects (rather than just using the first one)
+        (Self::handle_as_json::<CreateAssetQuotasResponse>(req).await?)
+            .quotas
+            .first()
+            .map(|x| x.clone())
+            .ok_or(format!(
+                "No create quotas found for asset type {}",
+                asset_type
+            ))
     }
 
     pub async fn create_audio_asset(

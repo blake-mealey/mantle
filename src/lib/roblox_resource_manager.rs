@@ -652,13 +652,11 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
     async fn get_update_price(
         &self,
-        inputs: RobloxInputs,
-        outputs: RobloxOutputs,
+        _inputs: RobloxInputs,
+        _outputs: RobloxOutputs,
         _dependency_outputs: Vec<RobloxOutputs>,
     ) -> Result<Option<u32>, String> {
-        match (inputs.clone(), outputs) {
-            _ => Ok(None),
-        }
+        Ok(None)
     }
 
     // TODO: Consider moving `outputs` into `dependency_outputs`.

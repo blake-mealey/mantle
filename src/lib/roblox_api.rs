@@ -1808,7 +1808,7 @@ impl RobloxApi {
         (Self::handle_as_json::<CreateAssetQuotasResponse>(req).await?)
             .quotas
             .first()
-            .map(|x| x.clone())
+            .cloned()
             .ok_or(format!(
                 "No create quotas found for asset type {}",
                 asset_type

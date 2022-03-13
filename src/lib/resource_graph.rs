@@ -145,8 +145,7 @@ where
     pub fn get_outputs(&self, resource_id: &str) -> Option<TOutputs> {
         self.resources
             .get(resource_id)
-            .map(|resource| resource.get_outputs())
-            .flatten()
+            .and_then(|resource| resource.get_outputs())
     }
 
     fn get_dependency_graph(&self) -> BTreeMap<ResourceId, Vec<ResourceId>> {

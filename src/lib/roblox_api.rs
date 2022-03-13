@@ -1753,7 +1753,7 @@ impl RobloxApi {
 
         let file_name = format!(
             "Images/{}",
-            file_path.file_stem().map(OsStr::to_str).flatten().unwrap()
+            file_path.file_stem().and_then(OsStr::to_str).unwrap()
         );
 
         let mut req = self
@@ -1788,7 +1788,7 @@ impl RobloxApi {
 
         let file_name = format!(
             "Audio/{}",
-            file_path.file_stem().map(OsStr::to_str).flatten().unwrap()
+            file_path.file_stem().and_then(OsStr::to_str).unwrap()
         );
 
         let req = self
@@ -1822,7 +1822,7 @@ impl RobloxApi {
 
         let file_name = format!(
             "Audio/{}",
-            file_path.file_stem().map(OsStr::to_str).flatten().unwrap()
+            file_path.file_stem().and_then(OsStr::to_str).unwrap()
         );
 
         let req = self

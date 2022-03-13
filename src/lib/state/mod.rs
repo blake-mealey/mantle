@@ -435,8 +435,7 @@ fn get_desired_experience_graph(
                         let path = path.map_err(|e| format!("Glob pattern invalid: {}", e))?;
                         let name = path
                             .file_stem()
-                            .map(OsStr::to_str)
-                            .flatten()
+                            .and_then(OsStr::to_str)
                             .ok_or(format!("Asset path is not a file: {}", path.display()))?
                             .to_owned();
 

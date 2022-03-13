@@ -1,11 +1,14 @@
 use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
-use chrono::Utc;
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use yansi::Paint;
 
-use crate::logger;
+use crate::{
+    logger,
+    roblox_api::{AssetTypeId, CreateAssetQuota, QuotaDuration},
+};
 
 use super::{
     resource_graph::{
@@ -15,8 +18,8 @@ use super::{
         CreateAudioAssetResponse, CreateBadgeResponse, CreateDeveloperProductResponse,
         CreateExperienceResponse, CreateGamePassResponse, CreateImageAssetResponse,
         CreateSocialLinkResponse, CreatorType, ExperienceConfigurationModel,
-        GetCreateAudioAssetPriceResponse, GetDeveloperProductResponse, GetPlaceResponse,
-        PlaceConfigurationModel, RobloxApi, SocialLinkType, UploadImageResponse,
+        GetDeveloperProductResponse, GetPlaceResponse, PlaceConfigurationModel, RobloxApi,
+        SocialLinkType, UploadImageResponse,
     },
     roblox_auth::RobloxAuth,
 };
@@ -314,41 +317,24 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     .roblox_api
                     .get_create_badge_free_quota(experience.asset_id)
                     .await?;
+
+                let quota_reset =
+                    format_quota_reset((Utc::today() + Duration::days(1)).and_hms(0, 0, 0));
+
                 if free_quota > 0 {
-                    let utc_now = Utc::now();
-                    let utc_reset = (utc_now + chrono::Duration::days(1))
-                        .date()
-                        .and_hms(0, 0, 0);
-                    let duration = utc_reset.signed_duration_since(utc_now);
-                    let duration_str = format!(
-                        "{:02}:{:02}:{:02}",
-                        duration.num_hours(),
-                        duration.num_minutes() - duration.num_hours() * 60,
-                        duration.num_seconds() - duration.num_minutes() * 60
-                    );
                     logger::log("");
                     logger::log(Paint::yellow(
-                        format!("You will have {} free badge(s) remaining in the current period after creation. Your quota will reset in {}.", free_quota - 1, duration_str),
+                        format!("You will have {} free badge(s) remaining in the current period after creation. Your quota will reset in {}.", free_quota - 1, quota_reset),
                     ));
                     Ok(None)
                 } else {
+                    logger::log("");
+                    logger::log(Paint::yellow(
+                        format!("You have no free badges remaining in the current period. Your quota will reset in {}.", quota_reset),
+                    ));
+
                     Ok(Some(100))
                 }
-            }
-            RobloxInputs::AudioAsset(inputs) => {
-                let GetCreateAudioAssetPriceResponse {
-                    price, can_afford, ..
-                } = self
-                    .roblox_api
-                    .get_create_audio_asset_price(self.get_path(inputs.file_path), inputs.group_id)
-                    .await?;
-
-                // TODO: Add support for failing early like this for all other resource types (e.g. return the price and current balance from this function)
-                if !can_afford {
-                    return Err(format!("You do not have enough Robux to create an audio asset with the price of {}", price));
-                }
-
-                Ok(Some(price))
             }
             _ => Ok(None),
         }
@@ -593,16 +579,54 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 }))
             }
             RobloxInputs::AudioAsset(inputs) => {
-                let CreateAudioAssetResponse { id } = self
+                let CreateAssetQuota {
+                    usage,
+                    capacity,
+                    expiration_time,
+                    duration,
+                } = self
                     .roblox_api
-                    .create_audio_asset(
-                        self.get_path(inputs.file_path),
-                        inputs.group_id,
-                        self.payment_source.clone(),
-                    )
+                    .get_create_asset_quota(AssetTypeId::Audio)
                     .await?;
 
-                Ok(RobloxOutputs::AudioAsset(AssetOutputs { asset_id: id }))
+                let quota_reset = format_quota_reset(match expiration_time {
+                    Some(ref x) => DateTime::parse_from_rfc3339(x)
+                        .map_err(|e| format!("Unable to parse expiration_time: {}", e))?
+                        .with_timezone(&Utc),
+                    None => {
+                        Utc::now()
+                            + match duration {
+                                // TODO: Learn how Roblox computes a "Month" to ensure this is an accurate estimate
+                                QuotaDuration::Month => Duration::days(30),
+                            }
+                    }
+                });
+
+                if usage < capacity {
+                    logger::log("");
+                    logger::log(Paint::yellow(
+                        format!(
+                        "You will have {} audio upload(s) remaining in the current period after creation. Your quota will reset in {}.",
+                        capacity - usage - 1,
+                        quota_reset
+                    )));
+
+                    let CreateAudioAssetResponse { id } = self
+                        .roblox_api
+                        .create_audio_asset(
+                            self.get_path(inputs.file_path),
+                            inputs.group_id,
+                            self.payment_source.clone(),
+                        )
+                        .await?;
+
+                    Ok(RobloxOutputs::AudioAsset(AssetOutputs { asset_id: id }))
+                } else {
+                    Err(format!(
+                        "You have reached your audio upload quota. Your quota will reset in {}.",
+                        quota_reset
+                    ))
+                }
             }
             RobloxInputs::AssetAlias(inputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
@@ -628,16 +652,11 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
     async fn get_update_price(
         &self,
-        inputs: RobloxInputs,
-        outputs: RobloxOutputs,
-        dependency_outputs: Vec<RobloxOutputs>,
+        _inputs: RobloxInputs,
+        _outputs: RobloxOutputs,
+        _dependency_outputs: Vec<RobloxOutputs>,
     ) -> Result<Option<u32>, String> {
-        match (inputs.clone(), outputs) {
-            (RobloxInputs::AudioAsset(_), RobloxOutputs::AudioAsset(_)) => {
-                self.get_create_price(inputs, dependency_outputs).await
-            }
-            _ => Ok(None),
-        }
+        Ok(None)
     }
 
     // TODO: Consider moving `outputs` into `dependency_outputs`.
@@ -926,4 +945,39 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
         }
         Ok(())
     }
+}
+
+fn format_quota_reset(reset: DateTime<Utc>) -> String {
+    let now = Utc::now();
+    let duration = reset.signed_duration_since(now);
+
+    let mut parts = Vec::<String>::new();
+    if duration.num_days() > 0 {
+        parts.push(format!("{}d", duration.num_days()));
+    }
+    if duration.num_hours() > 0 {
+        parts.push(format!(
+            "{}h",
+            duration.num_hours() - duration.num_days() * 24
+        ));
+    }
+    if duration.num_minutes() > 0 {
+        parts.push(format!(
+            "{}m",
+            duration.num_minutes() - duration.num_hours() * 60
+        ));
+    }
+    if duration.num_seconds() > 0 {
+        parts.push(format!(
+            "{}s",
+            duration.num_seconds() - duration.num_minutes() * 60
+        ));
+    } else {
+        parts.push(format!(
+            "{}ms",
+            duration.num_milliseconds() - duration.num_seconds() * 1000
+        ));
+    }
+
+    parts.join(" ")
 }

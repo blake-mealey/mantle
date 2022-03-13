@@ -525,10 +525,8 @@ pub struct ExperienceTargetConfig {
     /// ```
     ///
     /// :::caution
-    /// By default, Mantle does not have permission to make purchases
-    /// with Robux. Since creating and updating audio assets costs Robux, you
-    /// will need to use the `--allow-purchases` flag when you want to create or
-    /// update them.
+    /// Roblox provides each user a monthly quota of audio uploads. Mantle will let you know each time it
+    /// uploads an audio asset how many uploads you have left and when your quota will reset.
     /// :::
     ///
     /// Each file will be uploaded as the asset type matching its file

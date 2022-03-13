@@ -1532,6 +1532,7 @@ impl RobloxApi {
         description: String,
         icon_file_path: PathBuf,
         payment_source: CreatorType,
+        expected_cost: u32,
     ) -> Result<CreateBadgeResponse, String> {
         let req = self
             .client
@@ -1544,7 +1545,8 @@ impl RobloxApi {
                     .part("request.files", Self::get_file_part(icon_file_path).await?)
                     .text("request.name", name)
                     .text("request.description", description)
-                    .text("request.paymentSourceType", payment_source.to_string()),
+                    .text("request.paymentSourceType", payment_source.to_string())
+                    .text("request.expectedCost", expected_cost.to_string()),
             );
 
         Self::handle_as_json(req).await
@@ -1569,6 +1571,15 @@ impl RobloxApi {
         Self::handle(req).await?;
 
         Ok(())
+    }
+
+    pub async fn get_create_badge_free_quota(&self, experience_id: AssetId) -> Result<i32, String> {
+        let req = self.client.get(&format!(
+            "https://badges.roblox.com/v1/universes/{}/free-badges-quota",
+            experience_id
+        ));
+
+        Self::handle_as_json(req).await
     }
 
     pub async fn list_badges(

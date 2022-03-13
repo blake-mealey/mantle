@@ -3,6 +3,9 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use yansi::Paint;
+
+use crate::logger;
 
 use super::{
     resource_graph::{
@@ -302,10 +305,36 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
     async fn get_create_price(
         &self,
         inputs: RobloxInputs,
-        _dependency_outputs: Vec<RobloxOutputs>,
+        dependency_outputs: Vec<RobloxOutputs>,
     ) -> Result<Option<u32>, String> {
         match inputs {
-            RobloxInputs::Badge(_) => Ok(Some(100)),
+            RobloxInputs::Badge(_) => {
+                let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
+                let free_quota = self
+                    .roblox_api
+                    .get_create_badge_free_quota(experience.asset_id)
+                    .await?;
+                if free_quota > 0 {
+                    let utc_now = Utc::now();
+                    let utc_reset = (utc_now + chrono::Duration::days(1))
+                        .date()
+                        .and_hms(0, 0, 0);
+                    let duration = utc_reset.signed_duration_since(utc_now);
+                    let duration_str = format!(
+                        "{:02}:{:02}:{:02}",
+                        duration.num_hours(),
+                        duration.num_minutes() - duration.num_hours() * 60,
+                        duration.num_seconds() - duration.num_minutes() * 60
+                    );
+                    logger::log("");
+                    logger::log(Paint::yellow(
+                        format!("You will have {} free badge(s) remaining in the current period after creation. Your quota will reset in {}.", free_quota - 1, duration_str),
+                    ));
+                    Ok(None)
+                } else {
+                    Ok(Some(100))
+                }
+            }
             RobloxInputs::AudioAsset(inputs) => {
                 let GetCreateAudioAssetPriceResponse {
                     price, can_afford, ..
@@ -329,6 +358,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
         &self,
         inputs: RobloxInputs,
         dependency_outputs: Vec<RobloxOutputs>,
+        price: Option<u32>,
     ) -> Result<RobloxOutputs, String> {
         match inputs {
             RobloxInputs::Experience(inputs) => {
@@ -531,6 +561,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                         inputs.description,
                         self.get_path(inputs.icon_file_path),
                         self.payment_source.clone(),
+                        price.unwrap_or(0),
                     )
                     .await?;
 
@@ -615,37 +646,38 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
         inputs: RobloxInputs,
         outputs: RobloxOutputs,
         dependency_outputs: Vec<RobloxOutputs>,
+        price: Option<u32>,
     ) -> Result<RobloxOutputs, String> {
         match (inputs.clone(), outputs.clone()) {
             (RobloxInputs::Experience(_), RobloxOutputs::Experience(_)) => {
                 self.delete(outputs, dependency_outputs.clone()).await?;
-                self.create(inputs, dependency_outputs).await
+                self.create(inputs, dependency_outputs, price).await
             }
             (RobloxInputs::ExperienceConfiguration(_), RobloxOutputs::ExperienceConfiguration) => {
-                self.create(inputs, dependency_outputs).await
+                self.create(inputs, dependency_outputs, price).await
             }
             (RobloxInputs::ExperienceActivation(_), RobloxOutputs::ExperienceActivation) => {
-                self.create(inputs, dependency_outputs).await
+                self.create(inputs, dependency_outputs, price).await
             }
             (RobloxInputs::ExperienceIcon(_), RobloxOutputs::ExperienceIcon(_)) => {
-                self.create(inputs, dependency_outputs).await
+                self.create(inputs, dependency_outputs, price).await
             }
             (RobloxInputs::ExperienceThumbnail(_), RobloxOutputs::ExperienceThumbnail(_)) => {
                 self.delete(outputs, dependency_outputs.clone()).await?;
-                self.create(inputs, dependency_outputs).await
+                self.create(inputs, dependency_outputs, price).await
             }
             (RobloxInputs::ExperienceThumbnailOrder, RobloxOutputs::ExperienceThumbnailOrder) => {
-                self.create(inputs, dependency_outputs).await
+                self.create(inputs, dependency_outputs, price).await
             }
             // TODO: is this correct?
             (RobloxInputs::Place(_), RobloxOutputs::Place(_)) => {
-                self.create(inputs, dependency_outputs).await
+                self.create(inputs, dependency_outputs, price).await
             }
             (RobloxInputs::PlaceFile(_), RobloxOutputs::PlaceFile(_)) => {
-                self.create(inputs, dependency_outputs).await
+                self.create(inputs, dependency_outputs, price).await
             }
             (RobloxInputs::PlaceConfiguration(_), RobloxOutputs::PlaceConfiguration) => {
-                self.create(inputs, dependency_outputs).await
+                self.create(inputs, dependency_outputs, price).await
             }
             (RobloxInputs::SocialLink(inputs), RobloxOutputs::SocialLink(outputs)) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
@@ -663,7 +695,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 Ok(RobloxOutputs::SocialLink(outputs))
             }
             (RobloxInputs::ProductIcon(_), RobloxOutputs::ProductIcon(_)) => {
-                self.create(inputs, dependency_outputs).await
+                self.create(inputs, dependency_outputs, price).await
             }
             (RobloxInputs::Product(inputs), RobloxOutputs::Product(outputs)) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
@@ -731,10 +763,10 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 }))
             }
             (RobloxInputs::ImageAsset(_), RobloxOutputs::ImageAsset(_)) => {
-                self.create(inputs, dependency_outputs).await
+                self.create(inputs, dependency_outputs, price).await
             }
             (RobloxInputs::AudioAsset(_), RobloxOutputs::AudioAsset(_)) => {
-                self.create(inputs, dependency_outputs).await
+                self.create(inputs, dependency_outputs, price).await
             }
             (RobloxInputs::AssetAlias(inputs), RobloxOutputs::AssetAlias(outputs)) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);

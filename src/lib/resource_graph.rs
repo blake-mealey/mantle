@@ -66,6 +66,7 @@ pub trait ResourceManager<TInputs, TOutputs> {
         &self,
         inputs: TInputs,
         dependency_outputs: Vec<TOutputs>,
+        price: Option<u32>,
     ) -> Result<TOutputs, String>;
 
     async fn get_update_price(
@@ -80,6 +81,7 @@ pub trait ResourceManager<TInputs, TOutputs> {
         inputs: TInputs,
         outputs: TOutputs,
         dependency_outputs: Vec<TOutputs>,
+        price: Option<u32>,
     ) -> Result<TOutputs, String>;
 
     async fn delete(
@@ -416,7 +418,7 @@ where
                 .get_outputs()
                 .expect("Existing resource should have outputs.");
 
-            match manager
+            let price = match manager
                 .get_update_price(
                     resource.get_inputs(),
                     outputs.clone(),
@@ -430,7 +432,8 @@ where
                         logger::log(Paint::yellow(format!(
                             "{} Robux will be charged from your account.",
                             price
-                        )))
+                        )));
+                        Some(price)
                     } else {
                         return OperationResult::Skipped(format!(
                                 "Resource would cost {} Robux to create. Give Mantle permission to make purchases with --allow-purchases.",
@@ -439,11 +442,11 @@ where
                     }
                 }
                 Err(error) => return OperationResult::Failed(error),
-                Ok(_) => {}
+                Ok(_) => None,
             };
 
             match manager
-                .update(resource.get_inputs(), outputs, dependency_outputs)
+                .update(resource.get_inputs(), outputs, dependency_outputs, price)
                 .await
             {
                 Ok(outputs) => OperationResult::SucceededUpdate(outputs),
@@ -468,7 +471,7 @@ where
             logger::log("Inputs:");
             logger::log_changeset(get_changeset("", &inputs_hash));
 
-            match manager
+            let price = match manager
                 .get_create_price(resource.get_inputs(), dependency_outputs.clone())
                 .await
             {
@@ -478,7 +481,8 @@ where
                         logger::log(Paint::yellow(format!(
                             "{} Robux will be charged from your account.",
                             price
-                        )))
+                        )));
+                        Some(price)
                     } else {
                         return OperationResult::Skipped(format!(
                                 "Resource would cost {} Robux to create. Give Mantle permission to make purchases with --allow-purchases.",
@@ -487,11 +491,11 @@ where
                     }
                 }
                 Err(error) => return OperationResult::Failed(error),
-                Ok(_) => {}
+                Ok(_) => None,
             };
 
             match manager
-                .create(resource.get_inputs(), dependency_outputs)
+                .create(resource.get_inputs(), dependency_outputs, price)
                 .await
             {
                 Ok(outputs) => OperationResult::SucceededCreate(outputs),

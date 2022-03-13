@@ -91,7 +91,7 @@ pub struct Config {
     /// | Value              | Description                                                                                                                                                                                                           |
     /// |--------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
     /// | `'local'`          | Mantle will save and load its state to and from a local `.mantle-state.yml` file.                                                                                                                                     |
-    /// | `local: <config>`  | Mantle will save and load its state to and from a local file using the provided key with the format `<key>.mantle-state.yml`.                                                                                         |
+    /// | `localKey: <key>`  | Mantle will save and load its state to and from a local file using the provided key with the format `<key>.mantle-state.yml`.                                                                                         |
     /// | `remote: <config>` | Mantle will save and load its state to and from a remote file stored in a cloud provider. Currently the only supported provider is Amazon S3. For more information, see the [Remote State](/docs/remote-state) guide. |
     ///
     /// ```yml title="Local State Example (Default)"
@@ -100,8 +100,7 @@ pub struct Config {
     ///
     /// ```yml title="Custom Local State Example"
     /// state:
-    ///   local:
-    ///     key: pirate-wars
+    ///   localKey: pirate-wars
     /// ```
     ///
     /// ```yml title="Remote State Example"
@@ -143,13 +142,8 @@ impl default::Default for PaymentsConfig {
 #[derive(JsonSchema, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum StateConfig {
-    #[serde(rename = "local")]
-    LocalKey {
-        /// The key to use to store your state file. The file will be named with the format
-        /// `<key>.mantle-state.yml`.
-        key: String,
-    },
     Local,
+    LocalKey(String),
     Remote(RemoteStateConfig),
 }
 impl default::Default for StateConfig {

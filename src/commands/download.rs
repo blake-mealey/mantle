@@ -30,9 +30,7 @@ pub async fn run(project: Option<&str>, key: Option<&str>) -> i32 {
     };
 
     let state_config = match key {
-        Some(key) => StateConfig::LocalKey {
-            key: key.to_owned(),
-        },
+        Some(key) => StateConfig::LocalKey(key.to_owned()),
         None => StateConfig::Local,
     };
     match save_state(&project_path, &state_config, &state).await {

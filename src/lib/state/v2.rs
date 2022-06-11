@@ -123,11 +123,11 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                     "experience" => RobloxResource::existing(
                         &format!("experience_{}", resource.id),
                         RobloxInputs::Experience(ExperienceInputs {
-                            group_id: input_value!(&resource, "groupId"),
+                            group_id: input_value!(resource, "groupId"),
                         }),
                         RobloxOutputs::Experience(ExperienceOutputs {
-                            asset_id: output_value!(&resource, "assetId"),
-                            start_place_id: output_value!(&resource, "startPlaceId"),
+                            asset_id: output_value!(resource, "assetId"),
+                            start_place_id: output_value!(resource, "startPlaceId"),
                         }),
                         &[],
                     ),
@@ -143,7 +143,7 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                     "experienceActivation" => RobloxResource::existing(
                         &format!("experienceActivation_{}", resource.id),
                         RobloxInputs::ExperienceActivation(ExperienceActivationInputs {
-                            is_active: input_value!(&resource, "isActive"),
+                            is_active: input_value!(resource, "isActive"),
                         }),
                         RobloxOutputs::ExperienceActivation,
                         &[dependency!(ref_to_resource, resource, "experienceId")],
@@ -151,22 +151,22 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                     "experienceIcon" => RobloxResource::existing(
                         "experienceIcon_singleton",
                         RobloxInputs::ExperienceIcon(FileInputs {
-                            file_path: input_value!(&resource, "filePath"),
-                            file_hash: input_value!(&resource, "fileHash"),
+                            file_path: input_value!(resource, "filePath"),
+                            file_hash: input_value!(resource, "fileHash"),
                         }),
                         RobloxOutputs::ExperienceIcon(AssetOutputs {
-                            asset_id: output_value!(&resource, "assetId"),
+                            asset_id: output_value!(resource, "assetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "experienceId")],
                     ),
                     "experienceThumbnail" => RobloxResource::existing(
                         &format!("experienceThumbnail_{}", resource.id),
                         RobloxInputs::ExperienceThumbnail(FileInputs {
-                            file_path: input_value!(&resource, "filePath"),
-                            file_hash: input_value!(&resource, "fileHash"),
+                            file_path: input_value!(resource, "filePath"),
+                            file_hash: input_value!(resource, "fileHash"),
                         }),
                         RobloxOutputs::ExperienceThumbnail(AssetOutputs {
-                            asset_id: output_value!(&resource, "assetId"),
+                            asset_id: output_value!(resource, "assetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "experienceId")],
                     ),
@@ -187,36 +187,36 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                             is_start: resource.id == "start",
                         }),
                         RobloxOutputs::Place(AssetOutputs {
-                            asset_id: output_value!(&resource, "assetId"),
+                            asset_id: output_value!(resource, "assetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "experienceId")],
                     ),
                     "placeFile" => RobloxResource::existing(
                         &format!("placeFile_{}", resource.id),
                         RobloxInputs::PlaceFile(FileInputs {
-                            file_path: input_value!(&resource, "filePath"),
-                            file_hash: input_value!(&resource, "fileHash"),
+                            file_path: input_value!(resource, "filePath"),
+                            file_hash: input_value!(resource, "fileHash"),
                         }),
                         RobloxOutputs::PlaceFile(PlaceFileOutputs {
-                            version: output_value!(&resource, "version"),
+                            version: output_value!(resource, "version"),
                         }),
                         &[dependency!(ref_to_resource, resource, "assetId")],
                     ),
                     "placeConfiguration" => RobloxResource::existing(
                         &format!("placeConfiguration_{}", resource.id),
-                        RobloxInputs::PlaceConfiguration(input_value!(&resource, "configuration")),
+                        RobloxInputs::PlaceConfiguration(input_value!(resource, "configuration")),
                         RobloxOutputs::PlaceConfiguration,
                         &[dependency!(ref_to_resource, resource, "assetId")],
                     ),
                     "socialLink" => RobloxResource::existing(
                         &format!("socialLink_{}", resource.id),
                         RobloxInputs::SocialLink(SocialLinkInputs {
-                            title: input_value!(&resource, "title"),
-                            url: input_value!(&resource, "url"),
-                            link_type: input_value!(&resource, "linkType"),
+                            title: input_value!(resource, "title"),
+                            url: input_value!(resource, "url"),
+                            link_type: input_value!(resource, "linkType"),
                         }),
                         RobloxOutputs::SocialLink(AssetOutputs {
-                            asset_id: output_value!(&resource, "assetId"),
+                            asset_id: output_value!(resource, "assetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "experienceId")],
                     ),
@@ -224,13 +224,13 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                         let mut new_resource = RobloxResource::existing(
                             &format!("product_{}", resource.id),
                             RobloxInputs::Product(ProductInputs {
-                                name: input_value!(&resource, "name"),
-                                description: input_value!(&resource, "description"),
-                                price: input_value!(&resource, "price"),
+                                name: input_value!(resource, "name"),
+                                description: input_value!(resource, "description"),
+                                price: input_value!(resource, "price"),
                             }),
                             RobloxOutputs::Product(ProductOutputs {
-                                asset_id: output_value!(&resource, "assetId"),
-                                product_id: output_value!(&resource, "productId"),
+                                asset_id: output_value!(resource, "assetId"),
+                                product_id: output_value!(resource, "productId"),
                             }),
                             &[dependency!(ref_to_resource, resource, "experienceId")],
                         );
@@ -245,96 +245,96 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                     "developerProductIcon" => RobloxResource::existing(
                         &format!("productIcon_{}", resource.id),
                         RobloxInputs::ProductIcon(FileInputs {
-                            file_path: input_value!(&resource, "filePath"),
-                            file_hash: input_value!(&resource, "fileHash"),
+                            file_path: input_value!(resource, "filePath"),
+                            file_hash: input_value!(resource, "fileHash"),
                         }),
                         RobloxOutputs::ProductIcon(AssetOutputs {
-                            asset_id: output_value!(&resource, "assetId"),
+                            asset_id: output_value!(resource, "assetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "experienceId")],
                     ),
                     "gamePass" => RobloxResource::existing(
                         &format!("pass_{}", resource.id),
                         RobloxInputs::Pass(PassInputs {
-                            name: input_value!(&resource, "name"),
-                            description: input_value!(&resource, "description"),
-                            price: input_value!(&resource, "price"),
-                            icon_file_path: input_value!(&resource, "iconFilePath"),
+                            name: input_value!(resource, "name"),
+                            description: input_value!(resource, "description"),
+                            price: input_value!(resource, "price"),
+                            icon_file_path: input_value!(resource, "iconFilePath"),
                         }),
                         RobloxOutputs::Pass(AssetWithInitialIconOutputs {
-                            asset_id: output_value!(&resource, "assetId"),
-                            initial_icon_asset_id: output_value!(&resource, "initialIconAssetId"),
+                            asset_id: output_value!(resource, "assetId"),
+                            initial_icon_asset_id: output_value!(resource, "initialIconAssetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "startPlaceId")],
                     ),
                     "gamePassIcon" => RobloxResource::existing(
                         &format!("passIcon_{}", resource.id),
                         RobloxInputs::PassIcon(FileInputs {
-                            file_path: input_value!(&resource, "filePath"),
-                            file_hash: input_value!(&resource, "fileHash"),
+                            file_path: input_value!(resource, "filePath"),
+                            file_hash: input_value!(resource, "fileHash"),
                         }),
                         RobloxOutputs::PassIcon(AssetOutputs {
-                            asset_id: output_value!(&resource, "assetId"),
+                            asset_id: output_value!(resource, "assetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "gamePassId")],
                     ),
                     "badge" => RobloxResource::existing(
                         &format!("badge_{}", resource.id),
                         RobloxInputs::Badge(BadgeInputs {
-                            name: input_value!(&resource, "name"),
-                            description: input_value!(&resource, "description"),
-                            enabled: input_value!(&resource, "enabled"),
-                            icon_file_path: input_value!(&resource, "iconFilePath"),
+                            name: input_value!(resource, "name"),
+                            description: input_value!(resource, "description"),
+                            enabled: input_value!(resource, "enabled"),
+                            icon_file_path: input_value!(resource, "iconFilePath"),
                         }),
                         RobloxOutputs::Badge(AssetWithInitialIconOutputs {
-                            asset_id: output_value!(&resource, "assetId"),
-                            initial_icon_asset_id: output_value!(&resource, "initialIconAssetId"),
+                            asset_id: output_value!(resource, "assetId"),
+                            initial_icon_asset_id: output_value!(resource, "initialIconAssetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "experienceId")],
                     ),
                     "badgeIcon" => RobloxResource::existing(
                         &format!("badgeIcon_{}", resource.id),
                         RobloxInputs::BadgeIcon(FileInputs {
-                            file_path: input_value!(&resource, "filePath"),
-                            file_hash: input_value!(&resource, "fileHash"),
+                            file_path: input_value!(resource, "filePath"),
+                            file_hash: input_value!(resource, "fileHash"),
                         }),
                         RobloxOutputs::BadgeIcon(AssetOutputs {
-                            asset_id: output_value!(&resource, "assetId"),
+                            asset_id: output_value!(resource, "assetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "badgeId")],
                     ),
                     "imageAsset" => RobloxResource::existing(
                         &format!("asset_{}", resource.id),
                         RobloxInputs::ImageAsset(FileWithGroupIdInputs {
-                            file_path: input_value!(&resource, "filePath"),
-                            file_hash: input_value!(&resource, "fileHash"),
-                            group_id: input_value!(&resource, "groupId"),
+                            file_path: input_value!(resource, "filePath"),
+                            file_hash: input_value!(resource, "fileHash"),
+                            group_id: input_value!(resource, "groupId"),
                         }),
                         RobloxOutputs::ImageAsset(ImageAssetOutputs {
-                            asset_id: output_value!(&resource, "assetId"),
-                            decal_asset_id: output_value!(&resource, "decalAssetId"),
+                            asset_id: output_value!(resource, "assetId"),
+                            decal_asset_id: output_value!(resource, "decalAssetId"),
                         }),
                         &[],
                     ),
                     "audioAsset" => RobloxResource::existing(
                         &format!("asset_{}", resource.id),
                         RobloxInputs::AudioAsset(FileWithGroupIdInputs {
-                            file_path: input_value!(&resource, "filePath"),
-                            file_hash: input_value!(&resource, "fileHash"),
-                            group_id: input_value!(&resource, "groupId"),
+                            file_path: input_value!(resource, "filePath"),
+                            file_hash: input_value!(resource, "fileHash"),
+                            group_id: input_value!(resource, "groupId"),
                         }),
                         RobloxOutputs::AudioAsset(AssetOutputs {
-                            asset_id: output_value!(&resource, "assetId"),
+                            asset_id: output_value!(resource, "assetId"),
                         }),
                         &[],
                     ),
                     "assetAlias" => RobloxResource::existing(
                         &format!("assetAlias_{}", resource.id),
                         RobloxInputs::AssetAlias(AssetAliasInputs {
-                            name: input_value!(&resource, "name"),
+                            name: input_value!(resource, "name"),
                         }),
                         RobloxOutputs::AssetAlias(AssetAliasOutputs {
-                            name: output_value!(&resource, "name"),
+                            name: output_value!(resource, "name"),
                         }),
                         &[
                             dependency!(ref_to_resource, resource, "experienceId"),

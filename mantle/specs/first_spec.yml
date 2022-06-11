@@ -11,11 +11,14 @@ config:
 createFiles:
   - place.rbxlx
   - assets/texture.image
+  - marketing/game.thumbnail.image
+  - marketing/game.icon.image
 command: deploy -e staging
 ---
 updateFiles:
   - place.rbxlx
   - assets/texture.image
+  - marketing/game.thumbnail.image
 command: deploy -e staging
 ---
 config:
@@ -30,6 +33,7 @@ config:
         - assets/*
 updateFiles:
   - assets/texture.image
+  - marketing/game.icon.image
 command: deploy -e staging
 ---
 command: destroy -e staging

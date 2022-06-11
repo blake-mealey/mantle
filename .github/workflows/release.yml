@@ -91,7 +91,7 @@ jobs:
           name: mantle-linux
           path: mantle-linux.zip
       - name: Generate schema
-        run: cargo run --release --bin schema > schema.json
+        run: cargo run --release --bin gen_schema > schema.json
       - name: Upload schema artifact
         uses: actions/upload-artifact@v2
         with:

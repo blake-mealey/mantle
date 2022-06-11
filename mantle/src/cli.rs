@@ -1,4 +1,3 @@
-extern crate clap;
 use crate::commands;
 use clap::{crate_version, App, AppSettings, Arg, SubCommand};
 use std::env;

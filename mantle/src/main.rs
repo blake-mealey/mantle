@@ -1,6 +1,3 @@
-extern crate cookie;
-extern crate log;
-
 mod cli;
 mod commands;
 

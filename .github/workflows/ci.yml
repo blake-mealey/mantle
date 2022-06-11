@@ -31,4 +31,4 @@ jobs:
           cargo fmt -- --check
           cargo clippy -- -D warnings
       - name: Generate schema
-        run: cargo run --bin schema
+        run: cargo run --bin gen_schema

@@ -110,6 +110,4 @@ jobs:
         with:
           # TODO: remove and add body_path once we have an automated release notes generator
           draft: true
-          # TODO: remove once we reach a stable version
-          prerelease: true
           files: artifacts/*/*

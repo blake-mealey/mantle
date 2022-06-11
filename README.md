@@ -2,9 +2,6 @@
 
 An infrastructure-as-code and deployment tool for Roblox.
 
-⚠ Please note that this is an early release and the API is unstable. Releases follow pre-release
-semantic versioning (minor updates indicate breaking changes) ⚠
-
 ## Installation with Foreman
 
 It is recommended to install with Foreman, with the following config:

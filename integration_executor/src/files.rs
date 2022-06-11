@@ -31,14 +31,14 @@ fn create_image(context: &mut SpecContext, file: &str) {
 
 pub fn update(context: &mut SpecContext, file: &str) {
     match PathBuf::from(file).extension().and_then(|s| s.to_str()) {
-        Some("image") => updateImage(context, file),
+        Some("image") => update_image(context, file),
         Some("audio") => unimplemented!("update audio file"),
         Some("place") => unimplemented!("update place file"),
         _ => println!("create other file"),
     };
 }
 
-fn updateImage(context: &mut SpecContext, file: &str) {
+fn update_image(context: &mut SpecContext, file: &str) {
     let version = context.increment_file_version(file);
     let image = images::create(512, 512, &format!("{}", version + 1));
 

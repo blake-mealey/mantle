@@ -1,4 +1,4 @@
-description: Create and modify a place, then add an asset
+description: Create and update a place, then add an asset
 ---
 config:
   environments:
@@ -10,10 +10,12 @@ config:
           file: place.rbxlx
 createFiles:
   - place.rbxlx
+  - assets/texture.image
 command: deploy -e staging
 ---
-modifyFiles:
+updateFiles:
   - place.rbxlx
+  - assets/texture.image
 command: deploy -e staging
 ---
 config:
@@ -26,8 +28,8 @@ config:
           file: place.rbxlx
       assets:
         - assets/*
-createFiles:
-  - assets/texture.png
+updateFiles:
+  - assets/texture.image
 command: deploy -e staging
 ---
 command: destroy -e staging

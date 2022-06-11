@@ -1,5 +1,6 @@
+mod context;
 mod files;
-mod working_dir;
+mod images;
 
 use serde::Deserialize;
 use serde_yaml;
@@ -17,7 +18,7 @@ struct SpecState {
     config: Option<rbx_mantle::config::Config>,
     command: String,
     create_files: Option<Vec<String>>,
-    modify_files: Option<Vec<String>>,
+    update_files: Option<Vec<String>>,
     delete_files: Option<Vec<String>>,
 }
 
@@ -43,7 +44,7 @@ pub fn execute_spec(spec: &str) {
         .map(|state| serde_yaml::from_value(state.to_owned()).unwrap())
         .collect();
 
-    let working_dir = working_dir::prepare(&cargo_manifest_dir);
+    let mut context = context::prepare(&cargo_manifest_dir);
 
     println!("Executing spec: {}", spec_path.display());
     println!("\t{}", header.description);
@@ -58,26 +59,26 @@ pub fn execute_spec(spec: &str) {
         if let Some(create_files) = &state.create_files {
             println!("\tCreating files: {:?}", create_files);
             for file in create_files {
-                files::create(&working_dir, file);
+                files::create(&mut context, file);
             }
         }
 
-        if let Some(modify_files) = &state.modify_files {
-            println!("\tModifying files: {:?}", modify_files);
-            for file in modify_files {
-                files::modify(&working_dir, file);
+        if let Some(update_files) = &state.update_files {
+            println!("\tUpdating files: {:?}", update_files);
+            for file in update_files {
+                files::update(&mut context, file);
             }
         }
 
         if let Some(delete_files) = &state.delete_files {
             println!("\tDeleting files: {:?}", delete_files);
             for file in delete_files {
-                files::delete(&working_dir, file);
+                files::delete(&mut context, file);
             }
         }
 
         println!("> mantle {}", state.command);
     }
 
-    working_dir::cleanup(&working_dir);
+    // working_dir::cleanup(&context);
 }

@@ -6,4 +6,5 @@ members = [
 
     # libs
     "rbx_mantle",
+    "integration_executor"
 ]

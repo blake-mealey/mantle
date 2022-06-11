@@ -1,0 +1,33 @@
+description: Create and modify a place, then add an asset
+---
+config:
+  environments:
+    - label: staging
+  target:
+    experience:
+      places:
+        start:
+          file: place.rbxlx
+createFiles:
+  - place.rbxlx
+command: deploy -e staging
+---
+modifyFiles:
+  - place.rbxlx
+command: deploy -e staging
+---
+config:
+  environments:
+    - label: staging
+  target:
+    experience:
+      places:
+        start:
+          file: place.rbxlx
+      assets:
+        - assets/*
+createFiles:
+  - assets/texture.png
+command: deploy -e staging
+---
+command: destroy -e staging

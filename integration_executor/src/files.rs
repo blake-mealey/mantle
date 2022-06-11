@@ -1,17 +1,50 @@
 use rand::seq::SliceRandom;
+use serde_yaml::Value;
 use std::fs;
 use std::path::PathBuf;
 
 use crate::context::SpecContext;
 use crate::images;
 
+pub fn update_config(context: &mut SpecContext, config: &Value) {
+    let file = context.file_path("mantle.yml");
+    let data = serde_yaml::to_string(config).unwrap();
+    fs::write(file, data).unwrap();
+}
+
 pub fn create(context: &mut SpecContext, file: &str) {
     match PathBuf::from(file).extension().and_then(|s| s.to_str()) {
         Some("image") => create_image(context, file),
         Some("audio") => unimplemented!("create audio file"),
-        Some("place") => unimplemented!("create place file"),
+        Some("rbxlx") => create_place(context, file),
         _ => println!("create other file"),
     };
+}
+
+fn create_place(context: &mut SpecContext, file: &str) {
+    context.set_file_version(file, 0);
+
+    let data = format!(
+        r#"<roblox version="4">
+  <Item class="ReplicatedStorage" referent="0">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="NumberValue" referent="1">
+      <Properties>
+        <string name="Name">FileVersion</string>
+        <double name="Value">{}</double>
+      </Properties>
+    </Item>
+  </Item>
+</roblox>
+"#,
+        1
+    );
+
+    let path = context.file_path(file);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(path, data).unwrap();
 }
 
 fn create_image(context: &mut SpecContext, file: &str) {
@@ -33,9 +66,35 @@ pub fn update(context: &mut SpecContext, file: &str) {
     match PathBuf::from(file).extension().and_then(|s| s.to_str()) {
         Some("image") => update_image(context, file),
         Some("audio") => unimplemented!("update audio file"),
-        Some("place") => unimplemented!("update place file"),
+        Some("rbxlx") => update_place(context, file),
         _ => println!("create other file"),
     };
+}
+
+fn update_place(context: &mut SpecContext, file: &str) {
+    let version = context.increment_file_version(file);
+
+    let data = format!(
+        r#"<roblox version="4">
+  <Item class="ReplicatedStorage" referent="0">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="NumberValue" referent="1">
+      <Properties>
+        <string name="Name">FileVersion</string>
+        <double name="Value">{}</double>
+      </Properties>
+    </Item>
+  </Item>
+</roblox>
+"#,
+        version + 1
+    );
+
+    let path = context.file_path(file);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(path, data).unwrap();
 }
 
 fn update_image(context: &mut SpecContext, file: &str) {

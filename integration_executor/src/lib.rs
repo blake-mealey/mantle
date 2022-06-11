@@ -3,7 +3,7 @@ mod files;
 mod images;
 
 use serde::Deserialize;
-use serde_yaml;
+use serde_yaml::{self, Value};
 use std::{fs, path::PathBuf};
 
 #[derive(Deserialize, Debug)]
@@ -14,8 +14,8 @@ struct SpecHeader {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct SpecState {
-    config: Option<rbx_mantle::config::Config>,
+struct SpecStep {
+    config: Option<Value>,
     command: String,
     create_files: Option<Vec<String>>,
     update_files: Option<Vec<String>>,
@@ -39,9 +39,9 @@ pub fn execute_spec(spec: &str) {
 
     let header: SpecHeader = serde_yaml::from_value(docs.remove(0)).unwrap();
 
-    let states: Vec<SpecState> = docs
+    let steps: Vec<SpecStep> = docs
         .iter()
-        .map(|state| serde_yaml::from_value(state.to_owned()).unwrap())
+        .map(|step| serde_yaml::from_value(step.to_owned()).unwrap())
         .collect();
 
     let mut context = context::prepare(&cargo_manifest_dir);
@@ -49,35 +49,45 @@ pub fn execute_spec(spec: &str) {
     println!("Executing spec: {}", spec_path.display());
     println!("\t{}", header.description);
 
-    for (i, state) in states.iter().enumerate() {
-        println!("\nState {}", i);
+    for (i, step) in steps.iter().enumerate() {
+        println!("\nStep {}", i);
 
-        if let Some(_config) = &state.config {
+        if let Some(config) = &step.config {
             println!("\tUpdating config");
+            files::update_config(&mut context, config);
         }
 
-        if let Some(create_files) = &state.create_files {
+        if let Some(create_files) = &step.create_files {
             println!("\tCreating files: {:?}", create_files);
             for file in create_files {
                 files::create(&mut context, file);
             }
         }
 
-        if let Some(update_files) = &state.update_files {
+        if let Some(update_files) = &step.update_files {
             println!("\tUpdating files: {:?}", update_files);
             for file in update_files {
                 files::update(&mut context, file);
             }
         }
 
-        if let Some(delete_files) = &state.delete_files {
+        if let Some(delete_files) = &step.delete_files {
             println!("\tDeleting files: {:?}", delete_files);
             for file in delete_files {
                 files::delete(&mut context, file);
             }
         }
 
-        println!("> mantle {}", state.command);
+        println!("> mantle {}", step.command);
+        let output = test_bin::get_test_bin("mantle")
+            .args(step.command.split(" "))
+            .arg(context.working_dir.to_str().unwrap())
+            .output()
+            .unwrap();
+
+        println!("{}", String::from_utf8(output.stdout).unwrap());
+
+        assert_eq!(output.status.success(), true);
     }
 
     // working_dir::cleanup(&context);

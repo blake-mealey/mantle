@@ -1,4 +1,5 @@
 description: Create and update a place, then add an asset
+
 ---
 config:
   environments:
@@ -14,12 +15,14 @@ createFiles:
   - marketing/game.thumbnail.image
   - marketing/game.icon.image
 command: deploy -e staging
+
 ---
 updateFiles:
   - place.rbxlx
   - assets/texture.image
   - marketing/game.thumbnail.image
 command: deploy -e staging
+
 ---
 config:
   environments:
@@ -35,5 +38,8 @@ updateFiles:
   - assets/texture.image
   - marketing/game.icon.image
 command: deploy -e staging
+
 ---
 command: destroy -e staging
+deleteFiles:
+  - assets/texture.image

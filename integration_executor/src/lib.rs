@@ -14,12 +14,40 @@ struct SpecHeader {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+enum ExpectStatus {
+    Success,
+    Failure,
+}
+impl Default for ExpectStatus {
+    fn default() -> Self {
+        ExpectStatus::Success
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Expectations {
+    #[serde(default)]
+    status: ExpectStatus,
+}
+impl Default for Expectations {
+    fn default() -> Self {
+        Self {
+            status: ExpectStatus::Success,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct SpecStep {
     config: Option<Value>,
     command: String,
     create_files: Option<Vec<String>>,
     update_files: Option<Vec<String>>,
     delete_files: Option<Vec<String>>,
+    #[serde(default)]
+    expect: Expectations,
 }
 
 pub fn execute_spec(spec: &str) {
@@ -82,12 +110,17 @@ pub fn execute_spec(spec: &str) {
         let output = test_bin::get_test_bin("mantle")
             .args(step.command.split(" "))
             .arg(context.working_dir.to_str().unwrap())
+            // .env("RUST_LOG", "trace,html5ever=error")
             .output()
             .unwrap();
 
         println!("{}", String::from_utf8(output.stdout).unwrap());
+        eprintln!("{}", String::from_utf8(output.stderr).unwrap());
 
-        assert_eq!(output.status.success(), true);
+        assert_eq!(
+            output.status.success(),
+            matches!(step.expect.status, ExpectStatus::Success)
+        );
     }
 
     // working_dir::cleanup(&context);

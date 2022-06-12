@@ -1,6 +1,8 @@
 use rand::seq::SliceRandom;
+use rbx_dom_weak::{InstanceBuilder, WeakDom};
 use serde_yaml::Value;
 use std::fs;
+use std::io::BufWriter;
 use std::path::PathBuf;
 
 use crate::context::SpecContext;
@@ -16,7 +18,8 @@ pub fn create(context: &mut SpecContext, file: &str) {
     match PathBuf::from(file).extension().and_then(|s| s.to_str()) {
         Some("image") => create_image(context, file),
         Some("audio") => unimplemented!("create audio file"),
-        Some("rbxlx") => create_place(context, file),
+        // TODO: Pick the format automatically for `.place` files
+        Some("rbxlx") | Some("rbxl") => create_place(context, file),
         _ => println!("create other file"),
     };
 }
@@ -24,27 +27,24 @@ pub fn create(context: &mut SpecContext, file: &str) {
 fn create_place(context: &mut SpecContext, file: &str) {
     context.set_file_version(file, 0);
 
-    let data = format!(
-        r#"<roblox version="4">
-  <Item class="ReplicatedStorage" referent="0">
-    <Properties>
-      <string name="Name">ReplicatedStorage</string>
-    </Properties>
-    <Item class="NumberValue" referent="1">
-      <Properties>
-        <string name="Name">FileVersion</string>
-        <double name="Value">{}</double>
-      </Properties>
-    </Item>
-  </Item>
-</roblox>
-"#,
-        1
+    let data_model = InstanceBuilder::new("DataModel").with_child(
+        InstanceBuilder::new("ReplicatedStorage").with_child(
+            InstanceBuilder::new("NumberValue")
+                .with_name("FileVersion")
+                .with_property("Value", 1 as f32),
+        ),
     );
+    let dom = WeakDom::new(data_model);
 
     let path = context.file_path(file);
     fs::create_dir_all(path.parent().unwrap()).unwrap();
-    fs::write(path, data).unwrap();
+
+    let output = BufWriter::new(fs::File::create(&path).unwrap());
+    if &path.extension().unwrap().to_string_lossy() == "rbxlx" {
+        rbx_xml::to_writer_default(output, &dom, dom.root().children()).unwrap();
+    } else {
+        rbx_binary::to_writer(output, &dom, dom.root().children()).unwrap();
+    }
 }
 
 fn create_image(context: &mut SpecContext, file: &str) {
@@ -74,27 +74,24 @@ pub fn update(context: &mut SpecContext, file: &str) {
 fn update_place(context: &mut SpecContext, file: &str) {
     let version = context.increment_file_version(file);
 
-    let data = format!(
-        r#"<roblox version="4">
-  <Item class="ReplicatedStorage" referent="0">
-    <Properties>
-      <string name="Name">ReplicatedStorage</string>
-    </Properties>
-    <Item class="NumberValue" referent="1">
-      <Properties>
-        <string name="Name">FileVersion</string>
-        <double name="Value">{}</double>
-      </Properties>
-    </Item>
-  </Item>
-</roblox>
-"#,
-        version + 1
+    let data_model = InstanceBuilder::new("DataModel").with_child(
+        InstanceBuilder::new("ReplicatedStorage").with_child(
+            InstanceBuilder::new("NumberValue")
+                .with_name("FileVersion")
+                .with_property("Value", (version + 1) as f32),
+        ),
     );
+    let dom = WeakDom::new(data_model);
 
     let path = context.file_path(file);
     fs::create_dir_all(path.parent().unwrap()).unwrap();
-    fs::write(path, data).unwrap();
+
+    let output = BufWriter::new(fs::File::create(&path).unwrap());
+    if &path.extension().unwrap().to_string_lossy() == "rbxlx" {
+        rbx_xml::to_writer_default(output, &dom, dom.root().children()).unwrap();
+    } else {
+        rbx_binary::to_writer(output, &dom, dom.root().children()).unwrap();
+    }
 }
 
 fn update_image(context: &mut SpecContext, file: &str) {

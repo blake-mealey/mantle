@@ -17,13 +17,6 @@ createFiles:
 command: deploy -e staging
 
 ---
-updateFiles:
-  - place.rbxlx
-  - assets/texture.image
-  - marketing/game.thumbnail.image
-command: deploy -e staging
-
----
 config:
   environments:
     - label: staging
@@ -35,6 +28,7 @@ config:
       assets:
         - assets/*
 updateFiles:
+  - place.rbxlx
   - assets/texture.image
   - marketing/game.icon.image
 command: deploy -e staging

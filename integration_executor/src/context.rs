@@ -90,7 +90,9 @@ pub fn prepare(cargo_manifest_dir: &str) -> SpecContext {
     working_dir.push(&cargo_manifest_dir);
     working_dir.push("..");
     working_dir.push("integration_tmp");
-    fs::remove_dir_all(&working_dir).unwrap();
+    if working_dir.exists() {
+        fs::remove_dir_all(&working_dir).unwrap();
+    }
     fs::create_dir_all(&working_dir).unwrap();
 
     SpecContext {

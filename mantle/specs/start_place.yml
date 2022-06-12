@@ -1,0 +1,54 @@
+description: Test the start place
+
+---
+config:
+  environments:
+    - label: test
+  target:
+    experience:
+      places:
+        start:
+          file: place.rbxlx
+createFiles:
+  - place.rbxlx
+command: deploy -e test
+expect:
+  createdAssets:
+    - experience_singleton
+    - experienceActivation_singleton
+    - place_start
+    - placeFile_start
+
+---
+config:
+  environments:
+    - label: test
+  target:
+    experience:
+      places:
+        start:
+          file: place.rbxlx
+          configuration:
+            name: a new name
+command: deploy -e test
+expect:
+  createdAssets:
+    - placeConfiguration_start
+
+---
+updateFiles:
+  - place.rbxlx
+command: deploy -e test
+expect:
+  updatedAssets:
+    - placeFile_start
+
+---
+command: destroy -e test
+expect:
+  deletedAssets:
+    - experience_singleton
+    - experienceActivation_singleton
+    - place_start
+    - placeFile_start
+    - placeConfiguration_start

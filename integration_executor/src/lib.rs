@@ -2,9 +2,11 @@ mod context;
 mod files;
 mod images;
 
+use pretty_assertions::assert_eq;
+use regex::Regex;
 use serde::Deserialize;
 use serde_yaml::{self, Value};
-use std::{fs, path::PathBuf};
+use std::{collections::HashSet, fs, path::PathBuf};
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -29,11 +31,20 @@ impl Default for ExpectStatus {
 struct Expectations {
     #[serde(default)]
     status: ExpectStatus,
+    #[serde(default = "Vec::new")]
+    created_assets: Vec<String>,
+    #[serde(default = "Vec::new")]
+    updated_assets: Vec<String>,
+    #[serde(default = "Vec::new")]
+    deleted_assets: Vec<String>,
 }
 impl Default for Expectations {
     fn default() -> Self {
         Self {
             status: ExpectStatus::Success,
+            created_assets: Vec::new(),
+            updated_assets: Vec::new(),
+            deleted_assets: Vec::new(),
         }
     }
 }
@@ -67,7 +78,7 @@ pub fn execute_spec(spec: &str) {
 
     let header: SpecHeader = serde_yaml::from_value(docs.remove(0)).unwrap();
 
-    let steps: Vec<SpecStep> = docs
+    let mut steps: Vec<SpecStep> = docs
         .iter()
         .map(|step| serde_yaml::from_value(step.to_owned()).unwrap())
         .collect();
@@ -77,7 +88,7 @@ pub fn execute_spec(spec: &str) {
     println!("Executing spec: {}", spec_path.display());
     println!("\t{}", header.description);
 
-    for (i, step) in steps.iter().enumerate() {
+    for (i, step) in steps.iter_mut().enumerate() {
         println!("\nStep {}", i);
 
         if let Some(config) = &step.config {
@@ -114,14 +125,57 @@ pub fn execute_spec(spec: &str) {
             .output()
             .unwrap();
 
-        println!("{}", String::from_utf8(output.stdout).unwrap());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+
+        println!("{}", stdout);
         eprintln!("{}", String::from_utf8(output.stderr).unwrap());
 
+        match step.expect.status {
+            ExpectStatus::Success => {
+                assert!(output.status.success(), "Status is not success");
+            }
+            ExpectStatus::Failure => {
+                assert!(!output.status.success(), "Status is not failure");
+            }
+        }
+
+        let actual_created_assets = get_asset_ids(&stdout, "Creating");
+        step.expect.created_assets.sort();
         assert_eq!(
-            output.status.success(),
-            matches!(step.expect.status, ExpectStatus::Success)
+            step.expect.created_assets, actual_created_assets,
+            "Mismatched created assets"
+        );
+
+        let actual_updated_assets = get_asset_ids(&stdout, "Updating");
+        step.expect.updated_assets.sort();
+        assert_eq!(
+            step.expect.updated_assets, actual_updated_assets,
+            "Mismatched updated assets"
+        );
+
+        let actual_deleted_assets = get_asset_ids(&stdout, "Deleting");
+        step.expect.deleted_assets.sort();
+        assert_eq!(
+            step.expect.deleted_assets, actual_deleted_assets,
+            "Mismatched deleted assets"
         );
     }
 
     // working_dir::cleanup(&context);
+}
+
+fn get_asset_ids(output: &str, operation: &str) -> Vec<String> {
+    let re = Regex::new(format!("{}: (\\S+)", operation).as_str()).unwrap();
+    let mut asset_ids = output
+        .split("\n")
+        .filter_map(|line| {
+            if let Some(captures) = re.captures(line) {
+                Some(captures.get(1).unwrap().as_str().to_owned())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    asset_ids.sort();
+    asset_ids
 }

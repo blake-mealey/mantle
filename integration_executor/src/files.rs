@@ -16,7 +16,7 @@ pub fn update_config(context: &mut SpecContext, config: &Value) {
 
 pub fn create(context: &mut SpecContext, file: &str) {
     match PathBuf::from(file).extension().and_then(|s| s.to_str()) {
-        Some("image") => create_image(context, file),
+        Some("image") | Some("png") => create_image(context, file),
         Some("audio") => unimplemented!("create audio file"),
         // TODO: Pick the format automatically for `.place` files
         Some("rbxlx") | Some("rbxl") => create_place(context, file),
@@ -48,10 +48,17 @@ fn create_place(context: &mut SpecContext, file: &str) {
 }
 
 fn create_image(context: &mut SpecContext, file: &str) {
-    let ext = ["bmp", "gif", "jpeg", "jpg", "png", "tga"]
-        .choose(&mut context.rng)
-        .unwrap();
-    context.set_file_extension(file, Some(ext));
+    let ext = if file.ends_with(".image") {
+        Some(
+            ["bmp", "gif", "jpeg", "jpg", "png", "tga"]
+                .choose(&mut context.rng)
+                .unwrap()
+                .to_owned(),
+        )
+    } else {
+        None
+    };
+    context.set_file_extension(file, ext);
 
     let (width, height) = get_image_dimensions(context, file);
     let version = context.get_file_version(file).unwrap();
@@ -64,7 +71,7 @@ fn create_image(context: &mut SpecContext, file: &str) {
 
 pub fn update(context: &mut SpecContext, file: &str) {
     match PathBuf::from(file).extension().and_then(|s| s.to_str()) {
-        Some("image") => update_image(context, file),
+        Some("image") | Some("png") => update_image(context, file),
         Some("audio") => unimplemented!("update audio file"),
         Some("rbxlx") => update_place(context, file),
         _ => println!("create other file"),
@@ -105,9 +112,9 @@ fn update_image(context: &mut SpecContext, file: &str) {
 }
 
 fn get_image_dimensions(context: &SpecContext, file: &str) -> (u32, u32) {
-    let ext = context.get_file_extension(file).unwrap().unwrap();
     let (mut width, mut height) = (200, 200);
     let path = context.file_path(file);
+    let ext = path.extension().unwrap().to_str().unwrap();
     let file_name = path.file_name().unwrap().to_str().unwrap();
     if file_name.ends_with(&format!(".thumbnail.{}", ext)) {
         width = 1920;

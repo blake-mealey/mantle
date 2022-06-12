@@ -1,0 +1,85 @@
+description: Thumbnails
+
+---
+createFiles:
+  - place.rbxlx
+  - marketing/first.thumbnail.png
+config:
+  environments:
+    - label: test
+  target:
+    experience:
+      places:
+        start: {}
+      thumbnails:
+        - marketing/first.thumbnail.png
+command: deploy -e test
+expect:
+  createdAssets:
+    - experience_singleton
+    - experienceActivation_singleton
+    - place_start
+    - experienceThumbnailOrder_singleton
+    - experienceThumbnail_marketing/first.thumbnail.png
+
+---
+updateFiles:
+  - marketing/first.thumbnail.png
+command: deploy -e test
+expect:
+  updatedAssets:
+    - experienceThumbnail_marketing/first.thumbnail.png
+
+---
+createFiles:
+  - marketing/second.thumbnail.png
+config:
+  environments:
+    - label: test
+  target:
+    experience:
+      places:
+        start: {}
+      thumbnails:
+        - marketing/first.thumbnail.png
+        - marketing/second.thumbnail.png
+command: deploy -e test
+expect:
+  createdAssets:
+    - experienceThumbnail_marketing/second.thumbnail.png
+  updatedAssets:
+    - experienceThumbnailOrder_singleton
+
+---
+config:
+  environments:
+    - label: test
+  target:
+    experience:
+      places:
+        start: {}
+      thumbnails:
+        - marketing/second.thumbnail.png
+        - marketing/first.thumbnail.png
+command: deploy -e test
+expect:
+  updatedAssets:
+    - experienceThumbnailOrder_singleton
+
+---
+updateFiles:
+  - marketing/second.thumbnail.png
+command: deploy -e test
+expect:
+  updatedAssets:
+    - experienceThumbnail_marketing/second.thumbnail.png
+
+---
+command: destroy -e test
+expect:
+  deletedAssets:
+    - experience_singleton
+    - experienceActivation_singleton
+    - place_start
+    - experienceThumbnailOrder_singleton
+    - experienceThumbnail_marketing/first.thumbnail.png

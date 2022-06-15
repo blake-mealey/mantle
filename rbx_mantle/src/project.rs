@@ -163,8 +163,6 @@ pub async fn load_project(
     config: Config,
     environment: Option<&str>,
 ) -> Result<Option<Project>, String> {
-    let current_branch = get_current_branch(project_path.clone())?;
-
     let environment_config = match environment {
         Some(label) => {
             if let Some(result) = config.environments.iter().find(|d| d.label == label) {
@@ -181,6 +179,7 @@ pub async fn load_project(
             }
         }
         None => {
+            let current_branch = get_current_branch(project_path.clone())?;
             if let Some(result) = config
                 .environments
                 .iter()

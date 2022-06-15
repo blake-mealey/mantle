@@ -1,0 +1,62 @@
+description: Game passes
+skip: true
+
+---
+createFiles:
+  - passes/first-pass.png
+config:
+  environments:
+    - label: test
+  target:
+    experience:
+      places:
+        start: {}
+      passes:
+        firstPass:
+          name: First Pass
+          icon: passes/first-pass.png
+command: deploy -e test
+expect:
+  createdAssets:
+    - experience_singleton
+    - experienceActivation_singleton
+    - place_start
+    - pass_firstPass
+    - passIcon_firstPass
+
+---
+config:
+  environments:
+    - label: test
+  target:
+    experience:
+      places:
+        start: {}
+      passes:
+        firstPass:
+          name: First Pass (Renamed)
+          description: A description
+          icon: passes/first-pass.png
+          price: 200
+command: deploy -e test
+expect:
+  updatedAssets:
+    - pass_firstPass
+
+---
+updateFiles:
+  - passes/first-pass.png
+command: deploy -e test
+expect:
+  updatedAssets:
+    - passIcon_firstPass
+
+---
+command: destroy -e test
+expect:
+  deletedAssets:
+    - experience_singleton
+    - experienceActivation_singleton
+    - place_start
+    - pass_firstPass
+    - passIcon_firstPass

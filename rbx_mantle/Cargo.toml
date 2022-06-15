@@ -27,7 +27,7 @@ difference = "2.0.0"
 rusoto_core = "0.47.0"
 rusoto_s3 = "0.47.0"
 tokio = { version = "1", features = ["full"] }
-tokio-util = "0.6.9"
+tokio-util = { version = "0.6.9", features = ["codec"] }
 async-trait = "0.1.51"
 chrono = "0.4"
 yansi = "0.5.0"

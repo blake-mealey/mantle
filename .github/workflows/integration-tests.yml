@@ -1,0 +1,24 @@
+name: Integration Tests
+
+on:
+  schedule:
+  - cron: '0 5 * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-integration-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Run integration tests
+        run: cargo test --locked --test '*' -- --test-threads=1
+        env:
+          ROBLOSECURITY: ${{ secrets.INTEGRATION_TESTS_COOKIE }}

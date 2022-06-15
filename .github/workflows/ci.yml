@@ -24,10 +24,6 @@ jobs:
           key: ${{ runner.os }}-ci-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Build
         run: cargo build --locked --verbose
-      - name: Run integration tests
-        run: cargo test --locked --verbose --test '*' -- --test-threads=1
-        env:
-          ROBLOSECURITY: ${{ secrets.INTEGRATION_TESTS_COOKIE }}
       - name: Run linters
         run: |
           cargo fmt -- --check

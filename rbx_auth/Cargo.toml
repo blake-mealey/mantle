@@ -1,0 +1,10 @@
+[package]
+name = "rbx_auth"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rbx_cookie = { path = "../rbx_cookie" }
+
+url = { version = "2.2.2" }
+reqwest = { version = "0.11.6", features = ["cookies"] }

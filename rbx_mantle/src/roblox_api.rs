@@ -1,5 +1,6 @@
 use std::{clone::Clone, ffi::OsStr, fmt, fs, path::PathBuf, str, sync::Arc};
 
+use rbx_auth::RobloxAuth;
 use reqwest::{
     header,
     multipart::{Form as MultipartForm, Part},
@@ -13,7 +14,7 @@ use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
 use url::Url;
 
-use super::{roblox_auth::RobloxAuth, roblox_resource_manager::AssetId};
+use super::roblox_resource_manager::AssetId;
 
 pub const DEFAULT_PLACE_NAME: &str = "Untitled Game";
 

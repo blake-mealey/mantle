@@ -31,7 +31,7 @@ fn create_place(context: &mut SpecContext, file: &str) {
         InstanceBuilder::new("ReplicatedStorage").with_child(
             InstanceBuilder::new("NumberValue")
                 .with_name("FileVersion")
-                .with_property("Value", 1 as f32),
+                .with_property("Value", 1_f32),
         ),
     );
     let dom = WeakDom::new(data_model);

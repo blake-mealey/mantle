@@ -126,7 +126,7 @@ pub fn execute_spec(spec: &str) {
 
         println!("> mantle {}", step.command);
         let output = test_bin::get_test_bin("mantle")
-            .args(step.command.split(" "))
+            .args(step.command.split(' '))
             .arg(context.working_dir.to_str().unwrap())
             // .env("RUST_LOG", "trace,html5ever=error")
             .output()
@@ -174,13 +174,10 @@ pub fn execute_spec(spec: &str) {
 fn get_asset_ids(output: &str, operation: &str) -> Vec<String> {
     let re = Regex::new(format!("{}: (\\S+)", operation).as_str()).unwrap();
     let mut asset_ids = output
-        .split("\n")
+        .split('\n')
         .filter_map(|line| {
-            if let Some(captures) = re.captures(line) {
-                Some(captures.get(1).unwrap().as_str().to_owned())
-            } else {
-                None
-            }
+            re.captures(line)
+                .map(|captures| captures.get(1).unwrap().as_str().to_owned())
         })
         .collect::<Vec<_>>();
     asset_ids.sort();

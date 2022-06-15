@@ -2,7 +2,6 @@ description: Thumbnails
 
 ---
 createFiles:
-  - place.rbxlx
   - marketing/first.thumbnail.png
 config:
   environments:
@@ -28,6 +27,7 @@ updateFiles:
 command: deploy -e test
 expect:
   updatedAssets:
+    - experienceThumbnailOrder_singleton
     - experienceThumbnail_marketing/first.thumbnail.png
 
 ---
@@ -72,6 +72,7 @@ updateFiles:
 command: deploy -e test
 expect:
   updatedAssets:
+    - experienceThumbnailOrder_singleton
     - experienceThumbnail_marketing/second.thumbnail.png
 
 ---
@@ -83,3 +84,4 @@ expect:
     - place_start
     - experienceThumbnailOrder_singleton
     - experienceThumbnail_marketing/first.thumbnail.png
+    - experienceThumbnail_marketing/second.thumbnail.png

@@ -6,7 +6,7 @@ use pretty_assertions::assert_eq;
 use regex::Regex;
 use serde::Deserialize;
 use serde_yaml::{self, Value};
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -89,7 +89,7 @@ pub fn execute_spec(spec: &str) {
     println!("\t{}", header.description);
 
     for (i, step) in steps.iter_mut().enumerate() {
-        println!("\nStep {}", i);
+        println!("\nStep {}", i + 1);
 
         if let Some(config) = &step.config {
             println!("\tUpdating config");
@@ -161,7 +161,7 @@ pub fn execute_spec(spec: &str) {
         );
     }
 
-    // working_dir::cleanup(&context);
+    context::cleanup(&context);
 }
 
 fn get_asset_ids(output: &str, operation: &str) -> Vec<String> {

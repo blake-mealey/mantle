@@ -27,7 +27,7 @@ jobs:
       - name: Run integration tests
         run: cargo test --locked --verbose --test '*' -- --test-threads=1
         env:
-          ROBLOSECURITY: ${ secrets.INTEGRATION_TESTS_COOKIE }
+          ROBLOSECURITY: ${{ secrets.INTEGRATION_TESTS_COOKIE }}
       - name: Run linters
         run: |
           cargo fmt -- --check

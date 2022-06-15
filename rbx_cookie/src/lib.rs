@@ -1,15 +1,10 @@
 use std::env;
 
 use cookie::Cookie;
+use log::{info, trace};
 
 pub fn get() -> Result<String, String> {
-    let cookie = match from_environment() {
-        Some(v) => v,
-        None => match from_roblox_studio() {
-            Some(v) => v,
-            None => return Err("Missing the ROBLOSECURITY environment variable".to_string()),
-        },
-    };
+    let cookie = get_value()?;
 
     Ok(Cookie::build(".ROBLOSECURITY", cookie)
         .domain(".roblox.com")
@@ -17,12 +12,30 @@ pub fn get() -> Result<String, String> {
         .to_string())
 }
 
+pub fn get_value() -> Result<String, String> {
+    let cookie = match from_environment() {
+        Some(v) => {
+            info!("Loaded cookie from ROBLOSECURITY environment variable.");
+            v
+        }
+        None => match from_roblox_studio() {
+            Some(v) => v,
+            None => return Err("Missing the ROBLOSECURITY environment variable".to_string()),
+        },
+    };
+
+    Ok(cookie)
+}
+
 fn from_environment() -> Option<String> {
+    trace!("Attempting to load cookie from ROBLOSECURITY environment variable.");
     env::var("ROBLOSECURITY").ok()
 }
 
 #[cfg(target_os = "windows")]
 fn from_roblox_studio() -> Option<String> {
+    trace!("Attempting to load cookie from Windows Roblox Studio.");
+
     use winreg::{enums::HKEY_CURRENT_USER, RegKey};
 
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
@@ -31,11 +44,18 @@ fn from_roblox_studio() -> Option<String> {
         .ok()?;
     let value: String = key.get_value(".ROBLOSECURITY").ok()?;
 
-    parse_roblox_studio_cookie(&value)
+    if let Some(cookie) = parse_roblox_studio_cookie(&value) {
+        info!("Loaded cookie from Windows Roblox Studio.");
+        Some(cookie)
+    } else {
+        None
+    }
 }
 
 #[cfg(target_os = "macos")]
 fn from_roblox_studio() -> Option<String> {
+    trace!("Attempting to load cookie from MacOS Roblox Studio.");
+
     let path = dirs::home_dir()?.join("Library/Preferences/com.roblox.RobloxStudioBrowser.plist");
     let list = plist::Value::from_file(path).ok()?;
 
@@ -52,7 +72,12 @@ fn from_roblox_studio() -> Option<String> {
         })?
         .as_string()?;
 
-    parse_roblox_studio_cookie(value)
+    if let Some(cookie) = parse_roblox_studio_cookie(value) {
+        info!("Loaded cookie from MacOS Roblox Studio.");
+        Some(cookie)
+    } else {
+        None
+    }
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]

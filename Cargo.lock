@@ -1340,8 +1340,11 @@ dependencies = [
 name = "rbx_cookie"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "cookie",
  "dirs",
+ "env_logger",
+ "log",
  "plist",
  "winreg",
 ]
@@ -1355,7 +1358,6 @@ dependencies = [
  "chrono",
  "clap",
  "difference",
- "env_logger",
  "glob",
  "log",
  "mime_guess",

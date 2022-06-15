@@ -8,7 +8,7 @@ use yansi::Paint;
 
 use crate::{
     logger,
-    roblox_api::{AssetTypeId, CreateAssetQuota, QuotaDuration},
+    roblox_api::{AssetTypeId, CreateAssetQuota, GetGamePassResponse, QuotaDuration},
 };
 
 use super::{
@@ -116,7 +116,6 @@ pub enum RobloxInputs {
     Product(ProductInputs),
     ProductIcon(FileInputs),
     Pass(PassInputs),
-    PassIcon(FileInputs),
     Badge(BadgeInputs),
     BadgeIcon(FileInputs),
     ImageAsset(FileWithGroupIdInputs),
@@ -148,6 +147,13 @@ pub struct PlaceFileOutputs {
 pub struct ProductOutputs {
     pub asset_id: AssetId,
     pub product_id: AssetId,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct PassOutputs {
+    pub asset_id: AssetId,
+    pub icon_asset_id: AssetId,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -185,8 +191,7 @@ pub enum RobloxOutputs {
     SocialLink(AssetOutputs),
     Product(ProductOutputs),
     ProductIcon(AssetOutputs),
-    Pass(AssetWithInitialIconOutputs),
-    PassIcon(AssetOutputs),
+    Pass(PassOutputs),
     Badge(AssetWithInitialIconOutputs),
     BadgeIcon(AssetOutputs),
     ImageAsset(ImageAssetOutputs),
@@ -521,19 +526,18 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     )
                     .await?;
                 self.roblox_api
-                    .update_game_pass(asset_id, inputs.name, inputs.description, inputs.price)
+                    .update_game_pass(
+                        asset_id,
+                        inputs.name,
+                        inputs.description,
+                        inputs.price,
+                        None,
+                    )
                     .await?;
 
-                Ok(RobloxOutputs::Pass(AssetWithInitialIconOutputs {
+                Ok(RobloxOutputs::Pass(PassOutputs {
                     asset_id,
-                    initial_icon_asset_id: icon_asset_id,
-                }))
-            }
-            RobloxInputs::PassIcon(_) => {
-                let game_pass = single_output!(dependency_outputs, RobloxOutputs::Pass);
-
-                Ok(RobloxOutputs::PassIcon(AssetOutputs {
-                    asset_id: game_pass.initial_icon_asset_id,
+                    icon_asset_id,
                 }))
             }
             RobloxInputs::Badge(inputs) => {
@@ -734,27 +738,23 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 Ok(RobloxOutputs::Product(outputs))
             }
             (RobloxInputs::Pass(inputs), RobloxOutputs::Pass(outputs)) => {
-                self.roblox_api
+                let GetGamePassResponse {
+                    icon_image_asset_id,
+                    ..
+                } = self
+                    .roblox_api
                     .update_game_pass(
                         outputs.asset_id,
                         inputs.name,
                         inputs.description,
                         inputs.price,
+                        Some(self.get_path(inputs.icon_file_path)),
                     )
                     .await?;
 
-                Ok(RobloxOutputs::Pass(outputs))
-            }
-            (RobloxInputs::PassIcon(inputs), RobloxOutputs::PassIcon(_)) => {
-                let game_pass = single_output!(dependency_outputs, RobloxOutputs::Pass);
-
-                let UploadImageResponse { target_id } = self
-                    .roblox_api
-                    .update_game_pass_icon(game_pass.asset_id, self.get_path(inputs.file_path))
-                    .await?;
-
-                Ok(RobloxOutputs::PassIcon(AssetOutputs {
-                    asset_id: target_id,
+                Ok(RobloxOutputs::Pass(PassOutputs {
+                    asset_id: outputs.asset_id,
+                    icon_asset_id: icon_image_asset_id,
                 }))
             }
             (RobloxInputs::Badge(inputs), RobloxOutputs::Badge(outputs)) => {
@@ -910,10 +910,10 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                         format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
                         "".to_owned(),
                         None,
+                        None,
                     )
                     .await?;
             }
-            RobloxOutputs::PassIcon(_) => {}
             RobloxOutputs::Badge(outputs) => {
                 let utc = Utc::now();
                 self.roblox_api

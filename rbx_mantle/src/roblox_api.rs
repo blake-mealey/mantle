@@ -1430,7 +1430,7 @@ impl RobloxApi {
                 .client
                 .get("https://www.roblox.com/build/upload")
                 .query(&[
-                    ("assetTypeId", "34"),
+                    ("assetTypeId", &AssetTypeId::GamePass.to_string()),
                     ("targetPlaceId", &start_place_id.to_string()),
                 ]);
 
@@ -1449,10 +1449,7 @@ impl RobloxApi {
                     MultipartForm::new()
                         .part("file", Self::get_file_part(icon_file).await?)
                         .text("__RequestVerificationToken", form_verification_token)
-                        .text(
-                            "assetTypeId",
-                            serde_json::to_string(&AssetTypeId::GamePass).unwrap(),
-                        )
+                        .text("assetTypeId", AssetTypeId::GamePass.to_string())
                         .text("targetPlaceId", start_place_id.to_string())
                         .text("name", name.clone())
                         .text("description", description.clone()),
@@ -1477,10 +1474,7 @@ impl RobloxApi {
             .multipart(
                 MultipartForm::new()
                     .text("__RequestVerificationToken", form_verification_token)
-                    .text(
-                        "assetTypeId",
-                        serde_json::to_string(&AssetTypeId::GamePass).unwrap(),
-                    )
+                    .text("assetTypeId", AssetTypeId::GamePass.to_string())
                     .text("targetPlaceId", start_place_id.to_string())
                     .text("name", name)
                     .text("description", description)
@@ -1509,39 +1503,28 @@ impl RobloxApi {
         name: String,
         description: String,
         price: Option<u32>,
-    ) -> Result<(), String> {
+        icon_file: Option<PathBuf>,
+    ) -> Result<GetGamePassResponse, String> {
+        let mut form = MultipartForm::new()
+            .text("id", game_pass_id.to_string())
+            .text("name", name)
+            .text("description", description)
+            .text("isForSale", price.is_some().to_string());
+        if let Some(price) = price {
+            form = form.text("price", price.to_string());
+        }
+        if let Some(icon_file) = icon_file {
+            form = form.part("file", Self::get_file_part(icon_file).await?);
+        }
+
         let req = self
             .client
             .post("https://www.roblox.com/game-pass/update")
-            .json(&json!({
-                "id":game_pass_id,
-                "name": name,
-                "description": description,
-                "price": price,
-                "isForSale": price.is_some(),
-            }));
+            .multipart(form);
 
         Self::handle(req).await?;
 
-        Ok(())
-    }
-
-    pub async fn update_game_pass_icon(
-        &self,
-        game_pass_id: AssetId,
-        icon_file: PathBuf,
-    ) -> Result<UploadImageResponse, String> {
-        let req = self
-            .client
-            .post(&format!(
-                "https://publish.roblox.com/v1/game-passes/{}/icon",
-                game_pass_id
-            ))
-            .multipart(
-                MultipartForm::new().part("request.files", Self::get_file_part(icon_file).await?),
-            );
-
-        Self::handle_as_json(req).await
+        self.get_game_pass(game_pass_id).await
     }
 
     pub async fn create_badge(
@@ -1781,9 +1764,9 @@ impl RobloxApi {
             .header(reqwest::header::CONTENT_TYPE, "*/*")
             .body(data)
             .query(&[
-                ("assetTypeId", "13"),
+                ("assetTypeId", &AssetTypeId::Decal.to_string()),
                 ("name", &file_name),
-                ("description", "madewithmantle"),
+                ("description", &"madewithmantle".to_owned()),
             ]);
         if let Some(group_id) = group_id {
             req = req.query(&[("groupId", &group_id.to_string())]);

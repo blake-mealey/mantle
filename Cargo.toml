@@ -6,4 +6,6 @@ members = [
 
     # libs
     "rbx_mantle",
+    "rbx_cookie",
+    "rbx_auth"
 ]

@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Utc};
+use rbx_auth::RobloxAuth;
 use serde::{Deserialize, Serialize};
 use yansi::Paint;
 
@@ -21,7 +22,6 @@ use super::{
         GetDeveloperProductResponse, GetPlaceResponse, PlaceConfigurationModel, RobloxApi,
         SocialLinkType, UploadImageResponse,
     },
-    roblox_auth::RobloxAuth,
 };
 
 pub type AssetId = u64;

@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 rbx_mantle = { path = "../rbx_mantle" }
+rbx_auth = { path = "../rbx_auth" }
 
 serde_json = { version = "1.0.59" }
 serde_yaml = { version = "0.8" }

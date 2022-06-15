@@ -860,6 +860,7 @@ dependencies = [
  "clap",
  "env_logger",
  "log",
+ "rbx_auth",
  "rbx_mantle",
  "serde_json",
  "serde_yaml",
@@ -1327,6 +1328,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "rbx_auth"
+version = "0.1.0"
+dependencies = [
+ "rbx_cookie",
+ "reqwest",
+ "url",
+]
+
+[[package]]
+name = "rbx_cookie"
+version = "0.1.0"
+dependencies = [
+ "cookie",
+ "dirs",
+ "plist",
+ "winreg",
+]
+
+[[package]]
 name = "rbx_mantle"
 version = "0.11.1"
 dependencies = [
@@ -1334,14 +1354,12 @@ dependencies = [
  "base64",
  "chrono",
  "clap",
- "cookie",
  "difference",
- "dirs",
  "env_logger",
  "glob",
  "log",
  "mime_guess",
- "plist",
+ "rbx_auth",
  "reqwest",
  "rusoto_core",
  "rusoto_s3",
@@ -1355,7 +1373,6 @@ dependencies = [
  "tokio",
  "tokio-util 0.6.10",
  "url",
- "winreg",
  "yansi",
 ]
 

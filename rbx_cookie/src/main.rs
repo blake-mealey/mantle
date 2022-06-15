@@ -17,7 +17,7 @@ fn main() {
                 .validator(|value| match value.as_str() {
                     "cookie" => Ok(()),
                     "value" => Ok(()),
-                    _ => Err(format!("Expected either 'cookie' or 'value'").into()),
+                    _ => Err("Expected either 'cookie' or 'value'".to_owned()),
                 })
                 .default_value("cookie"),
         );

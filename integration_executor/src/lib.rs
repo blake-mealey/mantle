@@ -12,6 +12,8 @@ use std::{fs, path::PathBuf};
 #[serde(rename_all = "camelCase")]
 struct SpecHeader {
     description: String,
+    #[serde(default)]
+    skip: bool,
 }
 
 #[derive(Deserialize)]
@@ -77,6 +79,11 @@ pub fn execute_spec(spec: &str) {
         .collect::<Vec<_>>();
 
     let header: SpecHeader = serde_yaml::from_value(docs.remove(0)).unwrap();
+
+    if header.skip {
+        println!("Skipping spec: {}", spec_path.display());
+        return;
+    }
 
     let mut steps: Vec<SpecStep> = docs
         .iter()

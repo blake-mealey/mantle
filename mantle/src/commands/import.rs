@@ -1,3 +1,4 @@
+use rbx_auth::RobloxAuth;
 use yansi::Paint;
 
 use rbx_mantle::{
@@ -5,7 +6,6 @@ use rbx_mantle::{
     logger,
     project::{load_project, Project},
     roblox_api::RobloxApi,
-    roblox_auth::RobloxAuth,
     roblox_resource_manager::AssetId,
     state::{import_graph, save_state},
 };

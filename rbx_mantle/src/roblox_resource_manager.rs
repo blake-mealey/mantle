@@ -8,7 +8,10 @@ use yansi::Paint;
 
 use crate::{
     logger,
-    roblox_api::{AssetTypeId, CreateAssetQuota, GetGamePassResponse, QuotaDuration},
+    roblox_api::{
+        AssetTypeId, CreateAssetQuota, GetDeveloperProductResponse, GetGamePassResponse,
+        QuotaDuration,
+    },
 };
 
 use super::{
@@ -18,9 +21,8 @@ use super::{
     roblox_api::{
         CreateAudioAssetResponse, CreateBadgeResponse, CreateDeveloperProductResponse,
         CreateExperienceResponse, CreateGamePassResponse, CreateImageAssetResponse,
-        CreateSocialLinkResponse, CreatorType, ExperienceConfigurationModel,
-        GetDeveloperProductResponse, GetPlaceResponse, PlaceConfigurationModel, RobloxApi,
-        SocialLinkType, UploadImageResponse,
+        CreateSocialLinkResponse, CreatorType, ExperienceConfigurationModel, GetPlaceResponse,
+        PlaceConfigurationModel, RobloxApi, SocialLinkType, UploadImageResponse,
     },
 };
 
@@ -501,10 +503,8 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     )
                     .await?;
 
-                let GetDeveloperProductResponse { product_id, .. } = self
-                    .roblox_api
-                    .find_developer_product_by_id(experience.asset_id, id)
-                    .await?;
+                let GetDeveloperProductResponse { id: product_id } =
+                    self.roblox_api.get_developer_product(id).await?;
 
                 Ok(RobloxOutputs::Product(ProductOutputs {
                     asset_id: product_id,

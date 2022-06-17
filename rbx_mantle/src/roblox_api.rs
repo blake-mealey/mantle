@@ -164,19 +164,25 @@ pub struct CreateDeveloperProductResponse {
 #[derive(Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct ListDeveloperProductsResponse {
-    pub developer_products: Vec<GetDeveloperProductResponse>,
+    pub developer_products: Vec<ListDeveloperProductResponseItem>,
     pub final_page: bool,
 }
 
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "PascalCase")]
-pub struct GetDeveloperProductResponse {
+pub struct ListDeveloperProductResponseItem {
     pub product_id: AssetId,
     pub developer_product_id: AssetId,
     pub name: String,
     pub description: Option<String>,
     pub icon_image_asset_id: Option<AssetId>,
     pub price_in_robux: u32,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GetDeveloperProductResponse {
+    pub id: AssetId,
 }
 
 #[derive(Deserialize)]
@@ -1344,7 +1350,7 @@ impl RobloxApi {
     pub async fn get_all_developer_products(
         &self,
         experience_id: AssetId,
-    ) -> Result<Vec<GetDeveloperProductResponse>, String> {
+    ) -> Result<Vec<ListDeveloperProductResponseItem>, String> {
         let mut all_products = Vec::new();
 
         let mut page: u32 = 1;
@@ -1362,39 +1368,22 @@ impl RobloxApi {
         Ok(all_products)
     }
 
-    pub async fn find_developer_product_by_id(
+    pub async fn get_developer_product(
         &self,
-        experience_id: AssetId,
         developer_product_id: AssetId,
     ) -> Result<GetDeveloperProductResponse, String> {
-        let mut page: u32 = 1;
-        loop {
-            let res = self.list_developer_products(experience_id, page).await?;
+        let req = self.client.get(format!(
+            "https://develop.roblox.com/v1/developerproducts/{}",
+            developer_product_id
+        ));
 
-            let product = res
-                .developer_products
-                .iter()
-                .find(|p| p.developer_product_id == developer_product_id);
-
-            if let Some(product) = product {
-                return Ok(product.clone());
-            }
-
-            if res.final_page {
-                return Err(format!(
-                    "Failed to find developer product with id {}",
-                    developer_product_id
-                ));
-            }
-
-            page += 1;
-        }
+        Self::handle_as_json(req).await
     }
 
     pub async fn update_developer_product(
         &self,
         experience_id: AssetId,
-        developer_product_id: AssetId,
+        product_id: AssetId,
         name: String,
         price: u32,
         description: String,
@@ -1404,7 +1393,7 @@ impl RobloxApi {
             .client
             .post(&format!(
                 "https://develop.roblox.com/v1/universes/{}/developerproducts/{}/update",
-                experience_id, developer_product_id
+                experience_id, product_id
             ))
             .json(&json!({
                 "Name": name,

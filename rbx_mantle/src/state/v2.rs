@@ -364,8 +364,8 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                     )
                     .into(),
                     _ => None,
-                }
-                .into();
+                };
+
                 if let Some(new_resource) = new_resource {
                     id_to_resource.insert(new_resource.get_id(), new_resource.clone());
                     ref_to_resource.insert(resource.get_ref(), new_resource);

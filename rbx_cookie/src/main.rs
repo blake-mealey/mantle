@@ -11,15 +11,15 @@ fn main() {
         .arg(
             Arg::with_name("format")
                 .short("f")
-                .help("The format of the output. Either 'cookie' (default) or 'value'")
+                .help("The format of the output. Either 'value' (default) or 'cookie'")
                 .value_name("FORMAT")
                 .takes_value(true)
                 .validator(|value| match value.as_str() {
-                    "cookie" => Ok(()),
                     "value" => Ok(()),
-                    _ => Err("Expected either 'cookie' or 'value'".to_owned()),
+                    "cookie" => Ok(()),
+                    _ => Err("Expected either 'value' or 'cookie'".to_owned()),
                 })
-                .default_value("cookie"),
+                .default_value("value"),
         );
 
     let args: Vec<String> = env::args().collect();
@@ -27,14 +27,14 @@ fn main() {
 
     match matches.value_of("format") {
         Some("cookie") => match rbx_cookie::get() {
-            Ok(cookie) => println!("{}", cookie),
+            Ok(cookie) => print!("{}", cookie),
             Err(e) => {
                 eprintln!("Error: {}", e);
                 std::process::exit(1);
             }
         },
         Some("value") => match rbx_cookie::get_value() {
-            Ok(cookie) => println!("{}", cookie),
+            Ok(cookie) => print!("{}", cookie),
             Err(e) => {
                 eprintln!("Error: {}", e);
                 std::process::exit(1);

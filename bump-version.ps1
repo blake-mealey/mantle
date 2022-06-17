@@ -73,7 +73,7 @@ function Invoke-BumpVersion() {
   # Bump the crate's patch version
   cargo bump $VersionPart.ToLower() > $null 2> $null
   if ($LastExitCode -ne 0) {
-    Write-Error "Failed to install 'cargo-bump' tool."
+    Write-Error "Failed to bump package version number."
     Undo-Changes
     return
   }

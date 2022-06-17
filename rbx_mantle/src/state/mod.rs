@@ -2,6 +2,7 @@ mod legacy_resources;
 pub mod v1;
 pub mod v2;
 pub mod v3;
+pub mod v4;
 
 use std::{
     collections::HashMap,
@@ -29,7 +30,7 @@ use super::{
     roblox_resource_manager::*,
 };
 
-use self::{v1::ResourceStateV1, v2::ResourceStateV2, v3::ResourceStateV3};
+use self::{v1::ResourceStateV1, v2::ResourceStateV2, v3::ResourceStateV3, v4::ResourceStateV4};
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(untagged)]
@@ -47,9 +48,11 @@ enum VersionedResourceState {
     V2(ResourceStateV2),
     #[serde(rename = "3")]
     V3(ResourceStateV3),
+    #[serde(rename = "4")]
+    V4(ResourceStateV4),
 }
 
-pub type ResourceStateVLatest = ResourceStateV3;
+pub type ResourceStateVLatest = ResourceStateV4;
 
 fn get_state_file_path(project_path: &Path, key: Option<&str>) -> PathBuf {
     project_path.join(format!("{}.mantle-state.yml", key.unwrap_or_default()))
@@ -152,15 +155,18 @@ pub async fn get_state_from_source(
     // Migrate previous state formats
     Ok(match state {
         Some(ResourceState::Unversioned(state)) => {
-            ResourceStateV3::from(ResourceStateV2::from(state))
+            ResourceStateV4::from(ResourceStateV3::from(ResourceStateV2::from(state)))
         }
         Some(ResourceState::Versioned(VersionedResourceState::V1(state))) => {
-            ResourceStateV3::from(ResourceStateV2::from(state))
+            ResourceStateV4::from(ResourceStateV3::from(ResourceStateV2::from(state)))
         }
         Some(ResourceState::Versioned(VersionedResourceState::V2(state))) => {
-            ResourceStateV3::from(state)
+            ResourceStateV4::from(ResourceStateV3::from(state))
         }
-        Some(ResourceState::Versioned(VersionedResourceState::V3(state))) => state,
+        Some(ResourceState::Versioned(VersionedResourceState::V3(state))) => {
+            ResourceStateV4::from(state)
+        }
+        Some(ResourceState::Versioned(VersionedResourceState::V4(state))) => state,
         None => ResourceStateVLatest {
             environments: HashMap::new(),
         },
@@ -373,25 +379,17 @@ fn get_desired_experience_graph(
 
     if let Some(passes) = &target_config.passes {
         for (label, pass) in passes {
-            let pass_resource = RobloxResource::new(
+            resources.push(RobloxResource::new(
                 &format!("pass_{}", label),
                 RobloxInputs::Pass(PassInputs {
                     name: pass.name.clone(),
                     description: pass.description.clone().unwrap_or_default(),
                     price: pass.price,
                     icon_file_path: pass.icon.clone(),
+                    icon_file_hash: get_file_hash(project_path.join(pass.icon.clone()))?,
                 }),
                 &[&experience],
-            );
-            resources.push(RobloxResource::new(
-                &format!("passIcon_{}", label),
-                RobloxInputs::PassIcon(FileInputs {
-                    file_path: pass.icon.clone(),
-                    file_hash: get_file_hash(project_path.join(pass.icon.clone()))?,
-                }),
-                &[&pass_resource],
             ));
-            resources.push(pass_resource);
         }
     }
 
@@ -684,32 +682,21 @@ pub async fn import_graph(
     logger::log("Importing passes");
     let game_passes = roblox_api.get_all_game_passes(target_id).await?;
     for pass in game_passes {
-        let pass_resource = RobloxResource::existing(
+        resources.push(RobloxResource::existing(
             &format!("pass_{}", pass.target_id),
             RobloxInputs::Pass(PassInputs {
                 name: pass.name,
                 description: pass.description,
                 price: pass.price_in_robux,
                 icon_file_path: "fake-path".to_owned(),
+                icon_file_hash: "fake-hash".to_owned(),
             }),
-            RobloxOutputs::Pass(AssetWithInitialIconOutputs {
+            RobloxOutputs::Pass(PassOutputs {
                 asset_id: pass.target_id,
-                initial_icon_asset_id: pass.icon_image_asset_id,
+                icon_asset_id: pass.icon_image_asset_id,
             }),
             &[&experience],
-        );
-        resources.push(RobloxResource::existing(
-            &format!("passIcon_{}", pass.target_id),
-            RobloxInputs::PassIcon(FileInputs {
-                file_path: "fake-path".to_owned(),
-                file_hash: "fake-hash".to_owned(),
-            }),
-            RobloxOutputs::PassIcon(AssetOutputs {
-                asset_id: pass.icon_image_asset_id,
-            }),
-            &[&pass_resource],
         ));
-        resources.push(pass_resource);
     }
 
     logger::log("Importing badges");
@@ -844,7 +831,7 @@ fn serialize_state(state: &ResourceStateVLatest) -> Result<Vec<u8>, String> {
                                 utc.format("%FT%TZ")
                             ).as_bytes().to_vec();
 
-    let state_data = serde_yaml::to_vec(&ResourceState::Versioned(VersionedResourceState::V3(
+    let state_data = serde_yaml::to_vec(&ResourceState::Versioned(VersionedResourceState::V4(
         state.to_owned(),
     )))
     .map_err(|e| format!("Unable to serialize state\n\t{}", e))?;

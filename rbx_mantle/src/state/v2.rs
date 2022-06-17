@@ -119,7 +119,7 @@ impl From<ResourceStateV2> for ResourceStateV3 {
 
             for resource_ref in resource_order {
                 let resource = resource_graph.get_resource_from_ref(&resource_ref).unwrap();
-                let new_resource = match resource.resource_type.as_str() {
+                let new_resource: Option<RobloxResource> = match resource.resource_type.as_str() {
                     "experience" => RobloxResource::existing(
                         &format!("experience_{}", resource.id),
                         RobloxInputs::Experience(ExperienceInputs {
@@ -130,7 +130,8 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                             start_place_id: output_value!(resource, "startPlaceId"),
                         }),
                         &[],
-                    ),
+                    )
+                    .into(),
                     "experienceConfiguration" => RobloxResource::existing(
                         &format!("experienceConfiguration_{}", resource.id),
                         RobloxInputs::ExperienceConfiguration(input_value!(
@@ -139,7 +140,8 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                         )),
                         RobloxOutputs::ExperienceConfiguration,
                         &[dependency!(ref_to_resource, resource, "experienceId")],
-                    ),
+                    )
+                    .into(),
                     "experienceActivation" => RobloxResource::existing(
                         &format!("experienceActivation_{}", resource.id),
                         RobloxInputs::ExperienceActivation(ExperienceActivationInputs {
@@ -147,7 +149,8 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                         }),
                         RobloxOutputs::ExperienceActivation,
                         &[dependency!(ref_to_resource, resource, "experienceId")],
-                    ),
+                    )
+                    .into(),
                     "experienceIcon" => RobloxResource::existing(
                         "experienceIcon_singleton",
                         RobloxInputs::ExperienceIcon(FileInputs {
@@ -158,7 +161,8 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                             asset_id: output_value!(resource, "assetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "experienceId")],
-                    ),
+                    )
+                    .into(),
                     "experienceThumbnail" => RobloxResource::existing(
                         &format!("experienceThumbnail_{}", resource.id),
                         RobloxInputs::ExperienceThumbnail(FileInputs {
@@ -169,7 +173,8 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                             asset_id: output_value!(resource, "assetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "experienceId")],
-                    ),
+                    )
+                    .into(),
                     "experienceThumbnailOrder" => {
                         let thumbnails = dependency_list!(ref_to_resource, resource, "assetIds");
                         RobloxResource::existing(
@@ -180,6 +185,7 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                         )
                         .add_dependency(dependency!(ref_to_resource, resource, "experienceId"))
                         .clone()
+                        .into()
                     }
                     "place" => RobloxResource::existing(
                         &format!("place_{}", resource.id),
@@ -190,7 +196,8 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                             asset_id: output_value!(resource, "assetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "experienceId")],
-                    ),
+                    )
+                    .into(),
                     "placeFile" => RobloxResource::existing(
                         &format!("placeFile_{}", resource.id),
                         RobloxInputs::PlaceFile(FileInputs {
@@ -201,13 +208,15 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                             version: output_value!(resource, "version"),
                         }),
                         &[dependency!(ref_to_resource, resource, "assetId")],
-                    ),
+                    )
+                    .into(),
                     "placeConfiguration" => RobloxResource::existing(
                         &format!("placeConfiguration_{}", resource.id),
                         RobloxInputs::PlaceConfiguration(input_value!(resource, "configuration")),
                         RobloxOutputs::PlaceConfiguration,
                         &[dependency!(ref_to_resource, resource, "assetId")],
-                    ),
+                    )
+                    .into(),
                     "socialLink" => RobloxResource::existing(
                         &format!("socialLink_{}", resource.id),
                         RobloxInputs::SocialLink(SocialLinkInputs {
@@ -219,7 +228,8 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                             asset_id: output_value!(resource, "assetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "experienceId")],
-                    ),
+                    )
+                    .into(),
                     "developerProduct" => {
                         let mut new_resource = RobloxResource::existing(
                             &format!("product_{}", resource.id),
@@ -237,9 +247,9 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                         if let Some(icon_asset) =
                             optional_dependency!(ref_to_resource, resource, "iconAssetId")
                         {
-                            new_resource.add_dependency(icon_asset).clone()
+                            new_resource.add_dependency(icon_asset).clone().into()
                         } else {
-                            new_resource
+                            new_resource.into()
                         }
                     }
                     "developerProductIcon" => RobloxResource::existing(
@@ -252,32 +262,39 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                             asset_id: output_value!(resource, "assetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "experienceId")],
-                    ),
-                    "gamePass" => RobloxResource::existing(
-                        &format!("pass_{}", resource.id),
-                        RobloxInputs::Pass(PassInputs {
-                            name: input_value!(resource, "name"),
-                            description: input_value!(resource, "description"),
-                            price: input_value!(resource, "price"),
-                            icon_file_path: input_value!(resource, "iconFilePath"),
-                        }),
-                        RobloxOutputs::Pass(AssetWithInitialIconOutputs {
-                            asset_id: output_value!(resource, "assetId"),
-                            initial_icon_asset_id: output_value!(resource, "initialIconAssetId"),
-                        }),
-                        &[dependency!(ref_to_resource, resource, "startPlaceId")],
-                    ),
-                    "gamePassIcon" => RobloxResource::existing(
-                        &format!("passIcon_{}", resource.id),
-                        RobloxInputs::PassIcon(FileInputs {
-                            file_path: input_value!(resource, "filePath"),
-                            file_hash: input_value!(resource, "fileHash"),
-                        }),
-                        RobloxOutputs::PassIcon(AssetOutputs {
-                            asset_id: output_value!(resource, "assetId"),
-                        }),
-                        &[dependency!(ref_to_resource, resource, "gamePassId")],
-                    ),
+                    )
+                    .into(),
+                    "gamePass" => {
+                        let icon_resource = resource_graph.get_resource_from_ref(&(
+                            "gamePassIcon".to_owned(),
+                            resource.clone().id,
+                        ));
+                        RobloxResource::existing(
+                            &format!("pass_{}", resource.id),
+                            RobloxInputs::Pass(PassInputs {
+                                name: input_value!(resource, "name"),
+                                description: input_value!(resource, "description"),
+                                price: input_value!(resource, "price"),
+                                icon_file_path: input_value!(resource, "iconFilePath"),
+                                icon_file_hash: if let Some(icon_resource) = &icon_resource {
+                                    input_value!(icon_resource, "fileHash")
+                                } else {
+                                    "unknown".to_owned()
+                                },
+                            }),
+                            RobloxOutputs::Pass(PassOutputs {
+                                asset_id: output_value!(resource, "assetId"),
+                                icon_asset_id: if let Some(icon_resource) = icon_resource {
+                                    output_value!(icon_resource, "assetId")
+                                } else {
+                                    output_value!(resource, "initialIconAssetId")
+                                },
+                            }),
+                            &[dependency!(ref_to_resource, resource, "startPlaceId")],
+                        )
+                        .into()
+                    }
+                    "gamePassIcon" => None,
                     "badge" => RobloxResource::existing(
                         &format!("badge_{}", resource.id),
                         RobloxInputs::Badge(BadgeInputs {
@@ -291,7 +308,8 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                             initial_icon_asset_id: output_value!(resource, "initialIconAssetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "experienceId")],
-                    ),
+                    )
+                    .into(),
                     "badgeIcon" => RobloxResource::existing(
                         &format!("badgeIcon_{}", resource.id),
                         RobloxInputs::BadgeIcon(FileInputs {
@@ -302,7 +320,8 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                             asset_id: output_value!(resource, "assetId"),
                         }),
                         &[dependency!(ref_to_resource, resource, "badgeId")],
-                    ),
+                    )
+                    .into(),
                     "imageAsset" => RobloxResource::existing(
                         &format!("asset_{}", resource.id),
                         RobloxInputs::ImageAsset(FileWithGroupIdInputs {
@@ -315,7 +334,8 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                             decal_asset_id: output_value!(resource, "decalAssetId"),
                         }),
                         &[],
-                    ),
+                    )
+                    .into(),
                     "audioAsset" => RobloxResource::existing(
                         &format!("asset_{}", resource.id),
                         RobloxInputs::AudioAsset(FileWithGroupIdInputs {
@@ -327,7 +347,8 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                             asset_id: output_value!(resource, "assetId"),
                         }),
                         &[],
-                    ),
+                    )
+                    .into(),
                     "assetAlias" => RobloxResource::existing(
                         &format!("assetAlias_{}", resource.id),
                         RobloxInputs::AssetAlias(AssetAliasInputs {
@@ -340,16 +361,23 @@ impl From<ResourceStateV2> for ResourceStateV3 {
                             dependency!(ref_to_resource, resource, "experienceId"),
                             dependency!(ref_to_resource, resource, "assetId"),
                         ],
-                    ),
-                    _ => unreachable!(),
-                };
-                id_to_resource.insert(new_resource.get_id(), new_resource.clone());
-                ref_to_resource.insert(resource.get_ref(), new_resource);
+                    )
+                    .into(),
+                    _ => None,
+                }
+                .into();
+                if let Some(new_resource) = new_resource {
+                    id_to_resource.insert(new_resource.get_id(), new_resource.clone());
+                    ref_to_resource.insert(resource.get_ref(), new_resource);
+                }
             }
 
             environments.insert(
                 environment_name,
-                id_to_resource.values().cloned().collect::<Vec<_>>(),
+                id_to_resource
+                    .values()
+                    .map(|resource| serde_yaml::to_value(resource).unwrap())
+                    .collect::<Vec<_>>(),
             );
         }
 

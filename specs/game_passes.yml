@@ -21,7 +21,6 @@ expect:
     - experienceActivation_singleton
     - place_start
     - pass_firstPass
-    - passIcon_firstPass
 
 ---
 config:
@@ -48,7 +47,7 @@ updateFiles:
 command: deploy -e test
 expect:
   updatedAssets:
-    - passIcon_firstPass
+    - pass_firstPass
 
 ---
 command: destroy -e test
@@ -58,4 +57,3 @@ expect:
     - experienceActivation_singleton
     - place_start
     - pass_firstPass
-    - passIcon_firstPass

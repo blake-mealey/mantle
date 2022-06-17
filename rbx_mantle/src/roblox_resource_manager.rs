@@ -74,6 +74,7 @@ pub struct PassInputs {
     pub description: String,
     pub price: Option<u32>,
     pub icon_file_path: String,
+    pub icon_file_hash: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

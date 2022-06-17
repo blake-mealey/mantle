@@ -51,9 +51,9 @@ function Invoke-BumpVersion() {
   }
 
   # Verify build and tests are passing
-  cargo build > $null 2> $null
+  cargo test --test '*' -- --test-threads=1 > $null 2> $null
   if ($LastExitCode -ne 0) {
-    Write-Error "Build failed. Run 'cargo build' to see why."
+    Write-Error "Build or test failed. Run 'cargo test --test '*' -- --test-threads=1' to see why."
     return
   }
 

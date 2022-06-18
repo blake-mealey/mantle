@@ -3,11 +3,15 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Utc};
 use rbx_api::{
-    AssetId, AssetTypeId, CreateAssetQuota, CreateAudioAssetResponse, CreateBadgeResponse,
-    CreateDeveloperProductResponse, CreateExperienceResponse, CreateGamePassResponse,
-    CreateImageAssetResponse, CreateSocialLinkResponse, CreatorType, ExperienceConfigurationModel,
-    GetDeveloperProductResponse, GetGamePassResponse, GetPlaceResponse, PlaceConfigurationModel,
-    QuotaDuration, RobloxApi, SocialLinkType, UploadImageResponse,
+    models::{
+        AssetId, AssetTypeId, CreateAssetQuota, CreateAudioAssetResponse, CreateBadgeResponse,
+        CreateDeveloperProductResponse, CreateExperienceResponse, CreateGamePassResponse,
+        CreateImageAssetResponse, CreateSocialLinkResponse, CreatorType,
+        ExperienceConfigurationModel, GetDeveloperProductResponse, GetGamePassResponse,
+        GetPlaceResponse, PlaceConfigurationModel, QuotaDuration, SocialLinkType,
+        UploadImageResponse,
+    },
+    RobloxApi,
 };
 use rbx_auth::RobloxAuth;
 use serde::{Deserialize, Serialize};
@@ -290,8 +294,12 @@ pub struct RobloxResourceManager {
 
 impl RobloxResourceManager {
     pub async fn new(project_path: &Path, payment_source: CreatorType) -> Result<Self, String> {
+        let roblox_auth = RobloxAuth::new().await?;
+        let roblox_api = RobloxApi::new(roblox_auth)?;
+        roblox_api.validate_auth().await?;
+
         Ok(Self {
-            roblox_api: RobloxApi::new(RobloxAuth::new().await?).await?,
+            roblox_api,
             project_path: project_path.to_path_buf(),
             payment_source,
         })

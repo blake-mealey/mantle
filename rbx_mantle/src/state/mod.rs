@@ -13,7 +13,10 @@ use std::{
 
 use chrono::Utc;
 use clap::crate_version;
-use rbx_api::{AssetId, CreatorType, GetExperienceResponse, RobloxApi, SocialLinkType};
+use rbx_api::{
+    models::{AssetId, CreatorType, GetExperienceResponse, SocialLinkType},
+    RobloxApi,
+};
 use rusoto_s3::{S3Client, S3};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

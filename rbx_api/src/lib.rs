@@ -1,640 +1,153 @@
-use std::{clone::Clone, ffi::OsStr, fmt, fs, path::PathBuf, str, sync::Arc};
+pub mod models;
+
+use std::{clone::Clone, ffi::OsStr, fs, path::PathBuf, str, sync::Arc};
 
 use rbx_auth::RobloxAuth;
 use reqwest::{
     header,
     multipart::{Form as MultipartForm, Part},
-    Body, StatusCode,
+    Body,
 };
 use scraper::{Html, Selector};
-use serde::{de, Deserialize, Serialize};
+use serde::de;
 use serde_json::json;
-use serde_repr::{Deserialize_repr, Serialize_repr};
 use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
-use url::Url;
 
-pub type AssetId = u64;
+use models::*;
 
-pub const DEFAULT_PLACE_NAME: &str = "Untitled Game";
-
-#[derive(Deserialize, Debug)]
-struct RobloxApiErrorModel {
-    // There are some other possible properties but we currently have no use for them so they are not
-    // included
-
-    // Most error models have a `message` property
-    #[serde(alias = "Message")]
-    message: Option<String>,
-
-    // Some error models (500) have a `title` property instead
-    #[serde(alias = "Title")]
-    title: Option<String>,
-
-    // Some error models on older APIs have an errors array
-    #[serde(alias = "Errors")]
-    errors: Option<Vec<RobloxApiErrorModel>>,
-
-    // Some errors return a `success` property which can be used to check for errors
-    #[serde(alias = "Success")]
-    success: Option<bool>,
-}
-
-impl RobloxApiErrorModel {
-    pub fn reason(self) -> Option<String> {
-        if let Some(message) = self.message {
-            Some(message)
-        } else if let Some(title) = self.title {
-            Some(title)
-        } else if let Some(errors) = self.errors {
-            for error in errors {
-                if let Some(message) = error.reason() {
-                    return Some(message);
+async fn get_roblox_api_error_message_from_response(response: reqwest::Response) -> String {
+    let status_code = response.status();
+    let reason = {
+        if let Some(content_type) = response.headers().get(reqwest::header::CONTENT_TYPE) {
+            if content_type == "application/json" {
+                match response.json::<RobloxApiErrorResponse>().await {
+                    Ok(error) => Some(error.reason_or_status_code(status_code)),
+                    Err(_) => None,
                 }
+            } else if content_type == "text/html"
+                || content_type == "text/html; charset=utf-8"
+                || content_type == "text/html; charset=us-ascii"
+            {
+                match response.text().await {
+                    Ok(text) => {
+                        let html = Html::parse_fragment(&text);
+                        let selector =
+                            Selector::parse(".request-error-page-content .error-message").unwrap();
+
+                        html.select(&selector)
+                            .next()
+                            .map(|e| e.text().map(|t| t.trim()).collect::<Vec<_>>().join(" "))
+                    }
+                    Err(_) => None,
+                }
+            } else {
+                response.text().await.ok()
             }
-            None
         } else {
             None
         }
-    }
-
-    pub fn reason_or_status_code(self, status_code: StatusCode) -> String {
-        self.reason()
-            .unwrap_or_else(|| format!("Unknown error ({})", status_code))
-    }
+    };
+    reason.unwrap_or_else(|| format!("Unknown error (status {})", status_code))
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct CreateExperienceResponse {
-    pub universe_id: AssetId,
-    pub root_place_id: AssetId,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub enum CreatorType {
-    User,
-    Group,
-}
-impl fmt::Display for CreatorType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                CreatorType::User => "User",
-                CreatorType::Group => "Group",
+async fn handle(request_builder: reqwest::RequestBuilder) -> Result<reqwest::Response, String> {
+    let result = request_builder.send().await;
+    match result {
+        Ok(response) => {
+            // Check for redirects to the login page
+            let url = response.url();
+            if matches!(url.domain(), Some("www.roblox.com")) && url.path() == "/NewLogin" {
+                return Err("Authorization has been denied for this request.".to_owned());
             }
-        )
+
+            // Check status code
+            if response.status().is_success() {
+                Ok(response)
+            } else {
+                Err(get_roblox_api_error_message_from_response(response).await)
+            }
+        }
+        Err(error) => Err(format!("HTTP client error: {}", error)),
     }
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GetExperienceResponse {
-    pub root_place_id: AssetId,
-    pub is_active: bool,
-    pub creator_type: CreatorType,
-    pub creator_target_id: AssetId,
+async fn handle_as_json<T>(request_builder: reqwest::RequestBuilder) -> Result<T, String>
+where
+    T: de::DeserializeOwned,
+{
+    handle(request_builder)
+        .await?
+        .json::<T>()
+        .await
+        .map_err(|e| format!("Failed to deserialize response: {}", e))
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct CreatePlaceResponse {
-    pub place_id: AssetId,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GetPlaceResponse {
-    pub id: AssetId,
-    pub current_saved_version: u32,
-    pub name: String,
-    pub description: String,
-    pub max_player_count: u32,
-    pub allow_copying: bool,
-    pub social_slot_type: SocialSlotType,
-    pub custom_social_slots_count: Option<u32>,
-    pub is_root_place: bool,
-}
-
-impl From<GetPlaceResponse> for PlaceConfigurationModel {
-    fn from(response: GetPlaceResponse) -> Self {
-        PlaceConfigurationModel {
-            name: response.name,
-            description: response.description,
-            max_player_count: response.max_player_count,
-            allow_copying: response.allow_copying,
-            social_slot_type: response.social_slot_type,
-            custom_social_slots_count: response.custom_social_slots_count,
+async fn handle_as_json_with_status<T>(
+    request_builder: reqwest::RequestBuilder,
+) -> Result<T, String>
+where
+    T: de::DeserializeOwned,
+{
+    let response = handle(request_builder).await?;
+    let status_code = response.status();
+    let data = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read response: {}", e))?;
+    if let Ok(error) = serde_json::from_slice::<RobloxApiErrorResponse>(&data) {
+        if !error.success.unwrap_or(false) {
+            return Err(error.reason_or_status_code(status_code));
         }
     }
+    serde_json::from_slice::<T>(&data).map_err(|e| format!("Failed to deserialize response: {}", e))
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct RemovePlaceResponse {}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ListPlacesResponse {
-    pub next_page_cursor: Option<String>,
-    pub data: Vec<ListPlaceResponse>,
+async fn handle_as_html(request_builder: reqwest::RequestBuilder) -> Result<Html, String> {
+    let text = handle(request_builder)
+        .await?
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read HTML response: {}", e))?;
+    Ok(Html::parse_fragment(&text))
 }
 
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ListPlaceResponse {
-    pub id: AssetId,
+async fn get_file_part(file_path: PathBuf) -> Result<Part, String> {
+    let file = File::open(&file_path)
+        .await
+        .map_err(|e| format!("Failed to open image file {}: {}", file_path.display(), e))?;
+    let reader = Body::wrap_stream(FramedRead::new(file, BytesCodec::new()));
+
+    let file_name = file_path
+        .file_name()
+        .and_then(OsStr::to_str)
+        .ok_or("Unable to determine image file name")?
+        .to_owned();
+    let mime = mime_guess::from_path(&file_path).first_or_octet_stream();
+
+    Ok(Part::stream(reader)
+        .file_name(file_name)
+        .mime_str(&mime.to_string())
+        .unwrap())
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UploadImageResponse {
-    pub target_id: AssetId,
-}
+fn get_input_value(html: &Html, selector: &str) -> Result<String, String> {
+    let input_selector =
+        Selector::parse(selector).map_err(|_| format!("Failed to parse selector {}", selector))?;
+    let input_element = html
+        .select(&input_selector)
+        .next()
+        .ok_or(format!("Failed to find input with selector {}", selector))?;
+    let input_value = input_element
+        .value()
+        .attr("value")
+        .ok_or(format!(
+            "input with selector {} did not have a value",
+            selector
+        ))?
+        .to_owned();
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateDeveloperProductResponse {
-    pub id: AssetId,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct ListDeveloperProductsResponse {
-    pub developer_products: Vec<ListDeveloperProductResponseItem>,
-    pub final_page: bool,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub struct ListDeveloperProductResponseItem {
-    pub product_id: AssetId,
-    pub developer_product_id: AssetId,
-    pub name: String,
-    pub description: Option<String>,
-    pub icon_image_asset_id: Option<AssetId>,
-    pub price_in_robux: u32,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GetDeveloperProductResponse {
-    pub id: AssetId,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ListGamePassesResponse {
-    pub next_page_cursor: Option<String>,
-    pub data: Vec<ListGamePassResponse>,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ListGamePassResponse {
-    pub id: AssetId,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub struct GetGamePassResponse {
-    pub target_id: AssetId,
-    pub name: String,
-    pub description: String,
-    pub icon_image_asset_id: AssetId,
-    pub price_in_robux: Option<u32>,
-}
-
-pub struct CreateGamePassResponse {
-    pub asset_id: AssetId,
-    pub icon_asset_id: AssetId,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateBadgeResponse {
-    pub id: AssetId,
-    pub icon_image_id: AssetId,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ListBadgesResponse {
-    pub next_page_cursor: Option<String>,
-    pub data: Vec<ListBadgeResponse>,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ListBadgeResponse {
-    pub id: AssetId,
-    pub name: String,
-    pub description: String,
-    pub icon_image_id: AssetId,
-    pub enabled: bool,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct ListAssetAliasesResponse {
-    pub aliases: Vec<GetAssetAliasResponse>,
-    pub final_page: bool,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct GetAssetAliasResponse {
-    pub name: String,
-    pub target_id: AssetId,
-    pub asset: GetAssetResponse,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct GetAssetResponse {
-    pub type_id: u32,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub struct CreateImageAssetResponse {
-    pub asset_id: AssetId,
-    pub backing_asset_id: AssetId,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub struct CreateAudioAssetResponse {
-    pub id: AssetId,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GetGameIconsResponse {
-    pub data: Vec<GetThumbnailResponse>,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GetExperienceThumbnailsResponse {
-    pub data: Vec<GetExperienceThumbnailResponse>,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GetExperienceThumbnailResponse {
-    pub id: AssetId,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GetThumbnailResponse {
-    pub target_id: AssetId,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub enum SocialLinkType {
-    Facebook,
-    Twitter,
-    YouTube,
-    Twitch,
-    Discord,
-    RobloxGroup,
-    Guilded,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub struct CreateSocialLinkResponse {
-    pub id: AssetId,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ListSocialLinksResponse {
-    pub data: Vec<GetSocialLinkResponse>,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GetSocialLinkResponse {
-    pub id: AssetId,
-    pub title: String,
-    pub url: Url,
-    #[serde(rename = "type")]
-    pub link_type: SocialLinkType,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-struct CreateAssetQuotasResponse {
-    quotas: Vec<CreateAssetQuota>,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub enum QuotaDuration {
-    Month,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateAssetQuota {
-    pub duration: QuotaDuration,
-    pub usage: u32,
-    pub capacity: u32,
-    pub expiration_time: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub enum ExperienceGenre {
-    All,
-    Adventure,
-    Tutorial,
-    Funny,
-    Ninja,
-    #[serde(rename = "FPS")]
-    Fps,
-    Scary,
-    Fantasy,
-    War,
-    Pirate,
-    #[serde(rename = "RPG")]
-    Rpg,
-    SciFi,
-    Sports,
-    TownAndCity,
-    WildWest,
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "PascalCase")]
-pub enum ExperiencePlayableDevice {
-    Computer,
-    Phone,
-    Tablet,
-    Console,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub enum ExperienceAvatarType {
-    MorphToR6,
-    MorphToR15,
-    PlayerChoice,
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "PascalCase")]
-pub enum ExperienceAnimationType {
-    Standard,
-    PlayerChoice,
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "PascalCase")]
-pub enum ExperienceCollisionType {
-    OuterBox,
-    InnerBox,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ExperienceAvatarScales {
-    pub height: String,
-    pub width: String,
-    pub head: String,
-    pub body_type: String,
-    pub proportion: String,
-}
-
-#[derive(Serialize_repr, Deserialize_repr, Clone)]
-#[repr(u8)]
-pub enum AssetTypeId {
-    Image = 1,
-    TShirt = 2,
-    Audio = 3,
-    Mesh = 4,
-    Lua = 5,
-    Hat = 8,
-    Place = 9,
-    Model = 10,
-    Shirt = 11,
-    Pants = 12,
-    Decal = 13,
-    Head = 17,
-    Face = 18,
-    Gear = 19,
-    Badge = 21,
-    Animation = 24,
-    Torso = 27,
-    RightArm = 28,
-    LeftArm = 29,
-    LeftLeg = 30,
-    RightLeg = 31,
-    Package = 32,
-    GamePass = 34,
-    Plugin = 38,
-    MeshPart = 40,
-    HairAccessory = 41,
-    FaceAccessory = 42,
-    NeckAccessory = 43,
-    ShoulderAccessory = 44,
-    FrontAccessory = 45,
-    BackAccessory = 46,
-    WaistAccessory = 47,
-    ClimbAnimation = 48,
-    DeathAnimation = 49,
-    FallAnimation = 50,
-    IdleAnimation = 51,
-    JumpAnimation = 52,
-    RunAnimation = 53,
-    SwimAnimation = 54,
-    WalkAnimation = 55,
-    PoseAnimation = 56,
-    EarAccessory = 57,
-    EyeAccessory = 58,
-    EmoteAnimation = 61,
-    Video = 62,
-    TShirtAccessory = 64,
-    ShirtAccessory = 65,
-    PantsAccessory = 66,
-    JacketAccessory = 67,
-    SweaterAccessory = 68,
-    ShortsAccessory = 69,
-    LeftShoeAccessory = 70,
-    RightShoeAccessory = 71,
-    DressSkirtAccessory = 72,
-}
-impl fmt::Display for AssetTypeId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(&self).unwrap(),)
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ExperienceAvatarAssetOverride {
-    #[serde(rename = "assetTypeID")]
-    pub asset_type_id: AssetTypeId,
-    pub is_player_choice: bool,
-    #[serde(rename = "assetID")]
-    pub asset_id: Option<AssetId>,
-}
-impl ExperienceAvatarAssetOverride {
-    pub fn player_choice(asset_type_id: AssetTypeId) -> Self {
-        Self {
-            asset_type_id,
-            is_player_choice: true,
-            asset_id: None,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Default)]
-#[serde(rename_all = "PascalCase")]
-pub struct ExperiencePermissionsModel {
-    pub is_third_party_purchase_allowed: bool,
-    pub is_third_party_teleport_allowed: bool,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ExperienceConfigurationModel {
-    pub genre: ExperienceGenre,
-    pub playable_devices: Vec<ExperiencePlayableDevice>,
-    pub is_friends_only: Option<bool>,
-
-    #[serde(default)]
-    pub allow_private_servers: bool,
-    pub private_server_price: Option<u32>,
-    pub is_for_sale: bool,
-    pub price: Option<u32>,
-
-    #[serde(default)]
-    pub studio_access_to_apis_allowed: bool,
-    #[serde(default)]
-    pub permissions: ExperiencePermissionsModel,
-
-    pub universe_avatar_type: ExperienceAvatarType,
-    pub universe_animation_type: ExperienceAnimationType,
-    pub universe_collision_type: ExperienceCollisionType,
-    #[serde(default = "default_min_scales")]
-    pub universe_avatar_min_scales: ExperienceAvatarScales,
-    #[serde(default = "default_max_scales")]
-    pub universe_avatar_max_scales: ExperienceAvatarScales,
-    #[serde(default = "default_asset_overrides")]
-    pub universe_avatar_asset_overrides: Vec<ExperienceAvatarAssetOverride>,
-
-    pub is_archived: bool,
-}
-
-fn default_min_scales() -> ExperienceAvatarScales {
-    ExperienceConfigurationModel::default().universe_avatar_min_scales
-}
-
-fn default_max_scales() -> ExperienceAvatarScales {
-    ExperienceConfigurationModel::default().universe_avatar_max_scales
-}
-
-fn default_asset_overrides() -> Vec<ExperienceAvatarAssetOverride> {
-    ExperienceConfigurationModel::default().universe_avatar_asset_overrides
-}
-
-impl Default for ExperienceConfigurationModel {
-    fn default() -> Self {
-        ExperienceConfigurationModel {
-            genre: ExperienceGenre::All,
-            playable_devices: vec![
-                ExperiencePlayableDevice::Computer,
-                ExperiencePlayableDevice::Phone,
-                ExperiencePlayableDevice::Tablet,
-            ],
-            is_friends_only: Some(true),
-
-            allow_private_servers: false,
-            private_server_price: None,
-            is_for_sale: false,
-            price: None,
-
-            studio_access_to_apis_allowed: false,
-            permissions: ExperiencePermissionsModel {
-                is_third_party_purchase_allowed: false,
-                is_third_party_teleport_allowed: false,
-            },
-
-            universe_avatar_type: ExperienceAvatarType::MorphToR15,
-            universe_animation_type: ExperienceAnimationType::PlayerChoice,
-            universe_collision_type: ExperienceCollisionType::OuterBox,
-            universe_avatar_min_scales: ExperienceAvatarScales {
-                height: 0.9.to_string(),
-                width: 0.7.to_string(),
-                head: 0.95.to_string(),
-                body_type: 0.0.to_string(),
-                proportion: 0.0.to_string(),
-            },
-            universe_avatar_max_scales: ExperienceAvatarScales {
-                height: 1.05.to_string(),
-                width: 1.0.to_string(),
-                head: 1.0.to_string(),
-                body_type: 1.0.to_string(),
-                proportion: 1.0.to_string(),
-            },
-            universe_avatar_asset_overrides: vec![
-                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::Face),
-                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::Head),
-                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::Torso),
-                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::LeftArm),
-                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::RightArm),
-                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::LeftLeg),
-                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::RightLeg),
-                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::TShirt),
-                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::Shirt),
-                ExperienceAvatarAssetOverride::player_choice(AssetTypeId::Pants),
-            ],
-
-            is_archived: false,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub enum SocialSlotType {
-    Automatic,
-    Empty,
-    Custom,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct PlaceConfigurationModel {
-    pub name: String,
-    pub description: String,
-    pub max_player_count: u32,
-    pub allow_copying: bool,
-    pub social_slot_type: SocialSlotType,
-    pub custom_social_slots_count: Option<u32>,
-}
-
-impl Default for PlaceConfigurationModel {
-    fn default() -> Self {
-        PlaceConfigurationModel {
-            name: DEFAULT_PLACE_NAME.to_owned(),
-            description: "Created with Mantle".to_owned(),
-            max_player_count: 50,
-            allow_copying: false,
-            social_slot_type: SocialSlotType::Automatic,
-            custom_social_slots_count: None,
-        }
-    }
-}
-
-enum PlaceFileFormat {
-    Xml,
-    Binary,
+    Ok(input_value)
 }
 
 pub struct RobloxApi {
@@ -642,153 +155,16 @@ pub struct RobloxApi {
 }
 
 impl RobloxApi {
-    pub async fn new(roblox_auth: RobloxAuth) -> Result<Self, String> {
-        let client = reqwest::Client::builder()
-            .connection_verbose(true)
-            .user_agent("Roblox/WinInet")
-            .cookie_provider(Arc::new(roblox_auth.jar))
-            .default_headers(roblox_auth.headers)
-            .build()
-            .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
-        let roblox_api = Self { client };
-        roblox_api.validate_auth().await?;
-        Ok(roblox_api)
-    }
-
-    async fn get_roblox_api_error_message_from_response(response: reqwest::Response) -> String {
-        let status_code = response.status();
-        let reason = {
-            if let Some(content_type) = response.headers().get(reqwest::header::CONTENT_TYPE) {
-                if content_type == "application/json" {
-                    match response.json::<RobloxApiErrorModel>().await {
-                        Ok(error) => Some(error.reason_or_status_code(status_code)),
-                        Err(_) => None,
-                    }
-                } else if content_type == "text/html"
-                    || content_type == "text/html; charset=utf-8"
-                    || content_type == "text/html; charset=us-ascii"
-                {
-                    match response.text().await {
-                        Ok(text) => {
-                            let html = Html::parse_fragment(&text);
-                            let selector =
-                                Selector::parse(".request-error-page-content .error-message")
-                                    .unwrap();
-
-                            html.select(&selector)
-                                .next()
-                                .map(|e| e.text().map(|t| t.trim()).collect::<Vec<_>>().join(" "))
-                        }
-                        Err(_) => None,
-                    }
-                } else {
-                    response.text().await.ok()
-                }
-            } else {
-                None
-            }
-        };
-        reason.unwrap_or_else(|| format!("Unknown error (status {})", status_code))
-    }
-
-    async fn handle(request_builder: reqwest::RequestBuilder) -> Result<reqwest::Response, String> {
-        let result = request_builder.send().await;
-        match result {
-            Ok(response) => {
-                // Check for redirects to the login page
-                let url = response.url();
-                if matches!(url.domain(), Some("www.roblox.com")) && url.path() == "/NewLogin" {
-                    return Err("Authorization has been denied for this request.".to_owned());
-                }
-
-                // Check status code
-                if response.status().is_success() {
-                    Ok(response)
-                } else {
-                    Err(Self::get_roblox_api_error_message_from_response(response).await)
-                }
-            }
-            Err(error) => Err(format!("HTTP client error: {}", error)),
-        }
-    }
-
-    async fn handle_as_json<T>(request_builder: reqwest::RequestBuilder) -> Result<T, String>
-    where
-        T: de::DeserializeOwned,
-    {
-        Self::handle(request_builder)
-            .await?
-            .json::<T>()
-            .await
-            .map_err(|e| format!("Failed to deserialize response: {}", e))
-    }
-
-    async fn handle_as_json_with_status<T>(
-        request_builder: reqwest::RequestBuilder,
-    ) -> Result<T, String>
-    where
-        T: de::DeserializeOwned,
-    {
-        let response = Self::handle(request_builder).await?;
-        let status_code = response.status();
-        let data = response
-            .bytes()
-            .await
-            .map_err(|e| format!("Failed to read response: {}", e))?;
-        if let Ok(error) = serde_json::from_slice::<RobloxApiErrorModel>(&data) {
-            if !error.success.unwrap_or(false) {
-                return Err(error.reason_or_status_code(status_code));
-            }
-        }
-        serde_json::from_slice::<T>(&data)
-            .map_err(|e| format!("Failed to deserialize response: {}", e))
-    }
-
-    async fn handle_as_html(request_builder: reqwest::RequestBuilder) -> Result<Html, String> {
-        let text = Self::handle(request_builder)
-            .await?
-            .text()
-            .await
-            .map_err(|e| format!("Failed to read HTML response: {}", e))?;
-        Ok(Html::parse_fragment(&text))
-    }
-
-    async fn get_file_part(file_path: PathBuf) -> Result<Part, String> {
-        let file = File::open(&file_path)
-            .await
-            .map_err(|e| format!("Failed to open image file {}: {}", file_path.display(), e))?;
-        let reader = Body::wrap_stream(FramedRead::new(file, BytesCodec::new()));
-
-        let file_name = file_path
-            .file_name()
-            .and_then(OsStr::to_str)
-            .ok_or("Unable to determine image file name")?
-            .to_owned();
-        let mime = mime_guess::from_path(&file_path).first_or_octet_stream();
-
-        Ok(Part::stream(reader)
-            .file_name(file_name)
-            .mime_str(&mime.to_string())
-            .unwrap())
-    }
-
-    fn get_input_value(html: &Html, selector: &str) -> Result<String, String> {
-        let input_selector = Selector::parse(selector)
-            .map_err(|_| format!("Failed to parse selector {}", selector))?;
-        let input_element = html
-            .select(&input_selector)
-            .next()
-            .ok_or(format!("Failed to find input with selector {}", selector))?;
-        let input_value = input_element
-            .value()
-            .attr("value")
-            .ok_or(format!(
-                "input with selector {} did not have a value",
-                selector
-            ))?
-            .to_owned();
-
-        Ok(input_value)
+    pub fn new(roblox_auth: RobloxAuth) -> Result<Self, String> {
+        Ok(Self {
+            client: reqwest::Client::builder()
+                .connection_verbose(true)
+                .user_agent("Roblox/WinInet")
+                .cookie_provider(Arc::new(roblox_auth.jar))
+                .default_headers(roblox_auth.headers)
+                .build()
+                .map_err(|e| format!("Failed to create Roblox API client: {}", e))?,
+        })
     }
 
     pub async fn validate_auth(&self) -> Result<(), String> {
@@ -796,7 +172,7 @@ impl RobloxApi {
             .client
             .get("https://users.roblox.com/v1/users/authenticated");
 
-        Self::handle(req).await.map_err(|_| {
+        handle(req).await.map_err(|_| {
             "Authorization validation failed. Check your ROBLOSECURITY cookie.".to_owned()
         })?;
 
@@ -847,7 +223,7 @@ impl RobloxApi {
             .header("Content-Type", content_type)
             .body(body);
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }
@@ -858,7 +234,7 @@ impl RobloxApi {
             place_id
         ));
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn list_places(
@@ -874,7 +250,7 @@ impl RobloxApi {
             req = req.query(&[("cursor", &page_cursor)]);
         }
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     // TODO: implement generic form
@@ -915,7 +291,7 @@ impl RobloxApi {
                 ("placeId", &place_id.to_string()),
             ]);
 
-        Self::handle_as_json_with_status::<RemovePlaceResponse>(req).await?;
+        handle_as_json_with_status::<RemovePlaceResponse>(req).await?;
 
         Ok(())
     }
@@ -932,7 +308,7 @@ impl RobloxApi {
                 "groupId": group_id
             }));
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn get_experience(
@@ -944,7 +320,7 @@ impl RobloxApi {
             experience_id
         ));
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn get_experience_configuration(
@@ -956,7 +332,7 @@ impl RobloxApi {
             experience_id
         ));
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn create_place(
@@ -972,7 +348,7 @@ impl RobloxApi {
                 ("templatePlaceIdToUse", &95206881.to_string()),
             ]);
 
-        Self::handle_as_json_with_status(req).await
+        handle_as_json_with_status(req).await
     }
 
     pub async fn configure_experience(
@@ -988,7 +364,7 @@ impl RobloxApi {
             ))
             .json(experience_configuration);
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }
@@ -1006,7 +382,7 @@ impl RobloxApi {
             ))
             .json(place_configuration);
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }
@@ -1025,7 +401,7 @@ impl RobloxApi {
             ))
             .header(header::CONTENT_LENGTH, 0);
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }
@@ -1042,11 +418,9 @@ impl RobloxApi {
                 "https://publish.roblox.com/v1/games/{}/icon",
                 experience_id
             ))
-            .multipart(
-                MultipartForm::new().part("request.files", Self::get_file_part(icon_file).await?),
-            );
+            .multipart(MultipartForm::new().part("request.files", get_file_part(icon_file).await?));
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn remove_experience_icon(
@@ -1062,7 +436,7 @@ impl RobloxApi {
                 ("placeIconId", &icon_asset_id.to_string()),
             ]);
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }
@@ -1079,11 +453,10 @@ impl RobloxApi {
                 experience_id
             ))
             .multipart(
-                MultipartForm::new()
-                    .part("request.files", Self::get_file_part(thumbnail_file).await?),
+                MultipartForm::new().part("request.files", get_file_part(thumbnail_file).await?),
             );
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn get_experience_thumbnails(
@@ -1095,7 +468,7 @@ impl RobloxApi {
             experience_id
         ));
 
-        Ok(Self::handle_as_json::<GetExperienceThumbnailsResponse>(req)
+        Ok(handle_as_json::<GetExperienceThumbnailsResponse>(req)
             .await?
             .data)
     }
@@ -1113,7 +486,7 @@ impl RobloxApi {
             ))
             .json(&json!({ "thumbnailIds": new_thumbnail_order }));
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }
@@ -1128,7 +501,7 @@ impl RobloxApi {
             experience_id, thumbnail_id
         ));
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }
@@ -1144,8 +517,8 @@ impl RobloxApi {
                 .get("https://www.roblox.com/places/create-developerproduct")
                 .query(&[("universeId", &experience_id.to_string())]);
 
-            let html = Self::handle_as_html(req).await?;
-            Self::get_input_value(
+            let html = handle_as_html(req).await?;
+            get_input_value(
                 &html,
                 "#DeveloperProductImageUpload input[name=\"__RequestVerificationToken\"]",
             )?
@@ -1157,16 +530,13 @@ impl RobloxApi {
             .query(&[("developerProductId", "0")])
             .multipart(
                 MultipartForm::new()
-                    .part(
-                        "DeveloperProductImageFile",
-                        Self::get_file_part(icon_file).await?,
-                    )
+                    .part("DeveloperProductImageFile", get_file_part(icon_file).await?)
                     .text("__RequestVerificationToken", image_verification_token),
             );
 
-        let html = Self::handle_as_html(req).await?;
+        let html = handle_as_html(req).await?;
 
-        Self::get_input_value(&html, "#developerProductIcon input[id=\"assetId\"]")?
+        get_input_value(&html, "#developerProductIcon input[id=\"assetId\"]")?
             .parse()
             .map_err(|e| format!("Failed to parse asset id: {}", e))
     }
@@ -1195,7 +565,7 @@ impl RobloxApi {
             req = req.query(&[("iconImageAssetId", &icon_asset_id.to_string())]);
         }
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn create_social_link(
@@ -1217,7 +587,7 @@ impl RobloxApi {
                 "type": link_type,
             }));
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn update_social_link(
@@ -1240,7 +610,7 @@ impl RobloxApi {
                 "type": link_type,
             }));
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }
@@ -1255,7 +625,7 @@ impl RobloxApi {
             experience_id, social_link_id
         ));
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }
@@ -1269,9 +639,7 @@ impl RobloxApi {
             experience_id
         ));
 
-        Ok(Self::handle_as_json::<ListSocialLinksResponse>(req)
-            .await?
-            .data)
+        Ok(handle_as_json::<ListSocialLinksResponse>(req).await?.data)
     }
 
     pub async fn list_game_passes(
@@ -1287,7 +655,7 @@ impl RobloxApi {
             req = req.query(&[("cursor", &page_cursor)]);
         }
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn get_game_pass(
@@ -1299,7 +667,7 @@ impl RobloxApi {
             .get("https://api.roblox.com/marketplace/game-pass-product-info")
             .query(&[("gamePassId", &game_pass_id.to_string())]);
 
-        let mut model = Self::handle_as_json::<GetGamePassResponse>(req).await?;
+        let mut model = handle_as_json::<GetGamePassResponse>(req).await?;
         if model.target_id == 0 {
             model.target_id = game_pass_id;
         }
@@ -1344,7 +712,7 @@ impl RobloxApi {
                 ("page", &page.to_string()),
             ]);
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn get_all_developer_products(
@@ -1377,7 +745,7 @@ impl RobloxApi {
             developer_product_id
         ));
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn update_developer_product(
@@ -1402,7 +770,7 @@ impl RobloxApi {
                 "IconImageAssetId": icon_asset_id
             }));
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }
@@ -1423,8 +791,8 @@ impl RobloxApi {
                     ("targetPlaceId", &start_place_id.to_string()),
                 ]);
 
-            let html = Self::handle_as_html(req).await?;
-            Self::get_input_value(
+            let html = handle_as_html(req).await?;
+            get_input_value(
                 &html,
                 "#upload-form input[name=\"__RequestVerificationToken\"]",
             )?
@@ -1436,7 +804,7 @@ impl RobloxApi {
                 .post("https://www.roblox.com/build/verifyupload")
                 .multipart(
                     MultipartForm::new()
-                        .part("file", Self::get_file_part(icon_file).await?)
+                        .part("file", get_file_part(icon_file).await?)
                         .text("__RequestVerificationToken", form_verification_token)
                         .text("assetTypeId", AssetTypeId::GamePass.to_string())
                         .text("targetPlaceId", start_place_id.to_string())
@@ -1444,13 +812,13 @@ impl RobloxApi {
                         .text("description", description.clone()),
                 );
 
-            let html = Self::handle_as_html(req).await?;
-            let form_verification_token = Self::get_input_value(
+            let html = handle_as_html(req).await?;
+            let form_verification_token = get_input_value(
                 &html,
                 "#upload-form input[name=\"__RequestVerificationToken\"]",
             )?;
             let icon_asset_id =
-                Self::get_input_value(&html, "#upload-form input[name=\"assetImageId\"]")?
+                get_input_value(&html, "#upload-form input[name=\"assetImageId\"]")?
                     .parse::<AssetId>()
                     .map_err(|e| format!("Failed to parse asset id: {}", e))?;
 
@@ -1470,7 +838,7 @@ impl RobloxApi {
                     .text("assetImageId", icon_asset_id.to_string()),
             );
 
-        let response = Self::handle(req).await?;
+        let response = handle(req).await?;
 
         let location = response.url();
         let asset_id = location
@@ -1503,7 +871,7 @@ impl RobloxApi {
             form = form.text("price", price.to_string());
         }
         if let Some(icon_file) = icon_file {
-            form = form.part("file", Self::get_file_part(icon_file).await?);
+            form = form.part("file", get_file_part(icon_file).await?);
         }
 
         let req = self
@@ -1511,7 +879,7 @@ impl RobloxApi {
             .post("https://www.roblox.com/game-pass/update")
             .multipart(form);
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         self.get_game_pass(game_pass_id).await
     }
@@ -1533,14 +901,14 @@ impl RobloxApi {
             ))
             .multipart(
                 MultipartForm::new()
-                    .part("request.files", Self::get_file_part(icon_file_path).await?)
+                    .part("request.files", get_file_part(icon_file_path).await?)
                     .text("request.name", name)
                     .text("request.description", description)
                     .text("request.paymentSourceType", payment_source.to_string())
                     .text("request.expectedCost", expected_cost.to_string()),
             );
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn update_badge(
@@ -1559,7 +927,7 @@ impl RobloxApi {
                 "enabled": enabled,
             }));
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }
@@ -1570,7 +938,7 @@ impl RobloxApi {
             experience_id
         ));
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn list_badges(
@@ -1586,7 +954,7 @@ impl RobloxApi {
             req = req.query(&[("cursor", &page_cursor)]);
         }
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn get_all_badges(
@@ -1621,11 +989,9 @@ impl RobloxApi {
                 "https://publish.roblox.com/v1/badges/{}/icon",
                 badge_id
             ))
-            .multipart(
-                MultipartForm::new().part("request.files", Self::get_file_part(icon_file).await?),
-            );
+            .multipart(MultipartForm::new().part("request.files", get_file_part(icon_file).await?));
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn create_asset_alias(
@@ -1646,7 +1012,7 @@ impl RobloxApi {
                 "targetId": asset_id,
             }));
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }
@@ -1671,7 +1037,7 @@ impl RobloxApi {
                 "targetId": asset_id,
             }));
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }
@@ -1687,7 +1053,7 @@ impl RobloxApi {
             .header(header::CONTENT_LENGTH, 0)
             .query(&[("universeId", &experience_id.to_string()), ("name", &name)]);
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }
@@ -1705,7 +1071,7 @@ impl RobloxApi {
                 ("page", &page.to_string()),
             ]);
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn get_all_asset_aliases(
@@ -1761,7 +1127,7 @@ impl RobloxApi {
             req = req.query(&[("groupId", &group_id.to_string())]);
         }
 
-        Self::handle_as_json_with_status(req).await
+        handle_as_json_with_status(req).await
     }
 
     pub async fn get_create_asset_quota(
@@ -1778,7 +1144,7 @@ impl RobloxApi {
             ]);
 
         // TODO: Understand how to interpret multiple quota objects (rather than just using the first one)
-        (Self::handle_as_json::<CreateAssetQuotasResponse>(req).await?)
+        (handle_as_json::<CreateAssetQuotasResponse>(req).await?)
             .quotas
             .first()
             .cloned()
@@ -1817,7 +1183,7 @@ impl RobloxApi {
                 "paymentSource": payment_source
             }));
 
-        Self::handle_as_json(req).await
+        handle_as_json(req).await
     }
 
     pub async fn archive_asset(&self, asset_id: AssetId) -> Result<(), String> {
@@ -1829,7 +1195,7 @@ impl RobloxApi {
             ))
             .header(header::CONTENT_LENGTH, 0);
 
-        Self::handle(req).await?;
+        handle(req).await?;
 
         Ok(())
     }

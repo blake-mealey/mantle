@@ -5,7 +5,7 @@ use std::{
     str,
 };
 
-use rbx_api::{
+use rbx_api::models::{
     AssetId, AssetTypeId, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
     ExperienceConfigurationModel, ExperienceGenre, ExperiencePlayableDevice,
     PlaceConfigurationModel, SocialSlotType,

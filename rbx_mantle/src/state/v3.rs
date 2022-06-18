@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rbx_api::AssetId;
+use rbx_api::models::AssetId;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 

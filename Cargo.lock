@@ -1181,6 +1181,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "logger"
+version = "0.1.0"
+dependencies = [
+ "difference",
+ "yansi",
+]
+
+[[package]]
 name = "lz4"
 version = "1.23.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1214,6 +1222,7 @@ dependencies = [
  "env_logger",
  "integration_executor",
  "log",
+ "logger",
  "rbx_api",
  "rbx_auth",
  "rbx_mantle",
@@ -2012,6 +2021,7 @@ dependencies = [
  "difference",
  "glob",
  "log",
+ "logger",
  "rbx_api",
  "rbx_auth",
  "rusoto_core",

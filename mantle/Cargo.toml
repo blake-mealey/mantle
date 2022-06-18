@@ -7,6 +7,7 @@ edition = "2021"
 rbx_mantle = { path = "../rbx_mantle" }
 rbx_api = { path = "../rbx_api" }
 rbx_auth = { path = "../rbx_auth" }
+logger = { path = "../logger" }
 integration_executor = { path = "../integration_executor" }
 
 serde_json = { version = "1.0.59" }

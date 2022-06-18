@@ -28,7 +28,6 @@ use super::{
         AssetTargetConfig, Config, EnvironmentConfig, ExperienceTargetConfig, OwnerConfig,
         PlayabilityTargetConfig, RemoteStateConfig, StateConfig, TargetConfig,
     },
-    logger,
     resource_graph::ResourceGraph,
     roblox_resource_manager::*,
 };

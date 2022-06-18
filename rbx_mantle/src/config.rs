@@ -16,8 +16,6 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 use yansi::Paint;
 
-use super::logger;
-
 #[derive(JsonSchema, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Config {

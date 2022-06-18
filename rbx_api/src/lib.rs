@@ -153,7 +153,7 @@ async fn get_file_part(file_path: PathBuf) -> RobloxApiResult<Part> {
     let file_name = file_path
         .file_name()
         .and_then(OsStr::to_str)
-        .ok_or(RobloxApiError::NoFileName(file_path.display().to_string()))?
+        .ok_or_else(|| RobloxApiError::NoFileName(file_path.display().to_string()))?
         .to_owned();
     let mime = mime_guess::from_path(&file_path).first_or_octet_stream();
 

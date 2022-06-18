@@ -14,7 +14,7 @@ include = [
 ]
 
 [dependencies]
-rbx_auth = { path = "../rbx_auth" }
+rbx_auth = "0.1.0"
 
 thiserror = "1.0.31"
 

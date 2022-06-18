@@ -17,7 +17,7 @@ pub fn get() -> Option<String> {
 
 /// Returns the raw cookie value
 pub fn get_value() -> Option<String> {
-    from_environment().or_else(|| from_roblox_studio())
+    from_environment().or_else(from_roblox_studio)
 }
 
 fn from_environment() -> Option<String> {

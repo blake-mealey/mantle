@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rbx_mantle_resource_graph::{Resource, ResourceId};
+use rbx_mantle_resource_graph::resource::{Resource, ResourceId};
 use serde::{Deserialize, Serialize};
 
 use super::super::roblox_resource_manager::*;

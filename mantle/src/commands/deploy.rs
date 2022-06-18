@@ -1,6 +1,11 @@
 use std::{path::PathBuf, process::Command, str};
 
-use rbx_mantle_resource_graph::{EvaluateResults, ResourceGraph};
+use rbx_mantle_resource_graph::{
+    resource_graph::ResourceGraph,
+    resource_graph_evaluator::{
+        EvaluateResults, ResourceGraphEvaluator, ResourceGraphEvaluatorOptions,
+    },
+};
 use yansi::Paint;
 
 use rbx_mantle::{
@@ -159,8 +164,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
     logger::end_action("Succeeded");
 
     logger::start_action("Deploying resources:");
-    let mut resource_manager = match RobloxResourceManager::new(&project_path, payment_source).await
-    {
+    let resource_manager = match RobloxResourceManager::new(&project_path, payment_source).await {
         Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(e));
@@ -168,9 +172,14 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
         }
     };
 
-    let results = next_graph
-        .evaluate(&current_graph, &mut resource_manager, allow_purchases)
-        .await;
+    let mut evaluator = ResourceGraphEvaluator::new(
+        &current_graph,
+        &mut next_graph,
+        &resource_manager,
+        ResourceGraphEvaluatorOptions { allow_purchases },
+    );
+    let results = evaluator.evaluate().await;
+
     match &results {
         Ok(results) => {
             match results {

@@ -1,7 +1,7 @@
 use std::{path::PathBuf, process::Command, str};
 
 use rbx_api::models::{CreatorType, DEFAULT_PLACE_NAME};
-use rbx_mantle_resource_graph::ResourceGraph;
+use rbx_mantle_resource_graph::resource_graph::ResourceGraph;
 use yansi::Paint;
 
 use super::{

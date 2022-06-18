@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fs};
 
-use rbx_mantle_resource_graph::Resource;
+use rbx_mantle_resource_graph::resource::Resource;
 use yansi::Paint;
 
 use rbx_mantle::{

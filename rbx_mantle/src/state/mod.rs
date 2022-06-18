@@ -17,7 +17,7 @@ use rbx_api::{
     models::{AssetId, CreatorType, GetExperienceResponse, SocialLinkType},
     RobloxApi,
 };
-use rbx_mantle_resource_graph::ResourceGraph;
+use rbx_mantle_resource_graph::resource_graph::ResourceGraph;
 use rusoto_s3::{S3Client, S3};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

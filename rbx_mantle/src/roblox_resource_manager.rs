@@ -15,7 +15,10 @@ use rbx_api::{
 };
 use rbx_auth::RobloxAuth;
 use rbx_mantle_resource_graph::{
-    all_outputs, optional_output, single_output, Resource, ResourceId, ResourceManager,
+    all_outputs, optional_output,
+    resource::{Resource, ResourceId},
+    resource_manager::ResourceManager,
+    single_output,
 };
 use serde::{Deserialize, Serialize};
 use yansi::Paint;

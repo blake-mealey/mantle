@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use rbx_api::models::AssetId;
-use rbx_mantle_resource_graph::{Resource, ResourceId};
+use rbx_mantle_resource_graph::resource::{Resource, ResourceId};
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 

@@ -1215,7 +1215,7 @@ dependencies = [
  "integration_executor",
  "log",
  "rbx_api",
- "rbx_auth 0.1.0",
+ "rbx_auth",
  "rbx_mantle",
  "serde",
  "serde_json",
@@ -1942,7 +1942,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "mime_guess",
- "rbx_auth 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rbx_auth",
  "reqwest",
  "scraper",
  "serde",
@@ -1958,19 +1958,7 @@ dependencies = [
 name = "rbx_auth"
 version = "0.1.0"
 dependencies = [
- "rbx_cookie 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "reqwest",
- "thiserror",
- "url",
-]
-
-[[package]]
-name = "rbx_auth"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e4b25fe1b0ae497e8a3673024cde31f635a4345e9cdb0802cbf4c31ed9bae24"
-dependencies = [
- "rbx_cookie 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rbx_cookie",
  "reqwest",
  "thiserror",
  "url",
@@ -2005,21 +1993,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rbx_cookie"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de13b9349a56a26292ace7b33551b66c5cb843915312da024bb19ca95697d0a4"
-dependencies = [
- "clap",
- "cookie 0.15.1",
- "dirs",
- "env_logger",
- "log",
- "plist",
- "winreg",
-]
-
-[[package]]
 name = "rbx_dom_weak"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2040,7 +2013,7 @@ dependencies = [
  "glob",
  "log",
  "rbx_api",
- "rbx_auth 0.1.0",
+ "rbx_auth",
  "rusoto_core",
  "rusoto_s3",
  "schemars",

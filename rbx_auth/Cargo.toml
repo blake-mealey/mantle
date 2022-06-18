@@ -14,7 +14,7 @@ include = [
 ]
 
 [dependencies]
-rbx_cookie = "0.1.1"
+rbx_cookie = { path = "../rbx_cookie", version = "0.1.1" }
 
 thiserror = "1.0.31"
 

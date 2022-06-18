@@ -12,7 +12,8 @@ pub struct RobloxAuth {
 
 impl RobloxAuth {
     pub async fn new() -> Result<Self, String> {
-        let roblosecurity_cookie = rbx_cookie::get()?;
+        let roblosecurity_cookie = rbx_cookie::get()
+            .ok_or_else(|| "Unable to find ROBLOSECURITY cookie. Login to Roblox Studio or set the ROBLOSECURITY environment variable".to_owned())?;
 
         let jar = Jar::default();
         let url = "https://roblox.com".parse::<Url>().unwrap();

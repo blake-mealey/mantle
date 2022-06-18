@@ -3,33 +3,32 @@ use std::env;
 use cookie::Cookie;
 use log::{info, trace};
 
-pub fn get() -> Result<String, String> {
+/// Returns the cookie as a formatted header ready to add to a request
+pub fn get() -> Option<String> {
     let cookie = get_value()?;
 
-    Ok(Cookie::build(".ROBLOSECURITY", cookie)
-        .domain(".roblox.com")
-        .finish()
-        .to_string())
+    Some(
+        Cookie::build(".ROBLOSECURITY", cookie)
+            .domain(".roblox.com")
+            .finish()
+            .to_string(),
+    )
 }
 
-pub fn get_value() -> Result<String, String> {
-    let cookie = match from_environment() {
-        Some(v) => {
-            info!("Loaded cookie from ROBLOSECURITY environment variable.");
-            v
-        }
-        None => match from_roblox_studio() {
-            Some(v) => v,
-            None => return Err("Missing the ROBLOSECURITY environment variable".to_string()),
-        },
-    };
-
-    Ok(cookie)
+/// Returns the raw cookie value
+pub fn get_value() -> Option<String> {
+    from_environment().or_else(|| from_roblox_studio())
 }
 
 fn from_environment() -> Option<String> {
     trace!("Attempting to load cookie from ROBLOSECURITY environment variable.");
-    env::var("ROBLOSECURITY").ok()
+    match env::var("ROBLOSECURITY") {
+        Ok(v) => {
+            info!("Loaded cookie from ROBLOSECURITY environment variable.");
+            Some(v)
+        }
+        Err(_) => None,
+    }
 }
 
 #[cfg(target_os = "windows")]

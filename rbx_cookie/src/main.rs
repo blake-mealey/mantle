@@ -25,21 +25,17 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let matches = app.get_matches_from(args);
 
-    match matches.value_of("format") {
-        Some("cookie") => match rbx_cookie::get() {
-            Ok(cookie) => print!("{}", cookie),
-            Err(e) => {
-                eprintln!("Error: {}", e);
-                std::process::exit(1);
-            }
-        },
-        Some("value") => match rbx_cookie::get_value() {
-            Ok(cookie) => print!("{}", cookie),
-            Err(e) => {
-                eprintln!("Error: {}", e);
-                std::process::exit(1);
-            }
-        },
+    let result = match matches.value_of("format") {
+        Some("cookie") => rbx_cookie::get(),
+        Some("value") => rbx_cookie::get_value(),
         _ => unreachable!(),
+    };
+
+    match result {
+        Some(output) => print!("{}", output),
+        None => {
+            eprintln!("Unable to find ROBLOSECURITY cookie. Login to Roblox Studio or set the ROBLOSECURITY environment variable");
+            std::process::exit(1);
+        }
     };
 }

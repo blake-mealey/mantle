@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 
+use rbx_api::models::AssetId;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
 use super::{super::roblox_resource_manager::RobloxResource, v4::ResourceStateV4};
 use crate::{
     resource_graph::{Resource, ResourceId},
-    roblox_resource_manager::{AssetId, PassInputs, PassOutputs, RobloxInputs, RobloxOutputs},
+    roblox_resource_manager::{PassInputs, PassOutputs, RobloxInputs, RobloxOutputs},
 };
 
 #[derive(Serialize, Deserialize, Clone)]

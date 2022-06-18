@@ -1214,6 +1214,7 @@ dependencies = [
  "env_logger",
  "integration_executor",
  "log",
+ "rbx_api",
  "rbx_auth",
  "rbx_mantle",
  "serde",
@@ -1936,11 +1937,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "rbx_api"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "mime_guess",
+ "rbx_auth",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "thiserror",
+ "tokio",
+ "tokio-util 0.6.10",
+ "url",
+]
+
+[[package]]
 name = "rbx_auth"
 version = "0.1.0"
 dependencies = [
  "rbx_cookie",
  "reqwest",
+ "thiserror",
  "url",
 ]
 
@@ -1987,26 +2007,20 @@ name = "rbx_mantle"
 version = "0.11.2"
 dependencies = [
  "async-trait",
- "base64",
  "chrono",
  "clap",
  "difference",
  "glob",
  "log",
- "mime_guess",
+ "rbx_api",
  "rbx_auth",
- "reqwest",
  "rusoto_core",
  "rusoto_s3",
  "schemars",
- "scraper",
  "serde",
- "serde_json",
- "serde_repr",
  "serde_yaml",
  "sha2",
  "tokio",
- "tokio-util 0.6.10",
  "url",
  "yansi",
 ]

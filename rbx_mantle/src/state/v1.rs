@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
+use rbx_api::models::{ExperienceConfigurationModel, PlaceConfigurationModel};
 use serde::{Deserialize, Serialize};
 use serde_yaml::{to_value, Mapping, Value};
-
-use super::super::roblox_api::{ExperienceConfigurationModel, PlaceConfigurationModel};
 
 use super::{
     legacy_resources::{Input, LegacyResource},

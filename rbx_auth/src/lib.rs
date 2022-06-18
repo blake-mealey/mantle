@@ -3,7 +3,25 @@ use reqwest::{
     header::{self, HeaderMap, HeaderValue},
     Client,
 };
+use thiserror::Error;
 use url::Url;
+
+#[derive(Error, Debug)]
+pub enum RobloxAuthError {
+    #[error("HTTP client error.")]
+    HttpClient(#[from] reqwest::Error),
+    #[error("Unable to find ROBLOSECURITY cookie. Login to Roblox Studio or set the ROBLOSECURITY environment variable.")]
+    MissingRoblosecurityCookie,
+    #[error("Request for CSRF token did not return an X-CSRF-Token header.")]
+    MissingCsrfToken,
+}
+
+// Temporary to make the new errors backwards compatible with the String errors throughout the project.
+impl From<RobloxAuthError> for String {
+    fn from(e: RobloxAuthError) -> Self {
+        e.to_string()
+    }
+}
 
 pub struct RobloxAuth {
     pub jar: Jar,
@@ -11,9 +29,9 @@ pub struct RobloxAuth {
 }
 
 impl RobloxAuth {
-    pub async fn new() -> Result<Self, String> {
-        let roblosecurity_cookie = rbx_cookie::get()
-            .ok_or_else(|| "Unable to find ROBLOSECURITY cookie. Login to Roblox Studio or set the ROBLOSECURITY environment variable".to_owned())?;
+    pub async fn new() -> Result<Self, RobloxAuthError> {
+        let roblosecurity_cookie =
+            rbx_cookie::get().ok_or(RobloxAuthError::MissingRoblosecurityCookie)?;
 
         let jar = Jar::default();
         let url = "https://roblox.com".parse::<Url>().unwrap();
@@ -26,31 +44,17 @@ impl RobloxAuth {
     }
 }
 
-async fn get_csrf_token(roblosecurity_cookie: &str) -> Result<HeaderValue, String> {
-    let res = Client::new()
+async fn get_csrf_token(roblosecurity_cookie: &str) -> Result<HeaderValue, RobloxAuthError> {
+    let response = Client::new()
         .post("https://auth.roblox.com")
         .header(header::COOKIE, roblosecurity_cookie)
         .header(header::CONTENT_LENGTH, 0)
         .send()
-        .await;
-    match res {
-        Ok(response) => {
-            let status_code = response.status();
-            if status_code == 403 {
-                response
-                    .headers()
-                    .get("X-CSRF-Token")
-                    .map(|v| v.to_owned())
-                    .ok_or_else(|| {
-                        "Request for CSRF token did not return an X-CSRF-Token header".to_owned()
-                    })
-            } else {
-                Err(format!(
-                    "Request for CSRF token returned {} (expected 403)",
-                    status_code
-                ))
-            }
-        }
-        Err(error) => return Err(format!("Request for CSRF token failed: {}", error)),
-    }
+        .await?;
+
+    response
+        .headers()
+        .get("X-CSRF-Token")
+        .map(|v| v.to_owned())
+        .ok_or(RobloxAuthError::MissingCsrfToken)
 }

@@ -2,31 +2,26 @@ use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Utc};
+use rbx_api::{
+    models::{
+        AssetId, AssetTypeId, CreateAssetQuota, CreateAudioAssetResponse, CreateBadgeResponse,
+        CreateDeveloperProductResponse, CreateExperienceResponse, CreateGamePassResponse,
+        CreateImageAssetResponse, CreateSocialLinkResponse, CreatorType,
+        ExperienceConfigurationModel, GetDeveloperProductResponse, GetGamePassResponse,
+        GetPlaceResponse, PlaceConfigurationModel, QuotaDuration, SocialLinkType,
+        UploadImageResponse,
+    },
+    RobloxApi,
+};
 use rbx_auth::RobloxAuth;
 use serde::{Deserialize, Serialize};
 use yansi::Paint;
 
-use crate::{
-    logger,
-    roblox_api::{
-        AssetTypeId, CreateAssetQuota, GetDeveloperProductResponse, GetGamePassResponse,
-        QuotaDuration,
-    },
-};
+use crate::logger;
 
-use super::{
-    resource_graph::{
-        all_outputs, optional_output, single_output, Resource, ResourceId, ResourceManager,
-    },
-    roblox_api::{
-        CreateAudioAssetResponse, CreateBadgeResponse, CreateDeveloperProductResponse,
-        CreateExperienceResponse, CreateGamePassResponse, CreateImageAssetResponse,
-        CreateSocialLinkResponse, CreatorType, ExperienceConfigurationModel, GetPlaceResponse,
-        PlaceConfigurationModel, RobloxApi, SocialLinkType, UploadImageResponse,
-    },
+use super::resource_graph::{
+    all_outputs, optional_output, single_output, Resource, ResourceId, ResourceManager,
 };
-
-pub type AssetId = u64;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -299,8 +294,12 @@ pub struct RobloxResourceManager {
 
 impl RobloxResourceManager {
     pub async fn new(project_path: &Path, payment_source: CreatorType) -> Result<Self, String> {
+        let roblox_auth = RobloxAuth::new().await?;
+        let roblox_api = RobloxApi::new(roblox_auth)?;
+        roblox_api.validate_auth().await?;
+
         Ok(Self {
-            roblox_api: RobloxApi::new(RobloxAuth::new().await?).await?,
+            roblox_api,
             project_path: project_path.to_path_buf(),
             payment_source,
         })

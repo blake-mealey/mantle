@@ -5,21 +5,18 @@ use std::{
     str,
 };
 
+use rbx_api::models::{
+    AssetId, AssetTypeId, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
+    ExperienceConfigurationModel, ExperienceGenre, ExperiencePlayableDevice,
+    PlaceConfigurationModel, SocialSlotType,
+};
 use rusoto_core::Region;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use url::Url;
 use yansi::Paint;
 
-use super::{
-    logger,
-    roblox_api::{
-        AssetTypeId, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
-        ExperienceConfigurationModel, ExperienceGenre, ExperiencePlayableDevice,
-        PlaceConfigurationModel, SocialSlotType,
-    },
-    roblox_resource_manager::AssetId,
-};
+use super::logger;
 
 #[derive(JsonSchema, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -788,10 +785,10 @@ pub struct ExperienceTargetConfigurationConfig {
     /// [`privateServers`](#target-experience-configuration-privateservers) are
     /// also enabled as they are incompatible.
     ///
-    /// | Value            | Description                                                             |
-    /// |------------------|-------------------------------------------------------------------------|
-    /// | `'disabled'`     | Paid access will be disabled.                                           |
-    /// | `price: <price>` | Paid access will be enabled and will cost the provided number of Robux. |
+    /// | Value            | Description                                                                                      |
+    /// |------------------|--------------------------------------------------------------------------------------------------|
+    /// | `'disabled'`     | Paid access will be disabled.                                                                    |
+    /// | `price: <price>` | Paid access will be enabled and will cost the provided number of Robux. Must be a minimum of 25. |
     ///
     /// ```yml title="Enabled Example"
     /// target:

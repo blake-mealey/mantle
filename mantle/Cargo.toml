@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 rbx_mantle = { path = "../rbx_mantle" }
+rbx_api = { path = "../rbx_api" }
 rbx_auth = { path = "../rbx_auth" }
 integration_executor = { path = "../integration_executor" }
 

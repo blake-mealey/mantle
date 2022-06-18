@@ -2,7 +2,6 @@ use yansi::Paint;
 
 use rbx_mantle::{
     config::{load_project_config, StateConfig},
-    logger,
     state::{get_state, save_state},
 };
 

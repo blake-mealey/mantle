@@ -9,5 +9,6 @@ members = [
     "rbx_api",
     "rbx_auth",
     "rbx_cookie",
+    "logger",
     "integration_executor"
 ]

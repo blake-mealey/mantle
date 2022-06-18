@@ -1,0 +1,8 @@
+[package]
+name = "logger"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+difference = "2.0.0"
+yansi = "0.5.0"

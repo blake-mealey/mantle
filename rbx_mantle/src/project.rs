@@ -9,7 +9,6 @@ use super::{
         OwnerConfig, PaymentsConfig, PlaceTargetConfigurationConfig, PlayabilityTargetConfig,
         StateConfig, TargetAccessConfig, TargetConfig, TargetNamePrefixConfig,
     },
-    logger,
     resource_graph::ResourceGraph,
     roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource},
     state::{get_previous_state, ResourceStateVLatest},

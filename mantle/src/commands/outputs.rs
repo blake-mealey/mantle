@@ -4,7 +4,6 @@ use yansi::Paint;
 
 use rbx_mantle::{
     config::load_project_config,
-    logger,
     project::{load_project, Project},
     resource_graph::Resource,
 };

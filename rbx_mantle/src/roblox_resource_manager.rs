@@ -17,8 +17,6 @@ use rbx_auth::RobloxAuth;
 use serde::{Deserialize, Serialize};
 use yansi::Paint;
 
-use crate::logger;
-
 use super::resource_graph::{
     all_outputs, optional_output, single_output, Resource, ResourceId, ResourceManager,
 };

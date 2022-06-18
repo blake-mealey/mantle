@@ -1948,6 +1948,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_repr",
+ "thiserror",
  "tokio",
  "tokio-util 0.6.10",
  "url",

@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 rbx_auth = { path = "../rbx_auth" }
 
+thiserror = "1.0.31"
+
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0.59" }
 serde_repr = "0.1.7"

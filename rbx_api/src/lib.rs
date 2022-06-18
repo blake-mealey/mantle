@@ -11,10 +11,47 @@ use reqwest::{
 use scraper::{Html, Selector};
 use serde::de;
 use serde_json::json;
+use thiserror::Error;
 use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
 
 use models::*;
+
+// TODO: Improve some of these error messages.
+#[derive(Error, Debug)]
+pub enum RobloxApiError {
+    #[error("HTTP client error.")]
+    HttpClient(#[from] reqwest::Error),
+    #[error("Authorization has been denied for this request. Check your ROBLOSECURITY cookie.")]
+    Authorization,
+    #[error("Roblox error: {0}")]
+    Roblox(String),
+    #[error("Failed to parse JSON response.")]
+    ParseJson(#[from] serde_json::Error),
+    #[error("Failed to parse HTML response.")]
+    ParseHtml,
+    #[error("Failed to parse AssetId.")]
+    ParseAssetId,
+    #[error("Failed to read file.")]
+    ReadFile(#[from] std::io::Error),
+    #[error("Failed to determine file name for path {0}.")]
+    NoFileName(String),
+    #[error("Invalid file extension for path {0}.")]
+    InvalidFileExtension(String),
+    #[error("Failed to read utf8 data.")]
+    InvalidUtf8(#[from] std::string::FromUtf8Error),
+    #[error("No create quotas found for asset type {0}")]
+    MissingCreateQuota(AssetTypeId),
+}
+
+// Temporary to make the new errors backwards compatible with the String errors throughout the project.
+impl From<RobloxApiError> for String {
+    fn from(e: RobloxApiError) -> Self {
+        e.to_string()
+    }
+}
+
+pub type RobloxApiResult<T> = Result<T, RobloxApiError>;
 
 async fn get_roblox_api_error_message_from_response(response: reqwest::Response) -> String {
     let status_code = response.status();
@@ -51,28 +88,30 @@ async fn get_roblox_api_error_message_from_response(response: reqwest::Response)
     reason.unwrap_or_else(|| format!("Unknown error (status {})", status_code))
 }
 
-async fn handle(request_builder: reqwest::RequestBuilder) -> Result<reqwest::Response, String> {
+async fn handle(request_builder: reqwest::RequestBuilder) -> RobloxApiResult<reqwest::Response> {
     let result = request_builder.send().await;
     match result {
         Ok(response) => {
             // Check for redirects to the login page
             let url = response.url();
             if matches!(url.domain(), Some("www.roblox.com")) && url.path() == "/NewLogin" {
-                return Err("Authorization has been denied for this request.".to_owned());
+                return Err(RobloxApiError::Authorization);
             }
 
             // Check status code
             if response.status().is_success() {
                 Ok(response)
             } else {
-                Err(get_roblox_api_error_message_from_response(response).await)
+                Err(RobloxApiError::Roblox(
+                    get_roblox_api_error_message_from_response(response).await,
+                ))
             }
         }
-        Err(error) => Err(format!("HTTP client error: {}", error)),
+        Err(error) => Err(error.into()),
     }
 }
 
-async fn handle_as_json<T>(request_builder: reqwest::RequestBuilder) -> Result<T, String>
+async fn handle_as_json<T>(request_builder: reqwest::RequestBuilder) -> RobloxApiResult<T>
 where
     T: de::DeserializeOwned,
 {
@@ -80,48 +119,41 @@ where
         .await?
         .json::<T>()
         .await
-        .map_err(|e| format!("Failed to deserialize response: {}", e))
+        .map_err(|e| e.into())
 }
 
 async fn handle_as_json_with_status<T>(
     request_builder: reqwest::RequestBuilder,
-) -> Result<T, String>
+) -> RobloxApiResult<T>
 where
     T: de::DeserializeOwned,
 {
     let response = handle(request_builder).await?;
     let status_code = response.status();
-    let data = response
-        .bytes()
-        .await
-        .map_err(|e| format!("Failed to read response: {}", e))?;
+    let data = response.bytes().await?;
     if let Ok(error) = serde_json::from_slice::<RobloxApiErrorResponse>(&data) {
         if !error.success.unwrap_or(false) {
-            return Err(error.reason_or_status_code(status_code));
+            return Err(RobloxApiError::Roblox(
+                error.reason_or_status_code(status_code),
+            ));
         }
     }
-    serde_json::from_slice::<T>(&data).map_err(|e| format!("Failed to deserialize response: {}", e))
+    Ok(serde_json::from_slice::<T>(&data)?)
 }
 
-async fn handle_as_html(request_builder: reqwest::RequestBuilder) -> Result<Html, String> {
-    let text = handle(request_builder)
-        .await?
-        .text()
-        .await
-        .map_err(|e| format!("Failed to read HTML response: {}", e))?;
+async fn handle_as_html(request_builder: reqwest::RequestBuilder) -> RobloxApiResult<Html> {
+    let text = handle(request_builder).await?.text().await?;
     Ok(Html::parse_fragment(&text))
 }
 
-async fn get_file_part(file_path: PathBuf) -> Result<Part, String> {
-    let file = File::open(&file_path)
-        .await
-        .map_err(|e| format!("Failed to open image file {}: {}", file_path.display(), e))?;
+async fn get_file_part(file_path: PathBuf) -> RobloxApiResult<Part> {
+    let file = File::open(&file_path).await?;
     let reader = Body::wrap_stream(FramedRead::new(file, BytesCodec::new()));
 
     let file_name = file_path
         .file_name()
         .and_then(OsStr::to_str)
-        .ok_or("Unable to determine image file name")?
+        .ok_or(RobloxApiError::NoFileName(file_path.display().to_string()))?
         .to_owned();
     let mime = mime_guess::from_path(&file_path).first_or_octet_stream();
 
@@ -131,20 +163,16 @@ async fn get_file_part(file_path: PathBuf) -> Result<Part, String> {
         .unwrap())
 }
 
-fn get_input_value(html: &Html, selector: &str) -> Result<String, String> {
-    let input_selector =
-        Selector::parse(selector).map_err(|_| format!("Failed to parse selector {}", selector))?;
+fn get_input_value(html: &Html, selector: &str) -> RobloxApiResult<String> {
+    let input_selector = Selector::parse(selector).unwrap();
     let input_element = html
         .select(&input_selector)
         .next()
-        .ok_or(format!("Failed to find input with selector {}", selector))?;
+        .ok_or(RobloxApiError::ParseHtml)?;
     let input_value = input_element
         .value()
         .attr("value")
-        .ok_or(format!(
-            "input with selector {} did not have a value",
-            selector
-        ))?
+        .ok_or(RobloxApiError::ParseHtml)?
         .to_owned();
 
     Ok(input_value)
@@ -155,60 +183,49 @@ pub struct RobloxApi {
 }
 
 impl RobloxApi {
-    pub fn new(roblox_auth: RobloxAuth) -> Result<Self, String> {
+    pub fn new(roblox_auth: RobloxAuth) -> RobloxApiResult<Self> {
         Ok(Self {
             client: reqwest::Client::builder()
                 .connection_verbose(true)
                 .user_agent("Roblox/WinInet")
                 .cookie_provider(Arc::new(roblox_auth.jar))
                 .default_headers(roblox_auth.headers)
-                .build()
-                .map_err(|e| format!("Failed to create Roblox API client: {}", e))?,
+                .build()?,
         })
     }
 
-    pub async fn validate_auth(&self) -> Result<(), String> {
+    pub async fn validate_auth(&self) -> RobloxApiResult<()> {
         let req = self
             .client
             .get("https://users.roblox.com/v1/users/authenticated");
 
-        handle(req).await.map_err(|_| {
-            "Authorization validation failed. Check your ROBLOSECURITY cookie.".to_owned()
-        })?;
+        handle(req)
+            .await
+            .map_err(|_| RobloxApiError::Authorization)?;
 
         Ok(())
     }
 
-    pub async fn upload_place(&self, place_file: PathBuf, place_id: AssetId) -> Result<(), String> {
-        let extension = place_file.extension().ok_or(format!(
-            "No file extension on place file {} (expected .rbxl or .rbxlx).",
-            place_file.display()
-        ))?;
-
-        let file_format = match extension.to_str() {
+    pub async fn upload_place(
+        &self,
+        place_file: PathBuf,
+        place_id: AssetId,
+    ) -> RobloxApiResult<()> {
+        let file_format = match place_file.extension().and_then(|e| e.to_str()) {
             Some("rbxl") => PlaceFileFormat::Binary,
             Some("rbxlx") => PlaceFileFormat::Xml,
             _ => {
-                return Err(format!(
-                    "Unknown file extension on place file {} (expected .rbxl or .rbxlx).",
-                    place_file.display()
+                return Err(RobloxApiError::InvalidFileExtension(
+                    place_file.display().to_string(),
                 ))
             }
         };
 
-        let data = fs::read(&place_file).map_err(|e| {
-            format!(
-                "Unable to read place file: {}\n\t{}",
-                place_file.display(),
-                e
-            )
-        })?;
+        let data = fs::read(&place_file)?;
 
         let body: Body = match file_format {
             PlaceFileFormat::Binary => data.into(),
-            PlaceFileFormat::Xml => String::from_utf8(data)
-                .map_err(|_| "Unable to read place file")?
-                .into(),
+            PlaceFileFormat::Xml => String::from_utf8(data)?.into(),
         };
 
         let content_type = match file_format {
@@ -228,7 +245,7 @@ impl RobloxApi {
         Ok(())
     }
 
-    pub async fn get_place(&self, place_id: AssetId) -> Result<GetPlaceResponse, String> {
+    pub async fn get_place(&self, place_id: AssetId) -> RobloxApiResult<GetPlaceResponse> {
         let req = self.client.get(&format!(
             "https://develop.roblox.com/v2/places/{}",
             place_id
@@ -241,7 +258,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         page_cursor: Option<String>,
-    ) -> Result<ListPlacesResponse, String> {
+    ) -> RobloxApiResult<ListPlacesResponse> {
         let mut req = self.client.get(format!(
             "https://develop.roblox.com/v1/universes/{}/places",
             experience_id
@@ -257,7 +274,7 @@ impl RobloxApi {
     pub async fn get_all_places(
         &self,
         experience_id: AssetId,
-    ) -> Result<Vec<GetPlaceResponse>, String> {
+    ) -> RobloxApiResult<Vec<GetPlaceResponse>> {
         let mut all_places = Vec::new();
 
         let mut page_cursor: Option<String> = None;
@@ -282,7 +299,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         place_id: AssetId,
-    ) -> Result<(), String> {
+    ) -> RobloxApiResult<()> {
         let req = self
             .client
             .post("https://www.roblox.com/universes/removeplace")
@@ -299,7 +316,7 @@ impl RobloxApi {
     pub async fn create_experience(
         &self,
         group_id: Option<AssetId>,
-    ) -> Result<CreateExperienceResponse, String> {
+    ) -> RobloxApiResult<CreateExperienceResponse> {
         let req = self
             .client
             .post("https://api.roblox.com/universes/create")
@@ -314,7 +331,7 @@ impl RobloxApi {
     pub async fn get_experience(
         &self,
         experience_id: AssetId,
-    ) -> Result<GetExperienceResponse, String> {
+    ) -> RobloxApiResult<GetExperienceResponse> {
         let req = self.client.get(&format!(
             "https://develop.roblox.com/v1/universes/{}",
             experience_id
@@ -326,7 +343,7 @@ impl RobloxApi {
     pub async fn get_experience_configuration(
         &self,
         experience_id: AssetId,
-    ) -> Result<ExperienceConfigurationModel, String> {
+    ) -> RobloxApiResult<ExperienceConfigurationModel> {
         let req = self.client.get(&format!(
             "https://develop.roblox.com/v1/universes/{}/configuration",
             experience_id
@@ -338,7 +355,7 @@ impl RobloxApi {
     pub async fn create_place(
         &self,
         experience_id: AssetId,
-    ) -> Result<CreatePlaceResponse, String> {
+    ) -> RobloxApiResult<CreatePlaceResponse> {
         let req = self
             .client
             .post("https://www.roblox.com/ide/places/createV2")
@@ -355,7 +372,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         experience_configuration: &ExperienceConfigurationModel,
-    ) -> Result<(), String> {
+    ) -> RobloxApiResult<()> {
         let req = self
             .client
             .patch(&format!(
@@ -373,7 +390,7 @@ impl RobloxApi {
         &self,
         place_id: AssetId,
         place_configuration: &PlaceConfigurationModel,
-    ) -> Result<(), String> {
+    ) -> RobloxApiResult<()> {
         let req = self
             .client
             .patch(&format!(
@@ -391,7 +408,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         active: bool,
-    ) -> Result<(), String> {
+    ) -> RobloxApiResult<()> {
         let endpoint = if active { "activate" } else { "deactivate" };
         let req = self
             .client
@@ -411,7 +428,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         icon_file: PathBuf,
-    ) -> Result<UploadImageResponse, String> {
+    ) -> RobloxApiResult<UploadImageResponse> {
         let req = self
             .client
             .post(&format!(
@@ -427,7 +444,7 @@ impl RobloxApi {
         &self,
         start_place_id: AssetId,
         icon_asset_id: AssetId,
-    ) -> Result<(), String> {
+    ) -> RobloxApiResult<()> {
         let req = self
             .client
             .post("https://www.roblox.com/places/icons/remove-icon")
@@ -445,7 +462,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         thumbnail_file: PathBuf,
-    ) -> Result<UploadImageResponse, String> {
+    ) -> RobloxApiResult<UploadImageResponse> {
         let req = self
             .client
             .post(&format!(
@@ -462,7 +479,7 @@ impl RobloxApi {
     pub async fn get_experience_thumbnails(
         &self,
         experience_id: AssetId,
-    ) -> Result<Vec<GetExperienceThumbnailResponse>, String> {
+    ) -> RobloxApiResult<Vec<GetExperienceThumbnailResponse>> {
         let req = self.client.get(&format!(
             "https://games.roblox.com/v1/games/{}/media",
             experience_id
@@ -477,7 +494,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         new_thumbnail_order: &[AssetId],
-    ) -> Result<(), String> {
+    ) -> RobloxApiResult<()> {
         let req = self
             .client
             .post(&format!(
@@ -495,7 +512,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         thumbnail_id: AssetId,
-    ) -> Result<(), String> {
+    ) -> RobloxApiResult<()> {
         let req = self.client.delete(&format!(
             "https://develop.roblox.com/v1/universes/{}/thumbnails/{}",
             experience_id, thumbnail_id
@@ -510,7 +527,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         icon_file: PathBuf,
-    ) -> Result<AssetId, String> {
+    ) -> RobloxApiResult<AssetId> {
         let image_verification_token = {
             let req = self
                 .client
@@ -538,7 +555,7 @@ impl RobloxApi {
 
         get_input_value(&html, "#developerProductIcon input[id=\"assetId\"]")?
             .parse()
-            .map_err(|e| format!("Failed to parse asset id: {}", e))
+            .map_err(|_| RobloxApiError::ParseAssetId)
     }
 
     pub async fn create_developer_product(
@@ -548,7 +565,7 @@ impl RobloxApi {
         price: u32,
         description: String,
         icon_asset_id: Option<AssetId>,
-    ) -> Result<CreateDeveloperProductResponse, String> {
+    ) -> RobloxApiResult<CreateDeveloperProductResponse> {
         let mut req = self
             .client
             .post(&format!(
@@ -574,7 +591,7 @@ impl RobloxApi {
         title: String,
         url: String,
         link_type: SocialLinkType,
-    ) -> Result<CreateSocialLinkResponse, String> {
+    ) -> RobloxApiResult<CreateSocialLinkResponse> {
         let req = self
             .client
             .post(&format!(
@@ -597,7 +614,7 @@ impl RobloxApi {
         title: String,
         url: String,
         link_type: SocialLinkType,
-    ) -> Result<(), String> {
+    ) -> RobloxApiResult<()> {
         let req = self
             .client
             .patch(&format!(
@@ -619,7 +636,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         social_link_id: AssetId,
-    ) -> Result<(), String> {
+    ) -> RobloxApiResult<()> {
         let req = self.client.delete(&format!(
             "https://develop.roblox.com/v1/universes/{}/social-links/{}",
             experience_id, social_link_id
@@ -633,7 +650,7 @@ impl RobloxApi {
     pub async fn list_social_links(
         &self,
         experience_id: AssetId,
-    ) -> Result<Vec<GetSocialLinkResponse>, String> {
+    ) -> RobloxApiResult<Vec<GetSocialLinkResponse>> {
         let req = self.client.get(&format!(
             "https://games.roblox.com/v1/games/{}/social-links/list",
             experience_id
@@ -646,7 +663,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         page_cursor: Option<String>,
-    ) -> Result<ListGamePassesResponse, String> {
+    ) -> RobloxApiResult<ListGamePassesResponse> {
         let mut req = self.client.get(&format!(
             "https://games.roblox.com/v1/games/{}/game-passes",
             experience_id
@@ -661,7 +678,7 @@ impl RobloxApi {
     pub async fn get_game_pass(
         &self,
         game_pass_id: AssetId,
-    ) -> Result<GetGamePassResponse, String> {
+    ) -> RobloxApiResult<GetGamePassResponse> {
         let req = self
             .client
             .get("https://api.roblox.com/marketplace/game-pass-product-info")
@@ -678,7 +695,7 @@ impl RobloxApi {
     pub async fn get_all_game_passes(
         &self,
         experience_id: AssetId,
-    ) -> Result<Vec<GetGamePassResponse>, String> {
+    ) -> RobloxApiResult<Vec<GetGamePassResponse>> {
         let mut all_games = Vec::new();
 
         let mut page_cursor: Option<String> = None;
@@ -703,7 +720,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         page: u32,
-    ) -> Result<ListDeveloperProductsResponse, String> {
+    ) -> RobloxApiResult<ListDeveloperProductsResponse> {
         let req = self
             .client
             .get("https://api.roblox.com/developerproducts/list")
@@ -718,7 +735,7 @@ impl RobloxApi {
     pub async fn get_all_developer_products(
         &self,
         experience_id: AssetId,
-    ) -> Result<Vec<ListDeveloperProductResponseItem>, String> {
+    ) -> RobloxApiResult<Vec<ListDeveloperProductResponseItem>> {
         let mut all_products = Vec::new();
 
         let mut page: u32 = 1;
@@ -739,7 +756,7 @@ impl RobloxApi {
     pub async fn get_developer_product(
         &self,
         developer_product_id: AssetId,
-    ) -> Result<GetDeveloperProductResponse, String> {
+    ) -> RobloxApiResult<GetDeveloperProductResponse> {
         let req = self.client.get(format!(
             "https://develop.roblox.com/v1/developerproducts/{}",
             developer_product_id
@@ -756,7 +773,7 @@ impl RobloxApi {
         price: u32,
         description: String,
         icon_asset_id: Option<AssetId>,
-    ) -> Result<(), String> {
+    ) -> RobloxApiResult<()> {
         let req = self
             .client
             .post(&format!(
@@ -781,7 +798,7 @@ impl RobloxApi {
         name: String,
         description: String,
         icon_file: PathBuf,
-    ) -> Result<CreateGamePassResponse, String> {
+    ) -> RobloxApiResult<CreateGamePassResponse> {
         let form_verification_token = {
             let req = self
                 .client
@@ -820,7 +837,7 @@ impl RobloxApi {
             let icon_asset_id =
                 get_input_value(&html, "#upload-form input[name=\"assetImageId\"]")?
                     .parse::<AssetId>()
-                    .map_err(|e| format!("Failed to parse asset id: {}", e))?;
+                    .map_err(|_| RobloxApiError::ParseAssetId)?;
 
             (form_verification_token, icon_asset_id)
         };
@@ -844,9 +861,8 @@ impl RobloxApi {
         let asset_id = location
             .query_pairs()
             .find_map(|(k, v)| if k == "uploadedId" { Some(v) } else { None })
-            .ok_or("Failed to find ID from Location")?
-            .parse::<AssetId>()
-            .map_err(|e| format!("Failed to parse asset id: {}", e))?;
+            .and_then(|v| v.parse::<AssetId>().ok())
+            .ok_or(RobloxApiError::ParseAssetId)?;
 
         Ok(CreateGamePassResponse {
             asset_id,
@@ -861,7 +877,7 @@ impl RobloxApi {
         description: String,
         price: Option<u32>,
         icon_file: Option<PathBuf>,
-    ) -> Result<GetGamePassResponse, String> {
+    ) -> RobloxApiResult<GetGamePassResponse> {
         let mut form = MultipartForm::new()
             .text("id", game_pass_id.to_string())
             .text("name", name)
@@ -892,7 +908,7 @@ impl RobloxApi {
         icon_file_path: PathBuf,
         payment_source: CreatorType,
         expected_cost: u32,
-    ) -> Result<CreateBadgeResponse, String> {
+    ) -> RobloxApiResult<CreateBadgeResponse> {
         let req = self
             .client
             .post(&format!(
@@ -917,7 +933,7 @@ impl RobloxApi {
         name: String,
         description: String,
         enabled: bool,
-    ) -> Result<(), String> {
+    ) -> RobloxApiResult<()> {
         let req = self
             .client
             .patch(&format!("https://badges.roblox.com/v1/badges/{}", badge_id))
@@ -932,7 +948,10 @@ impl RobloxApi {
         Ok(())
     }
 
-    pub async fn get_create_badge_free_quota(&self, experience_id: AssetId) -> Result<i32, String> {
+    pub async fn get_create_badge_free_quota(
+        &self,
+        experience_id: AssetId,
+    ) -> RobloxApiResult<i32> {
         let req = self.client.get(&format!(
             "https://badges.roblox.com/v1/universes/{}/free-badges-quota",
             experience_id
@@ -945,7 +964,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         page_cursor: Option<String>,
-    ) -> Result<ListBadgesResponse, String> {
+    ) -> RobloxApiResult<ListBadgesResponse> {
         let mut req = self.client.get(&format!(
             "https://badges.roblox.com/v1/universes/{}/badges",
             experience_id
@@ -960,7 +979,7 @@ impl RobloxApi {
     pub async fn get_all_badges(
         &self,
         experience_id: AssetId,
-    ) -> Result<Vec<ListBadgeResponse>, String> {
+    ) -> RobloxApiResult<Vec<ListBadgeResponse>> {
         let mut all_badges = Vec::new();
 
         let mut page_cursor: Option<String> = None;
@@ -982,7 +1001,7 @@ impl RobloxApi {
         &self,
         badge_id: AssetId,
         icon_file: PathBuf,
-    ) -> Result<UploadImageResponse, String> {
+    ) -> RobloxApiResult<UploadImageResponse> {
         let req = self
             .client
             .post(&format!(
@@ -999,7 +1018,7 @@ impl RobloxApi {
         experience_id: AssetId,
         asset_id: AssetId,
         name: String,
-    ) -> Result<(), String> {
+    ) -> RobloxApiResult<()> {
         let req = self
             .client
             .post(&format!(
@@ -1023,7 +1042,7 @@ impl RobloxApi {
         asset_id: AssetId,
         previous_name: String,
         name: String,
-    ) -> Result<(), String> {
+    ) -> RobloxApiResult<()> {
         let req = self
             .client
             .post("https://api.roblox.com/universes/update-alias-v2")
@@ -1046,7 +1065,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         name: String,
-    ) -> Result<(), String> {
+    ) -> RobloxApiResult<()> {
         let req = self
             .client
             .post("https://api.roblox.com/universes/delete-alias")
@@ -1062,7 +1081,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
         page: u32,
-    ) -> Result<ListAssetAliasesResponse, String> {
+    ) -> RobloxApiResult<ListAssetAliasesResponse> {
         let req = self
             .client
             .get("https://api.roblox.com/universes/get-aliases")
@@ -1077,7 +1096,7 @@ impl RobloxApi {
     pub async fn get_all_asset_aliases(
         &self,
         experience_id: AssetId,
-    ) -> Result<Vec<GetAssetAliasResponse>, String> {
+    ) -> RobloxApiResult<Vec<GetAssetAliasResponse>> {
         let mut all_products = Vec::new();
 
         let mut page: u32 = 1;
@@ -1099,14 +1118,8 @@ impl RobloxApi {
         &self,
         file_path: PathBuf,
         group_id: Option<AssetId>,
-    ) -> Result<CreateImageAssetResponse, String> {
-        let data = fs::read(&file_path).map_err(|e| {
-            format!(
-                "Unable to read image asset file: {}\n\t{}",
-                file_path.display(),
-                e
-            )
-        })?;
+    ) -> RobloxApiResult<CreateImageAssetResponse> {
+        let data = fs::read(&file_path)?;
 
         let file_name = format!(
             "Images/{}",
@@ -1133,7 +1146,7 @@ impl RobloxApi {
     pub async fn get_create_asset_quota(
         &self,
         asset_type: AssetTypeId,
-    ) -> Result<CreateAssetQuota, String> {
+    ) -> RobloxApiResult<CreateAssetQuota> {
         let req = self
             .client
             .get("https://publish.roblox.com/v1/asset-quotas")
@@ -1148,10 +1161,7 @@ impl RobloxApi {
             .quotas
             .first()
             .cloned()
-            .ok_or(format!(
-                "No create quotas found for asset type {}",
-                asset_type
-            ))
+            .ok_or(RobloxApiError::MissingCreateQuota(asset_type))
     }
 
     pub async fn create_audio_asset(
@@ -1159,14 +1169,8 @@ impl RobloxApi {
         file_path: PathBuf,
         group_id: Option<AssetId>,
         payment_source: CreatorType,
-    ) -> Result<CreateAudioAssetResponse, String> {
-        let data = fs::read(&file_path).map_err(|e| {
-            format!(
-                "Unable to read audio asset file: {}\n\t{}",
-                file_path.display(),
-                e
-            )
-        })?;
+    ) -> RobloxApiResult<CreateAudioAssetResponse> {
+        let data = fs::read(&file_path)?;
 
         let file_name = format!(
             "Audio/{}",
@@ -1186,7 +1190,7 @@ impl RobloxApi {
         handle_as_json(req).await
     }
 
-    pub async fn archive_asset(&self, asset_id: AssetId) -> Result<(), String> {
+    pub async fn archive_asset(&self, asset_id: AssetId) -> RobloxApiResult<()> {
         let req = self
             .client
             .post(&format!(

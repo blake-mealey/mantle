@@ -402,7 +402,7 @@ pub struct ExperienceAvatarScales {
     pub proportion: String,
 }
 
-#[derive(Serialize_repr, Deserialize_repr, Clone)]
+#[derive(Serialize_repr, Deserialize_repr, Clone, Debug)]
 #[repr(u8)]
 pub enum AssetTypeId {
     Image = 1,

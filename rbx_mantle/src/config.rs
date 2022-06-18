@@ -785,10 +785,10 @@ pub struct ExperienceTargetConfigurationConfig {
     /// [`privateServers`](#target-experience-configuration-privateservers) are
     /// also enabled as they are incompatible.
     ///
-    /// | Value            | Description                                                             |
-    /// |------------------|-------------------------------------------------------------------------|
-    /// | `'disabled'`     | Paid access will be disabled.                                           |
-    /// | `price: <price>` | Paid access will be enabled and will cost the provided number of Robux. |
+    /// | Value            | Description                                                                                      |
+    /// |------------------|--------------------------------------------------------------------------------------------------|
+    /// | `'disabled'`     | Paid access will be disabled.                                                                    |
+    /// | `price: <price>` | Paid access will be enabled and will cost the provided number of Robux. Must be a minimum of 25. |
     ///
     /// ```yml title="Enabled Example"
     /// target:

@@ -1,0 +1,15 @@
+[package]
+name = "rbx_mantle_resource_graph"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+logger = { path = "../logger" }
+
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = { version = "0.8" }
+
+async-trait = "0.1.51"
+
+difference = "2.0.0"
+yansi = "0.5.0"

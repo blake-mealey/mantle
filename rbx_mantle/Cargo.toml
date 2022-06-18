@@ -15,6 +15,7 @@ include = [
 [dependencies]
 rbx_auth = { path = "../rbx_auth" }
 rbx_api = { path = "../rbx_api" }
+rbx_mantle_resource_graph = { path = "../rbx_mantle_resource_graph" }
 logger = { path = "../logger" }
 
 serde_yaml = { version = "0.8" }

@@ -1,11 +1,11 @@
 use std::{path::PathBuf, process::Command, str};
 
+use rbx_mantle_resource_graph::{EvaluateResults, ResourceGraph};
 use yansi::Paint;
 
 use rbx_mantle::{
     config::{load_project_config, TargetConfig},
     project::{load_project, Project},
-    resource_graph::{EvaluateResults, ResourceGraph},
     roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource, RobloxResourceManager},
     state::{get_desired_graph, save_state},
 };

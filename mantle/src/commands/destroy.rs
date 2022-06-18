@@ -1,11 +1,11 @@
 use std::str;
 
+use rbx_mantle_resource_graph::{EvaluateResults, ResourceGraph};
 use yansi::Paint;
 
 use rbx_mantle::{
     config::load_project_config,
     project::{load_project, Project},
-    resource_graph::{EvaluateResults, ResourceGraph},
     roblox_resource_manager::RobloxResourceManager,
     state::save_state,
 };

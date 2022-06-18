@@ -4,6 +4,7 @@ version = "0.11.3"
 edition = "2021"
 
 [dependencies]
+rbx_mantle_resource_graph = { path = "../rbx_mantle_resource_graph" }
 rbx_mantle = { path = "../rbx_mantle" }
 rbx_api = { path = "../rbx_api" }
 rbx_auth = { path = "../rbx_auth" }

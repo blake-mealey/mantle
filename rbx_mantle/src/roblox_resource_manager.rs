@@ -14,12 +14,11 @@ use rbx_api::{
     RobloxApi,
 };
 use rbx_auth::RobloxAuth;
-use serde::{Deserialize, Serialize};
-use yansi::Paint;
-
-use super::resource_graph::{
+use rbx_mantle_resource_graph::{
     all_outputs, optional_output, single_output, Resource, ResourceId, ResourceManager,
 };
+use serde::{Deserialize, Serialize};
+use yansi::Paint;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

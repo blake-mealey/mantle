@@ -1,11 +1,11 @@
 use std::{collections::BTreeMap, fs};
 
+use rbx_mantle_resource_graph::Resource;
 use yansi::Paint;
 
 use rbx_mantle::{
     config::load_project_config,
     project::{load_project, Project},
-    resource_graph::Resource,
 };
 
 pub async fn run(

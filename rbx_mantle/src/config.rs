@@ -5,21 +5,18 @@ use std::{
     str,
 };
 
+use rbx_api::{
+    AssetId, AssetTypeId, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
+    ExperienceConfigurationModel, ExperienceGenre, ExperiencePlayableDevice,
+    PlaceConfigurationModel, SocialSlotType,
+};
 use rusoto_core::Region;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use url::Url;
 use yansi::Paint;
 
-use super::{
-    logger,
-    roblox_api::{
-        AssetTypeId, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
-        ExperienceConfigurationModel, ExperienceGenre, ExperiencePlayableDevice,
-        PlaceConfigurationModel, SocialSlotType,
-    },
-    roblox_resource_manager::AssetId,
-};
+use super::logger;
 
 #[derive(JsonSchema, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

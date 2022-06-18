@@ -13,6 +13,7 @@ use std::{
 
 use chrono::Utc;
 use clap::crate_version;
+use rbx_api::{AssetId, CreatorType, GetExperienceResponse, RobloxApi, SocialLinkType};
 use rusoto_s3::{S3Client, S3};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -26,7 +27,6 @@ use super::{
     },
     logger,
     resource_graph::ResourceGraph,
-    roblox_api::{CreatorType, GetExperienceResponse, RobloxApi, SocialLinkType},
     roblox_resource_manager::*,
 };
 

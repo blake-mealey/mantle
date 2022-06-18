@@ -14,6 +14,7 @@ include = [
 
 [dependencies]
 rbx_auth = { path = "../rbx_auth" }
+rbx_api = { path = "../rbx_api" }
 
 serde_json = { version = "1.0.59" }
 serde_yaml = { version = "0.8" }

@@ -14,7 +14,7 @@ use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
 use url::Url;
 
-use super::roblox_resource_manager::AssetId;
+pub type AssetId = u64;
 
 pub const DEFAULT_PLACE_NAME: &str = "Untitled Game";
 

@@ -1,5 +1,6 @@
 use std::{path::PathBuf, process::Command, str};
 
+use rbx_api::{CreatorType, DEFAULT_PLACE_NAME};
 use yansi::Paint;
 
 use super::{
@@ -10,7 +11,6 @@ use super::{
     },
     logger,
     resource_graph::ResourceGraph,
-    roblox_api::{CreatorType, DEFAULT_PLACE_NAME},
     roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource},
     state::{get_previous_state, ResourceStateVLatest},
 };

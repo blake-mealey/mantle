@@ -2,31 +2,22 @@ use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Utc};
+use rbx_api::{
+    AssetId, AssetTypeId, CreateAssetQuota, CreateAudioAssetResponse, CreateBadgeResponse,
+    CreateDeveloperProductResponse, CreateExperienceResponse, CreateGamePassResponse,
+    CreateImageAssetResponse, CreateSocialLinkResponse, CreatorType, ExperienceConfigurationModel,
+    GetDeveloperProductResponse, GetGamePassResponse, GetPlaceResponse, PlaceConfigurationModel,
+    QuotaDuration, RobloxApi, SocialLinkType, UploadImageResponse,
+};
 use rbx_auth::RobloxAuth;
 use serde::{Deserialize, Serialize};
 use yansi::Paint;
 
-use crate::{
-    logger,
-    roblox_api::{
-        AssetTypeId, CreateAssetQuota, GetDeveloperProductResponse, GetGamePassResponse,
-        QuotaDuration,
-    },
-};
+use crate::logger;
 
-use super::{
-    resource_graph::{
-        all_outputs, optional_output, single_output, Resource, ResourceId, ResourceManager,
-    },
-    roblox_api::{
-        CreateAudioAssetResponse, CreateBadgeResponse, CreateDeveloperProductResponse,
-        CreateExperienceResponse, CreateGamePassResponse, CreateImageAssetResponse,
-        CreateSocialLinkResponse, CreatorType, ExperienceConfigurationModel, GetPlaceResponse,
-        PlaceConfigurationModel, RobloxApi, SocialLinkType, UploadImageResponse,
-    },
+use super::resource_graph::{
+    all_outputs, optional_output, single_output, Resource, ResourceId, ResourceManager,
 };
-
-pub type AssetId = u64;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

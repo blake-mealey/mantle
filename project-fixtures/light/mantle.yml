@@ -12,7 +12,7 @@ target:
         configuration:
           name: Lightweight Mantle Test
           serverFill:
-            reservedSlots: 5
+            reservedSlots: 4
 
 state:
   remote:

@@ -1233,6 +1233,7 @@ dependencies = [
  "rbx_auth",
  "rbx_mantle",
  "rbx_mantle_resource_graph",
+ "rbx_resource_manager",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -2025,7 +2026,6 @@ dependencies = [
 name = "rbx_mantle"
 version = "0.11.3"
 dependencies = [
- "async-trait",
  "chrono",
  "clap",
  "difference",
@@ -2035,6 +2035,7 @@ dependencies = [
  "rbx_api",
  "rbx_auth",
  "rbx_mantle_resource_graph",
+ "rbx_resource_manager",
  "rusoto_core",
  "rusoto_s3",
  "schemars",
@@ -2078,6 +2079,21 @@ dependencies = [
  "rbx_reflection",
  "rmp-serde",
  "serde",
+]
+
+[[package]]
+name = "rbx_resource_manager"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "logger",
+ "rbx_api",
+ "rbx_auth",
+ "rbx_mantle_resource_graph",
+ "serde",
+ "serde_yaml",
+ "yansi",
 ]
 
 [[package]]

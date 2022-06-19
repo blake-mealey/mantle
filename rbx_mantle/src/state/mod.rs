@@ -18,18 +18,16 @@ use rbx_api::{
     RobloxApi,
 };
 use rbx_mantle_resource_graph::resource_graph::ResourceGraph;
+use rbx_resource_manager::*;
 use rusoto_s3::{S3Client, S3};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::io::AsyncReadExt;
 use yansi::Paint;
 
-use super::{
-    config::{
-        AssetTargetConfig, Config, EnvironmentConfig, ExperienceTargetConfig, OwnerConfig,
-        PlayabilityTargetConfig, RemoteStateConfig, StateConfig, TargetConfig,
-    },
-    roblox_resource_manager::*,
+use super::config::{
+    AssetTargetConfig, Config, EnvironmentConfig, ExperienceTargetConfig, OwnerConfig,
+    PlayabilityTargetConfig, RemoteStateConfig, StateConfig, TargetConfig,
 };
 
 use self::{v1::ResourceStateV1, v2::ResourceStateV2, v3::ResourceStateV3, v4::ResourceStateV4};

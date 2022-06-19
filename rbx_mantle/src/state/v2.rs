@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
 use rbx_mantle_resource_graph::resource::{Resource, ResourceId};
+use rbx_resource_manager::*;
 use serde::{Deserialize, Serialize};
-
-use super::super::roblox_resource_manager::*;
 
 use super::{
     legacy_resources::{Input, LegacyResource, LegacyResourceGraph, ResourceRef},

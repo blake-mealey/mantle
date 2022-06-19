@@ -1,0 +1,17 @@
+[package]
+name = "rbx_resource_manager"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rbx_api = { path = "../rbx_api" }
+rbx_auth = { path = "../rbx_auth" }
+rbx_mantle_resource_graph = { path = "../rbx_mantle_resource_graph" }
+logger = { path = "../logger" }
+
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = { version = "0.8" }
+
+async-trait = "0.1.51"
+chrono = "0.4"
+yansi = "0.5.0"

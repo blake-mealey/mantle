@@ -2,6 +2,7 @@ use std::{path::PathBuf, process::Command, str};
 
 use rbx_api::models::{CreatorType, DEFAULT_PLACE_NAME};
 use rbx_mantle_resource_graph::resource_graph::ResourceGraph;
+use rbx_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource};
 use yansi::Paint;
 
 use super::{
@@ -10,7 +11,6 @@ use super::{
         OwnerConfig, PaymentsConfig, PlaceTargetConfigurationConfig, PlayabilityTargetConfig,
         StateConfig, TargetAccessConfig, TargetConfig, TargetNamePrefixConfig,
     },
-    roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource},
     state::{get_previous_state, ResourceStateVLatest},
 };
 

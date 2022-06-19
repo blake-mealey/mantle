@@ -6,12 +6,12 @@ use rbx_mantle_resource_graph::{
         EvaluateResults, ResourceGraphEvaluator, ResourceGraphEvaluatorOptions,
     },
 };
+use rbx_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource, RobloxResourceManager};
 use yansi::Paint;
 
 use rbx_mantle::{
     config::{load_project_config, TargetConfig},
     project::{load_project, Project},
-    roblox_resource_manager::{RobloxInputs, RobloxOutputs, RobloxResource, RobloxResourceManager},
     state::{get_desired_graph, save_state},
 };
 

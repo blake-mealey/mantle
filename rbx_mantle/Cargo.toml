@@ -15,6 +15,7 @@ include = [
 [dependencies]
 rbx_auth = { path = "../rbx_auth" }
 rbx_api = { path = "../rbx_api" }
+rbx_resource_manager = { path = "../rbx_resource_manager" }
 rbx_mantle_resource_graph = { path = "../rbx_mantle_resource_graph" }
 logger = { path = "../logger" }
 
@@ -27,7 +28,6 @@ difference = "2.0.0"
 rusoto_core = "0.47.0"
 rusoto_s3 = "0.47.0"
 tokio = { version = "1", features = ["full"] }
-async-trait = "0.1.51"
 chrono = "0.4"
 yansi = "0.5.0"
 url = { version = "2.2.2", features = ["serde"] }

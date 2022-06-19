@@ -2,15 +2,11 @@ use std::collections::HashMap;
 
 use rbx_api::models::AssetId;
 use rbx_mantle_resource_graph::resource::{Resource, ResourceId};
+use rbx_resource_manager::{PassInputs, PassOutputs, RobloxInputs, RobloxOutputs, RobloxResource};
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 
-use crate::{
-    roblox_resource_manager::{
-        PassInputs, PassOutputs, RobloxInputs, RobloxOutputs, RobloxResource,
-    },
-    state::v4::ResourceStateV4,
-};
+use crate::state::v4::ResourceStateV4;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ResourceStateV3 {

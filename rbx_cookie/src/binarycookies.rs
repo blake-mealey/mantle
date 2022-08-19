@@ -49,7 +49,7 @@ pub struct Cookies {
 impl Cookies {
     pub fn new(http_only: bool) -> Cookies {
         Cookies {
-            http_only: http_only,
+            http_only,
             cookies: Vec::new(),
         }
     }

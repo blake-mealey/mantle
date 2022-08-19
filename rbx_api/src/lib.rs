@@ -159,7 +159,7 @@ async fn get_file_part(file_path: PathBuf) -> RobloxApiResult<Part> {
 
     Ok(Part::stream(reader)
         .file_name(file_name)
-        .mime_str(&mime.to_string())
+        .mime_str(mime.as_ref())
         .unwrap())
 }
 

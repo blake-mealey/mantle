@@ -1998,6 +1998,7 @@ dependencies = [
  "env_logger",
  "log",
  "plist",
+ "winapi",
  "winreg",
 ]
 

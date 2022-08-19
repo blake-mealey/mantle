@@ -23,6 +23,7 @@ impl From<RobloxAuthError> for String {
     }
 }
 
+#[derive(Debug)]
 pub struct RobloxAuth {
     pub jar: Jar,
     pub headers: HeaderMap,

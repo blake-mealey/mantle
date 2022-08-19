@@ -1,6 +1,9 @@
 #[cfg(target_os = "windows")]
 mod wincred;
 
+#[cfg(target_os = "macos")]
+mod binarycookies;
+
 use std::env;
 
 use cookie::Cookie;
@@ -55,27 +58,24 @@ fn from_roblox_studio() -> Option<String> {
 
 #[cfg(target_os = "macos")]
 fn from_roblox_studio() -> Option<String> {
-    trace!("Attempting to load cookie from MacOS plist.");
+    use std::fs;
 
-    let path = dirs::home_dir()?.join("Library/Preferences/com.roblox.RobloxStudioBrowser.plist");
-    let list = plist::Value::from_file(path).ok()?;
+    trace!("Attempting to load cookie from MacOS HTTPStorages.");
 
-    let value = list
-        .as_dictionary()
-        .and_then(|dict| {
-            dict.into_iter().find_map(|(key, value)| {
-                if key.ends_with("ROBLOSECURITY") {
-                    Some(value)
-                } else {
-                    None
-                }
-            })
-        })?
-        .as_string()?;
+    let path = dirs::home_dir()?.join("Library/HTTPStorages/com.Roblox.RobloxStudio.binarycookies");
 
-    if let Some(cookie) = parse_roblox_studio_cookie(value) {
-        info!("Loaded cookie from MacOS plist.");
-        Some(cookie)
+    let binary = fs::read(path).ok()?;
+
+    let mut cookie_store = binarycookies::Cookies::new(false);
+    cookie_store.parse_content(&binary).ok()?;
+
+    if let Some(cookie) = cookie_store
+        .cookies
+        .iter()
+        .find(|cookie| cookie.name == COOKIE_NAME)
+    {
+        info!("Loaded cookie from MacOS HTTPStorages.");
+        Some(cookie.value.clone())
     } else {
         None
     }
@@ -106,7 +106,35 @@ fn from_roblox_studio_legacy() -> Option<String> {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
+fn from_roblox_studio_legacy() -> Option<String> {
+    trace!("Attempting to load cookie from MacOS plist.");
+
+    let path = dirs::home_dir()?.join("Library/Preferences/com.roblox.RobloxStudioBrowser.plist");
+    let list = plist::Value::from_file(path).ok()?;
+
+    let value = list
+        .as_dictionary()
+        .and_then(|dict| {
+            dict.into_iter().find_map(|(key, value)| {
+                if key.ends_with("ROBLOSECURITY") {
+                    Some(value)
+                } else {
+                    None
+                }
+            })
+        })?
+        .as_string()?;
+
+    if let Some(cookie) = parse_roblox_studio_cookie(value) {
+        info!("Loaded cookie from MacOS plist.");
+        Some(cookie)
+    } else {
+        None
+    }
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn from_roblox_studio_legacy() -> Option<String> {
     None
 }

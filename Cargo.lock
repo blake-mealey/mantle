@@ -1971,7 +1971,7 @@ dependencies = [
 
 [[package]]
 name = "rbx_auth"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "rbx_cookie",
  "reqwest",

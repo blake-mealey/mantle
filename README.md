@@ -10,7 +10,7 @@ It is recommended to install with Foreman, with the following config:
 # foreman.toml
 
 [tools]
-mantle = { source = "blake-mealey/mantle", version = "0.11.2" }
+mantle = { source = "blake-mealey/mantle", version = "0.11.3" }
 ```
 
 You can learn more about Foreman including how to install it from [its

@@ -33,7 +33,7 @@ fn from_environment() -> Option<String> {
 
 #[cfg(target_os = "windows")]
 fn from_roblox_studio() -> Option<String> {
-    trace!("Attempting to load cookie from Windows Roblox Studio.");
+    trace!("Attempting to load cookie from Windows Registry.");
 
     use winreg::{enums::HKEY_CURRENT_USER, RegKey};
 
@@ -44,7 +44,7 @@ fn from_roblox_studio() -> Option<String> {
     let value: String = key.get_value(".ROBLOSECURITY").ok()?;
 
     if let Some(cookie) = parse_roblox_studio_cookie(&value) {
-        info!("Loaded cookie from Windows Roblox Studio.");
+        info!("Loaded cookie from Windows Registry.");
         Some(cookie)
     } else {
         None
@@ -53,7 +53,7 @@ fn from_roblox_studio() -> Option<String> {
 
 #[cfg(target_os = "macos")]
 fn from_roblox_studio() -> Option<String> {
-    trace!("Attempting to load cookie from MacOS Roblox Studio.");
+    trace!("Attempting to load cookie from MacOS plist.");
 
     let path = dirs::home_dir()?.join("Library/Preferences/com.roblox.RobloxStudioBrowser.plist");
     let list = plist::Value::from_file(path).ok()?;
@@ -72,7 +72,7 @@ fn from_roblox_studio() -> Option<String> {
         .as_string()?;
 
     if let Some(cookie) = parse_roblox_studio_cookie(value) {
-        info!("Loaded cookie from MacOS Roblox Studio.");
+        info!("Loaded cookie from MacOS plist.");
         Some(cookie)
     } else {
         None

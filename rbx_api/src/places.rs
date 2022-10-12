@@ -3,12 +3,13 @@ use std::{fs, path::PathBuf};
 use reqwest::{header, Body};
 
 use crate::{
+    errors::{RobloxApiError, RobloxApiResult},
     helpers::{handle, handle_as_json, handle_as_json_with_status},
     models::{
         AssetId, CreatePlaceResponse, GetPlaceResponse, ListPlaceResponse, ListPlacesResponse,
         PlaceConfigurationModel, PlaceFileFormat, RemovePlaceResponse,
     },
-    RobloxApi, RobloxApiError, RobloxApiResult,
+    RobloxApi,
 };
 
 impl RobloxApi {

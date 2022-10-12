@@ -4,12 +4,13 @@ use reqwest::multipart::Form;
 use serde_json::json;
 
 use crate::{
+    errors::RobloxApiResult,
     helpers::{get_file_part, handle, handle_as_json},
     models::{
         AssetId, CreateBadgeResponse, CreatorType, ListBadgeResponse, ListBadgesResponse,
         UploadImageResponse,
     },
-    RobloxApi, RobloxApiResult,
+    RobloxApi,
 };
 
 impl RobloxApi {

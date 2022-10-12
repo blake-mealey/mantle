@@ -1,12 +1,13 @@
 use serde_json::json;
 
 use crate::{
+    errors::RobloxApiResult,
     helpers::{handle, handle_as_json},
     models::{
         AssetId, CreateSocialLinkResponse, GetSocialLinkResponse, ListSocialLinksResponse,
         SocialLinkType,
     },
-    RobloxApi, RobloxApiResult,
+    RobloxApi,
 };
 
 impl RobloxApi {

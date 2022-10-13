@@ -36,10 +36,10 @@ impl RobloxApi {
         &self,
         game_pass_id: AssetId,
     ) -> RobloxApiResult<GetGamePassResponse> {
-        let req = self
-            .client
-            .get("https://api.roblox.com/marketplace/game-pass-product-info")
-            .query(&[("gamePassId", &game_pass_id.to_string())]);
+        let req = self.client.get(format!(
+            "https://economy.roblox.com/v1/game-pass/{}/game-pass-product-info",
+            game_pass_id
+        ));
 
         let mut model = handle_as_json::<GetGamePassResponse>(req).await?;
         if model.target_id == 0 {

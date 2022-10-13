@@ -11,11 +11,9 @@ pub mod places;
 pub mod social_links;
 pub mod thumbnails;
 
-use std::sync::Arc;
-
 use errors::{RobloxApiError, RobloxApiResult};
 use helpers::handle;
-use rbx_auth::RobloxAuth;
+use rbx_auth::{RobloxAuth, WithRobloxAuth};
 
 pub struct RobloxApi {
     client: reqwest::Client,
@@ -27,8 +25,7 @@ impl RobloxApi {
             client: reqwest::Client::builder()
                 .connection_verbose(true)
                 .user_agent("Roblox/WinInet")
-                .cookie_provider(Arc::new(roblox_auth.jar))
-                .default_headers(roblox_auth.headers)
+                .roblox_auth(roblox_auth)
                 .build()?,
         })
     }

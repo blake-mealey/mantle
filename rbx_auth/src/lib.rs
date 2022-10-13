@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use reqwest::{
     cookie::Jar,
     header::{self, HeaderMap, HeaderValue},
-    Client,
+    Client, ClientBuilder,
 };
 use thiserror::Error;
 use url::Url;
@@ -58,4 +60,15 @@ async fn get_csrf_token(roblosecurity_cookie: &str) -> Result<HeaderValue, Roblo
         .get("X-CSRF-Token")
         .map(|v| v.to_owned())
         .ok_or(RobloxAuthError::MissingCsrfToken)
+}
+
+pub trait WithRobloxAuth {
+    fn roblox_auth(self, roblox_auth: RobloxAuth) -> Self;
+}
+
+impl WithRobloxAuth for ClientBuilder {
+    fn roblox_auth(self, roblox_auth: RobloxAuth) -> Self {
+        self.cookie_provider(Arc::new(roblox_auth.jar))
+            .default_headers(roblox_auth.headers)
+    }
 }

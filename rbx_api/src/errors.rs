@@ -1,3 +1,5 @@
+use reqwest::StatusCode;
+use serde::Deserialize;
 use thiserror::Error;
 
 use crate::models::AssetTypeId;
@@ -47,3 +49,49 @@ impl From<RobloxApiError> for String {
 }
 
 pub type RobloxApiResult<T> = Result<T, RobloxApiError>;
+
+#[derive(Deserialize, Debug)]
+pub struct RobloxApiErrorResponse {
+    // There are some other possible properties but we currently have no use for them so they are not
+    // included
+
+    // Most error models have a `message` property
+    #[serde(alias = "Message")]
+    pub message: Option<String>,
+
+    // Some error models (500) have a `title` property instead
+    #[serde(alias = "Title")]
+    pub title: Option<String>,
+
+    // Some error models on older APIs have an errors array
+    #[serde(alias = "Errors")]
+    pub errors: Option<Vec<RobloxApiErrorResponse>>,
+
+    // Some errors return a `success` property which can be used to check for errors
+    #[serde(alias = "Success")]
+    pub success: Option<bool>,
+}
+
+impl RobloxApiErrorResponse {
+    pub fn reason(self) -> Option<String> {
+        if let Some(message) = self.message {
+            Some(message)
+        } else if let Some(title) = self.title {
+            Some(title)
+        } else if let Some(errors) = self.errors {
+            for error in errors {
+                if let Some(message) = error.reason() {
+                    return Some(message);
+                }
+            }
+            None
+        } else {
+            None
+        }
+    }
+
+    pub fn reason_or_status_code(self, status_code: StatusCode) -> String {
+        self.reason()
+            .unwrap_or_else(|| format!("Unknown error ({})", status_code))
+    }
+}

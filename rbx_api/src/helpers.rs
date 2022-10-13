@@ -6,7 +6,7 @@ use serde::de;
 use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
 
-use crate::{models::RobloxApiErrorResponse, RobloxApiError, RobloxApiResult};
+use crate::{errors::RobloxApiErrorResponse, RobloxApiError, RobloxApiResult};
 
 pub async fn get_roblox_api_error_message_from_response(response: reqwest::Response) -> String {
     let status_code = response.status();

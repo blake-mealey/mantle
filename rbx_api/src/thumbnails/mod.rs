@@ -1,3 +1,5 @@
+pub mod models;
+
 use std::path::PathBuf;
 
 use reqwest::multipart::Form;
@@ -6,12 +8,11 @@ use serde_json::json;
 use crate::{
     errors::RobloxApiResult,
     helpers::{get_file_part, handle, handle_as_json},
-    models::{
-        AssetId, GetExperienceThumbnailResponse, GetExperienceThumbnailsResponse,
-        UploadImageResponse,
-    },
+    models::{AssetId, UploadImageResponse},
     RobloxApi,
 };
+
+use self::models::{GetExperienceThumbnailResponse, GetExperienceThumbnailsResponse};
 
 impl RobloxApi {
     // TODO: Generic form

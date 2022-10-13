@@ -1,6 +1,6 @@
 use std::{path::PathBuf, process::Command, str};
 
-use rbx_api::models::{CreatorType, DEFAULT_PLACE_NAME};
+use rbx_api::{models::CreatorType, places::models::DEFAULT_PLACE_NAME};
 use yansi::Paint;
 
 use super::{

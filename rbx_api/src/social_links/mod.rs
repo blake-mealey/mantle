@@ -1,13 +1,16 @@
+pub mod models;
+
 use serde_json::json;
 
 use crate::{
     errors::RobloxApiResult,
     helpers::{handle, handle_as_json},
-    models::{
-        AssetId, CreateSocialLinkResponse, GetSocialLinkResponse, ListSocialLinksResponse,
-        SocialLinkType,
-    },
+    models::AssetId,
     RobloxApi,
+};
+
+use self::models::{
+    CreateSocialLinkResponse, GetSocialLinkResponse, ListSocialLinksResponse, SocialLinkType,
 };
 
 impl RobloxApi {

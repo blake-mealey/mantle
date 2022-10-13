@@ -1,12 +1,16 @@
+mod models;
+
 use reqwest::header;
 use serde_json::json;
 
 use crate::{
     errors::RobloxApiResult,
     helpers::{handle, handle_as_json},
-    models::{AssetId, GetAssetAliasResponse, ListAssetAliasesResponse},
+    models::AssetId,
     RobloxApi,
 };
+
+use self::models::{GetAssetAliasResponse, ListAssetAliasesResponse};
 
 impl RobloxApi {
     pub async fn create_asset_alias(

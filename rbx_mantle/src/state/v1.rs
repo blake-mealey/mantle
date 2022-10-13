@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use rbx_api::models::{ExperienceConfigurationModel, PlaceConfigurationModel};
+use rbx_api::{
+    experiences::models::ExperienceConfigurationModel, places::models::PlaceConfigurationModel,
+};
 use serde::{Deserialize, Serialize};
 use serde_yaml::{to_value, Mapping, Value};
 

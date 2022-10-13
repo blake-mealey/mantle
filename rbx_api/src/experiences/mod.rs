@@ -1,14 +1,16 @@
+pub mod models;
+
 use reqwest::header;
 use serde_json::json;
 
 use crate::{
     errors::RobloxApiResult,
     helpers::{handle, handle_as_json},
-    models::{
-        AssetId, CreateExperienceResponse, ExperienceConfigurationModel, GetExperienceResponse,
-    },
+    models::AssetId,
     RobloxApi,
 };
+
+use self::models::{CreateExperienceResponse, ExperienceConfigurationModel, GetExperienceResponse};
 
 impl RobloxApi {
     pub async fn create_experience(

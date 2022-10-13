@@ -3,14 +3,16 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Utc};
 use rbx_api::{
-    models::{
-        AssetId, AssetTypeId, CreateAssetQuota, CreateAudioAssetResponse, CreateBadgeResponse,
-        CreateDeveloperProductResponse, CreateExperienceResponse, CreateGamePassResponse,
-        CreateImageAssetResponse, CreateSocialLinkResponse, CreatorType,
-        ExperienceConfigurationModel, GetDeveloperProductResponse, GetGamePassResponse,
-        GetPlaceResponse, PlaceConfigurationModel, QuotaDuration, SocialLinkType,
-        UploadImageResponse,
+    assets::models::{
+        CreateAssetQuota, CreateAudioAssetResponse, CreateImageAssetResponse, QuotaDuration,
     },
+    badges::models::CreateBadgeResponse,
+    developer_products::models::{CreateDeveloperProductResponse, GetDeveloperProductResponse},
+    experiences::models::{CreateExperienceResponse, ExperienceConfigurationModel},
+    game_passes::models::{CreateGamePassResponse, GetGamePassResponse},
+    models::{AssetId, AssetTypeId, CreatorType, UploadImageResponse},
+    places::models::{GetPlaceResponse, PlaceConfigurationModel},
+    social_links::models::{CreateSocialLinkResponse, SocialLinkType},
     RobloxApi,
 };
 use rbx_auth::RobloxAuth;

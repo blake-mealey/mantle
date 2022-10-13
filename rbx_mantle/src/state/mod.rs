@@ -14,7 +14,9 @@ use std::{
 use chrono::Utc;
 use clap::crate_version;
 use rbx_api::{
-    models::{AssetId, CreatorType, GetExperienceResponse, SocialLinkType},
+    experiences::models::GetExperienceResponse,
+    models::{AssetId, CreatorType},
+    social_links::models::SocialLinkType,
     RobloxApi,
 };
 use rusoto_s3::{S3Client, S3};

@@ -6,13 +6,12 @@ requests to Roblox APIs. Best used with the `rbx_api` crate.
 ## Usage
 
 ```rs
-use rbx_auth::RobloxAuth;
+use rbx_auth::{RobloxAuth, WithRobloxAuth};
 
 let auth = RobloxAuth::new().await?;
 
 let client = reqwest::Client::builder()
     .user_agent("Roblox/WinInet")
-    .cookie_provider(Arc::new(auth.jar))
-    .default_headers(auth.headers)
-    .build();
+    .roblox_auth(auth)
+    .build()?;
 ```

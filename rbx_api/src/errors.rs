@@ -7,7 +7,7 @@ use crate::models::AssetTypeId;
 // TODO: Improve some of these error messages.
 #[derive(Error, Debug)]
 pub enum RobloxApiError {
-    #[error("HTTP client error.")]
+    #[error("HTTP client error: {0}")]
     HttpClient(#[from] reqwest::Error),
 
     #[error("Authorization has been denied for this request. Check your ROBLOSECURITY cookie.")]
@@ -16,7 +16,7 @@ pub enum RobloxApiError {
     #[error("Roblox error: {0}")]
     Roblox(String),
 
-    #[error("Failed to parse JSON response.")]
+    #[error("Failed to parse JSON response: {0}")]
     ParseJson(#[from] serde_json::Error),
 
     #[error("Failed to parse HTML response.")]
@@ -25,7 +25,7 @@ pub enum RobloxApiError {
     #[error("Failed to parse AssetId.")]
     ParseAssetId,
 
-    #[error("Failed to read file.")]
+    #[error("Failed to read file: {0}")]
     ReadFile(#[from] std::io::Error),
 
     #[error("Failed to determine file name for path {0}.")]
@@ -34,7 +34,7 @@ pub enum RobloxApiError {
     #[error("Invalid file extension for path {0}.")]
     InvalidFileExtension(String),
 
-    #[error("Failed to read utf8 data.")]
+    #[error("Failed to read utf8 data: {0}")]
     InvalidUtf8(#[from] std::string::FromUtf8Error),
 
     #[error("No create quotas found for asset type {0}")]

@@ -1,5 +1,6 @@
 use std::{ffi::OsStr, path::PathBuf};
 
+use log::trace;
 use reqwest::{multipart::Part, Body};
 use scraper::{Html, Selector};
 use serde::de;
@@ -72,11 +73,10 @@ pub async fn handle_as_json<T>(request_builder: reqwest::RequestBuilder) -> Robl
 where
     T: de::DeserializeOwned,
 {
-    handle(request_builder)
-        .await?
-        .json::<T>()
-        .await
-        .map_err(|e| e.into())
+    let res = handle(request_builder).await?;
+    let full = res.text().await?;
+    trace!("Handle JSON: {}", full);
+    serde_json::from_str::<T>(&full).map_err(|e| e.into())
 }
 
 pub async fn handle_as_json_with_status<T>(

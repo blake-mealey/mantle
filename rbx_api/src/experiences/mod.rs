@@ -17,13 +17,16 @@ impl RobloxApi {
         &self,
         group_id: Option<AssetId>,
     ) -> RobloxApiResult<CreateExperienceResponse> {
-        let req = self
+        let mut req = self
             .client
-            .post("https://api.roblox.com/universes/create")
+            .post("https://apis.roblox.com/universes/v1/universes/create")
             .json(&json!({
-                "templatePlaceIdToUse": 95206881,
-                "groupId": group_id
+                "templatePlaceId": 95206881,
             }));
+
+        if let Some(group_id) = group_id {
+            req = req.query(&[("groupId", group_id.to_string())]);
+        }
 
         handle_as_json(req).await
     }

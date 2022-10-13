@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::models::{AssetId, AssetTypeId, CreatorType};
 
 #[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "camelCase")]
 pub struct CreateExperienceResponse {
     pub universe_id: AssetId,
     pub root_place_id: AssetId,

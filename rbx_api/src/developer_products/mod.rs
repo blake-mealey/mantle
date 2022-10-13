@@ -1,3 +1,5 @@
+pub mod models;
+
 use std::path::PathBuf;
 
 use reqwest::{header, multipart::Form};
@@ -6,11 +8,13 @@ use serde_json::json;
 use crate::{
     errors::{RobloxApiError, RobloxApiResult},
     helpers::{get_file_part, get_input_value, handle, handle_as_html, handle_as_json},
-    models::{
-        AssetId, CreateDeveloperProductResponse, GetDeveloperProductResponse,
-        ListDeveloperProductResponseItem, ListDeveloperProductsResponse,
-    },
+    models::AssetId,
     RobloxApi,
+};
+
+use self::models::{
+    CreateDeveloperProductResponse, GetDeveloperProductResponse, ListDeveloperProductResponseItem,
+    ListDeveloperProductsResponse,
 };
 
 impl RobloxApi {

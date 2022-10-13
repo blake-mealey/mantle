@@ -1,3 +1,5 @@
+pub mod models;
+
 use std::path::PathBuf;
 
 use reqwest::multipart::Form;
@@ -6,12 +8,11 @@ use serde_json::json;
 use crate::{
     errors::RobloxApiResult,
     helpers::{get_file_part, handle, handle_as_json},
-    models::{
-        AssetId, CreateBadgeResponse, CreatorType, ListBadgeResponse, ListBadgesResponse,
-        UploadImageResponse,
-    },
+    models::{AssetId, CreatorType, UploadImageResponse},
     RobloxApi,
 };
+
+use self::models::{CreateBadgeResponse, ListBadgeResponse, ListBadgesResponse};
 
 impl RobloxApi {
     pub async fn create_badge(

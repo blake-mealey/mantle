@@ -1,3 +1,5 @@
+pub mod models;
+
 use std::path::PathBuf;
 
 use reqwest::multipart::Form;
@@ -5,11 +7,12 @@ use reqwest::multipart::Form;
 use crate::{
     errors::{RobloxApiError, RobloxApiResult},
     helpers::{get_file_part, get_input_value, handle, handle_as_html, handle_as_json},
-    models::{
-        AssetId, AssetTypeId, CreateGamePassResponse, GetGamePassResponse, ListGamePassResponse,
-        ListGamePassesResponse,
-    },
+    models::{AssetId, AssetTypeId},
     RobloxApi,
+};
+
+use self::models::{
+    CreateGamePassResponse, GetGamePassResponse, ListGamePassResponse, ListGamePassesResponse,
 };
 
 impl RobloxApi {

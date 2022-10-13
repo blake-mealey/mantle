@@ -1,3 +1,5 @@
+pub mod models;
+
 use std::{ffi::OsStr, fs, path::PathBuf};
 
 use reqwest::header;
@@ -6,11 +8,12 @@ use serde_json::json;
 use crate::{
     errors::{RobloxApiError, RobloxApiResult},
     helpers::{handle, handle_as_json, handle_as_json_with_status},
-    models::{
-        AssetId, AssetTypeId, CreateAssetQuota, CreateAssetQuotasResponse,
-        CreateAudioAssetResponse, CreateImageAssetResponse, CreatorType,
-    },
+    models::{AssetId, AssetTypeId, CreatorType},
     RobloxApi,
+};
+
+use self::models::{
+    CreateAssetQuota, CreateAssetQuotasResponse, CreateAudioAssetResponse, CreateImageAssetResponse,
 };
 
 impl RobloxApi {

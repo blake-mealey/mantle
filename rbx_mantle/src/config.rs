@@ -5,10 +5,13 @@ use std::{
     str,
 };
 
-use rbx_api::models::{
-    AssetId, AssetTypeId, ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
-    ExperienceConfigurationModel, ExperienceGenre, ExperiencePlayableDevice,
-    PlaceConfigurationModel, SocialSlotType,
+use rbx_api::{
+    experiences::models::{
+        ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
+        ExperienceConfigurationModel, ExperienceGenre, ExperiencePlayableDevice,
+    },
+    models::{AssetId, AssetTypeId, SocialSlotType},
+    places::models::PlaceConfigurationModel,
 };
 use rusoto_core::Region;
 use schemars::JsonSchema;

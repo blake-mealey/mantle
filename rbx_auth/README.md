@@ -1,9 +1,17 @@
 # `rbx_auth`
 
 Constructs a headers map and cookie jar that can be passed to a `reqwest` client to make authenticated
-requests to Roblox APIs. Best used with the `rbx_api` crate.
+requests to Roblox APIs. Best used with the `rbx_api` crate. Available as both a library and CLI.
 
-## Usage
+## CLI
+
+Install with `cargo install rbx_auth`.
+
+```sh
+rbx_auth --help
+```
+
+## Library
 
 ```rs
 use rbx_auth::{RobloxAuth, WithRobloxAuth};

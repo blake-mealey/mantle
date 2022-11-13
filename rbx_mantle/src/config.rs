@@ -529,6 +529,9 @@ pub struct ExperienceTargetConfig {
     /// | Image      | `.bmp`, `.gif`, `.jpeg`, `.jpg`, `.png`, `.tga` |
     /// | Audio      | `.ogg`, `.mp3`                                  |
     pub assets: Option<Vec<AssetTargetConfig>>,
+
+    /// Spatial voice configuration.
+    pub spatial_voice: Option<SpatialVoiceTargetConfig>,
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
@@ -752,6 +755,13 @@ pub struct BadgeTargetConfig {
 pub enum AssetTargetConfig {
     File(String),
     FileWithAlias { file: String, name: String },
+}
+
+#[derive(JsonSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SpatialVoiceTargetConfig {
+    /// Whether or not spatial voice is enabled for the experience.
+    pub enabled: bool,
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone, Default)]

@@ -13,6 +13,7 @@ use rbx_api::{
     models::{AssetId, AssetTypeId, CreatorType, UploadImageResponse},
     places::models::{GetPlaceResponse, PlaceConfigurationModel},
     social_links::models::{CreateSocialLinkResponse, SocialLinkType},
+    spatial_voice::models::UpdateSpatialVoiceSettingsRequest,
     RobloxApi,
 };
 use rbx_auth::RobloxAuth;
@@ -99,6 +100,12 @@ pub struct AssetAliasInputs {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct SpatialVoiceInputs {
+    pub enabled: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum RobloxInputs {
     Experience(ExperienceInputs),
@@ -119,6 +126,7 @@ pub enum RobloxInputs {
     ImageAsset(FileWithGroupIdInputs),
     AudioAsset(FileWithGroupIdInputs),
     AssetAlias(AssetAliasInputs),
+    SpatialVoice(SpatialVoiceInputs),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -195,6 +203,7 @@ pub enum RobloxOutputs {
     ImageAsset(ImageAssetOutputs),
     AudioAsset(AssetOutputs),
     AssetAlias(AssetAliasOutputs),
+    SpatialVoice,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -651,6 +660,20 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     name: inputs.name,
                 }))
             }
+            RobloxInputs::SpatialVoice(inputs) => {
+                let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
+
+                self.roblox_api
+                    .update_spatial_voice_settings(
+                        experience.asset_id,
+                        UpdateSpatialVoiceSettingsRequest {
+                            opt_in: inputs.enabled,
+                        },
+                    )
+                    .await?;
+
+                Ok(RobloxOutputs::SpatialVoice)
+            }
         }
     }
 
@@ -811,6 +834,20 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     name: inputs.name,
                 }))
             }
+            (RobloxInputs::SpatialVoice(inputs), RobloxOutputs::SpatialVoice) => {
+                let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
+
+                self.roblox_api
+                    .update_spatial_voice_settings(
+                        experience.asset_id,
+                        UpdateSpatialVoiceSettingsRequest {
+                            opt_in: inputs.enabled,
+                        },
+                    )
+                    .await?;
+
+                Ok(RobloxOutputs::SpatialVoice)
+            }
             _ => unreachable!(),
         }
     }
@@ -940,6 +977,16 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
                 self.roblox_api
                     .delete_asset_alias(experience.asset_id, outputs.name)
+                    .await?;
+            }
+            RobloxOutputs::SpatialVoice => {
+                let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
+
+                self.roblox_api
+                    .update_spatial_voice_settings(
+                        experience.asset_id,
+                        UpdateSpatialVoiceSettingsRequest { opt_in: false },
+                    )
                     .await?;
             }
         }

@@ -498,6 +498,16 @@ fn get_desired_experience_graph(
         }
     }
 
+    if let Some(spatial_voice) = &target_config.spatial_voice {
+        resources.push(RobloxResource::new(
+            "spatialVoice_singleton",
+            RobloxInputs::SpatialVoice(SpatialVoiceInputs {
+                enabled: spatial_voice.enabled,
+            }),
+            &[&experience],
+        ));
+    }
+
     Ok(ResourceGraph::new(&resources))
 }
 
@@ -779,6 +789,20 @@ pub async fn import_graph(
             ));
             resources.push(asset_resource);
         }
+    }
+
+    logger::log("Importing spatial voice settings");
+    let spatial_voice = roblox_api.get_spatial_voice_settings(target_id).await?;
+    // only add the resource if it was enabled since the default is disabled
+    if spatial_voice.is_universe_enabled_for_voice {
+        resources.push(RobloxResource::existing(
+            "spatialVoice_singleton",
+            RobloxInputs::SpatialVoice(SpatialVoiceInputs {
+                enabled: spatial_voice.is_universe_enabled_for_voice,
+            }),
+            RobloxOutputs::SpatialVoice,
+            &[&experience],
+        ));
     }
 
     Ok(ResourceGraph::new(&resources))

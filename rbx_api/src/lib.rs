@@ -9,6 +9,7 @@ mod helpers;
 pub mod models;
 pub mod places;
 pub mod social_links;
+pub mod spatial_voice;
 pub mod thumbnails;
 
 use errors::{RobloxApiError, RobloxApiResult};

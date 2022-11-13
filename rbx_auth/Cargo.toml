@@ -27,3 +27,7 @@ clap = "2.33.0"
 
 tokio = { version = "1", features = ["full"] }
 serde_json = { version = "1.0.59" }
+
+[[bin]]
+name = "test_csrf_expiry"
+path = "src/test_csrf_expiry.rs"

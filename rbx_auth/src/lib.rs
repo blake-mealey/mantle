@@ -45,6 +45,19 @@ impl RobloxAuth {
 
         Ok(Self { jar, headers })
     }
+
+    pub fn refresh(&mut self, headers: &HeaderMap) -> Result<(), RobloxAuthError> {
+        self.headers
+            .insert("X-CSRF-Token", extract_csrf_token(headers)?);
+        Ok(())
+    }
+}
+
+fn extract_csrf_token(headers: &HeaderMap) -> Result<HeaderValue, RobloxAuthError> {
+    headers
+        .get("X-CSRF-Token")
+        .map(|v| v.to_owned())
+        .ok_or(RobloxAuthError::MissingCsrfToken)
 }
 
 async fn get_csrf_token(roblosecurity_cookie: &str) -> Result<HeaderValue, RobloxAuthError> {
@@ -55,11 +68,7 @@ async fn get_csrf_token(roblosecurity_cookie: &str) -> Result<HeaderValue, Roblo
         .send()
         .await?;
 
-    response
-        .headers()
-        .get("X-CSRF-Token")
-        .map(|v| v.to_owned())
-        .ok_or(RobloxAuthError::MissingCsrfToken)
+    extract_csrf_token(response.headers())
 }
 
 pub trait WithRobloxAuth {

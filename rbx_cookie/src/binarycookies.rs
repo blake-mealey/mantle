@@ -108,10 +108,10 @@ impl Cookies {
         // i/OS/X to Unix timestamp +(1 Jan 2001 epoch seconds).
         let expiry = T::read_f64(&bs[0x28..0x30]) + 978307200f64;
 
-        let url = slice_to(bs, url_off, name_off).and_then(&c_str)?;
-        let name = slice_to(bs, name_off, path_off).and_then(&c_str)?;
-        let path = slice_to(bs, path_off, value_off).and_then(&c_str)?;
-        let value = slice_to(bs, value_off, bs.len()).and_then(&c_str)?;
+        let url = slice_to(bs, url_off, name_off).and_then(c_str)?;
+        let name = slice_to(bs, name_off, path_off).and_then(c_str)?;
+        let path = slice_to(bs, path_off, value_off).and_then(c_str)?;
+        let value = slice_to(bs, value_off, bs.len()).and_then(c_str)?;
 
         let is_raw = url.starts_with('.');
 

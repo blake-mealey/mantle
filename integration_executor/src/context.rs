@@ -87,7 +87,7 @@ impl SpecContext {
 
 pub fn prepare(cargo_manifest_dir: &str) -> SpecContext {
     let mut working_dir = PathBuf::new();
-    working_dir.push(&cargo_manifest_dir);
+    working_dir.push(cargo_manifest_dir);
     working_dir.push("..");
     working_dir.push("integration_tmp");
     if working_dir.exists() {

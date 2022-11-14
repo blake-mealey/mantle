@@ -1222,7 +1222,7 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 
 [[package]]
 name = "mantle"
-version = "0.11.3"
+version = "0.12.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -1953,7 +1953,7 @@ dependencies = [
 
 [[package]]
 name = "rbx_api"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "base64",
  "log",
@@ -1972,7 +1972,7 @@ dependencies = [
 
 [[package]]
 name = "rbx_auth"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "clap",
  "env_logger",
@@ -2027,7 +2027,7 @@ dependencies = [
 
 [[package]]
 name = "rbx_mantle"
-version = "0.11.3"
+version = "0.12.0"
 dependencies = [
  "async-trait",
  "chrono",

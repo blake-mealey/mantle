@@ -22,11 +22,12 @@ using the cargo CLI.
 
 ## Mantle CLI
 
-When Mantle is ready for release, its crate should be updated following the above guide. To release the CLI,
-add a git tag by running `git tag v<Version>`. After adding the tag, push it to GitHub with `git push --tags`.
-A CI build will automatically run which will build the CLI for release and upload it to GitHub Releases. When
-the release is created it will be in edit mode. Open it up and add a description. It can help to prefill the
-message with the commit messages since the last release.
+When Mantle is ready for release, its crate should be updated following the above guide but not published (for
+now, because not all of its dependencies are published). To release the CLI, add a git tag by running
+`git tag v<Version>`. After adding the tag, push it to GitHub with `git push --tags`. A CI build will
+automatically run which will build the CLI for release and upload it to GitHub Releases. When the release is
+created it will be in edit mode. Open it up and add a description. It can help to prefill the message with the
+commit messages since the last release.
 
 ## Docs
 

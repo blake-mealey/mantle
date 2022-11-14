@@ -21,7 +21,7 @@ impl RobloxApi {
             ))
             .json(&settings);
 
-        Ok(handle_as_json::<UpdateSpatialVoiceSettingsResponse>(req).await?)
+        handle_as_json::<UpdateSpatialVoiceSettingsResponse>(req).await
     }
 
     pub async fn get_spatial_voice_settings(
@@ -33,6 +33,6 @@ impl RobloxApi {
             experience_id
         ));
 
-        Ok(handle_as_json::<GetSpatialVoiceSettingsResponse>(req).await?)
+        handle_as_json::<GetSpatialVoiceSettingsResponse>(req).await
     }
 }

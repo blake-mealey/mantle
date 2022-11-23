@@ -1,4 +1,5 @@
 pub mod asset_aliases;
+pub mod asset_permissions;
 pub mod assets;
 pub mod badges;
 pub mod developer_products;

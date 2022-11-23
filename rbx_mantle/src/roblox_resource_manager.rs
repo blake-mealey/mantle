@@ -3,6 +3,10 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Utc};
 use rbx_api::{
+    asset_permissions::models::{
+        GrantAssetPermissionRequestAction, GrantAssetPermissionRequestSubjectType,
+        GrantAssetPermissionsRequestRequest,
+    },
     assets::models::{
         CreateAssetQuota, CreateAudioAssetResponse, CreateImageAssetResponse, QuotaDuration,
     },
@@ -655,6 +659,19 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 self.roblox_api
                     .create_asset_alias(experience.asset_id, asset_id, inputs.name.clone())
                     .await?;
+
+                if audio_asset.is_some() {
+                    self.roblox_api
+                        .grant_asset_permissions(
+                            asset_id,
+                            GrantAssetPermissionsRequestRequest {
+                                subject_id: experience.asset_id,
+                                subject_type: GrantAssetPermissionRequestSubjectType::Universe,
+                                action: GrantAssetPermissionRequestAction::Use,
+                            },
+                        )
+                        .await?;
+                }
 
                 Ok(RobloxOutputs::AssetAlias(AssetAliasOutputs {
                     name: inputs.name,

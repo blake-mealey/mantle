@@ -155,7 +155,7 @@ fn parse_table<T: ByteOrder>(bs: &[u8], count: usize) -> io::Result<Vec<usize>> 
     if end > bs.len() {
         return Err(Error::new(ErrorKind::InvalidData, "table data underflow"));
     }
-    let data = (&bs[..end])
+    let data = (bs[..end])
         .chunks(4)
         .map(|u| T::read_u32(u) as usize)
         .collect();

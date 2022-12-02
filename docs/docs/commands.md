@@ -17,7 +17,7 @@ If you want to know the ID of a resource which Mantle created so you can referen
 you can run `mantle outputs` from your project directory.
 
 After deploying the
-[getting-started](https://github.com/blake-mealey/mantle-examples/tree/main/examples/getting-started)
+[getting-started](https://github.com/blake-mealey/mantle/tree/main/examples/projects/getting-started)
 example project for the first time, running the outputs command will print something like this:
 
 ```ansi title="mantle deploy"

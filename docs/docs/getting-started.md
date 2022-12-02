@@ -7,10 +7,9 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
 The quickest way to get started is with the
-[Examples](https://github.com/blake-mealey/mantle-examples) repo. This guide will walk you through
+[Examples](https://github.com/blake-mealey/mantle/tree/main/examples) repo. This guide will walk you through
 deploying your first project with Mantle using the [Getting
-Started](https://github.com/blake-mealey/mantle-examples/tree/main/examples/getting-started)
-example.
+Started](https://github.com/blake-mealey/mantle/tree/main/examples/projects/getting-started) example.
 
 :::tip
 This guide will require you to run commands from a terminal. If you're new to terminals, we
@@ -66,16 +65,16 @@ you will use to install Mantle). You can find more information on this in the
 
 ## Clone the examples repo
 
-Now it's time to clone the [Examples](https://github.com/blake-mealey/mantle-examples) repo. In a
-terminal, run `git clone https://github.com/blake-mealey/mantle-examples` to clone the repo to your
-computer. Now run `cd mantle-examples` to enter the project.
+Now it's time to clone the [Examples](https://github.com/blake-mealey/mantle/tree/main/examples) repo. In a
+terminal, run `git clone https://github.com/blake-mealey/mantle` to clone the repo to your computer. Now run
+`cd mantle/examples` to enter the project.
 
 ## Install Mantle
 
-Now you can install Mantle using Foreman for the Examples project! Run `foreman install` to install
-Mantle. Foreman will download the version of Mantle which the Examples project is configured to use
-in its [foreman.toml](https://github.com/blake-mealey/mantle-examples/tree/main/foreman.toml) file
-and make it available to your terminal as `mantle` within the Examples project directory.
+Now you can install Mantle using Foreman for the Examples project! Run `foreman install` to install Mantle.
+Foreman will download the version of Mantle which the Examples project is configured to use in its
+[foreman.toml](https://github.com/blake-mealey/mantle/tree/main/examples/foreman.toml) file and make it
+available to your terminal as `mantle` within the Examples project directory.
 
 To verify that it was installed correctly, run `mantle --version`. If you are having trouble, you
 can ask for help in the "tooling" channel of the [Roblox OSS Discord](https://discord.gg/wH5ncNS).

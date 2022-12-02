@@ -62,12 +62,12 @@ const config = {
         items: [
           {
             type: 'doc',
-            docId: 'introduction',
+            docId: 'getting-started',
             position: 'left',
             label: 'Docs',
           },
           {
-            href: 'https://github.com/blake-mealey/mantle-examples/tree/main/examples',
+            href: 'https://github.com/blake-mealey/mantle/tree/main/examples',
             label: 'Examples',
             position: 'left',
           },
@@ -109,11 +109,11 @@ const config = {
               },
               {
                 label: 'Examples',
-                href: 'https://github.com/blake-mealey/mantle-examples',
+                href: 'https://github.com/blake-mealey/mantle/tree/main/examples',
               },
               {
                 label: 'Docs',
-                href: 'https://github.com/blake-mealey/mantle-docs',
+                href: 'https://github.com/blake-mealey/mantle/tree/main/docs',
               },
               {
                 html: `<div style="padding-top: 0.5em">

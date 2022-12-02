@@ -9,4 +9,4 @@ directories:
 - [docs](docs/README.md): the docs site for the Mantle project.
 - [examples](examples/README.md): example Mantle projects.
 
-For more information about the project, visit the [docs site](https://mantle-docs.vercel.app).
+For more information about the project, visit the [docs site](https://mantledeploy.vercel.app).

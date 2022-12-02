@@ -1,0 +1,142 @@
+/**
+ * CSS files with the .module.css suffix will be treated as CSS modules
+ * and scoped locally.
+ */
+
+.main {
+  --ifm-global-radius: 1em;
+}
+
+.heroBanner {
+  padding: 4rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+@media screen and (max-width: 966px) {
+  .heroBanner {
+    padding: 2rem;
+  }
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.divider {
+  background-color: var(--ifm-footer-background-color);
+}
+
+.divider > div {
+  max-width: max(966px, min(70%, 1300px));
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3em 1em;
+}
+
+.divider h3 {
+  margin: 0;
+}
+
+.divider a {
+  color: var(--ifm-heading-color);
+  text-decoration: none;
+}
+
+.divider a:hover {
+  color: var(--ifm-link-hover-color);
+}
+
+@media screen and (max-width: 966px) {
+  .divider {
+    display: none;
+  }
+}
+
+.demo {
+  text-align: center;
+  background-color: rgb(19, 19, 20);
+  padding: 15px 1em 0;
+  aspect-ratio: 1866/683.4;
+}
+
+.demo > div {
+  margin: 0 !important;
+}
+
+@media screen and (max-width: 966px) {
+  .demo {
+    display: none;
+  }
+}
+
+.feature {
+  display: flex;
+  max-width: max(966px, min(70%, 1300px));
+  margin: 6em auto;
+  padding: 0 1em;
+  gap: 6em;
+}
+
+.feature:nth-child(even) {
+  flex-direction: row-reverse;
+}
+
+@media screen and (max-width: 966px) {
+  .feature {
+    flex-direction: column-reverse !important;
+    gap: 1em;
+    margin: 3em 0;
+  }
+}
+
+.feature > * {
+  flex: 1;
+}
+
+.feature > aside {
+  min-width: 0;
+  flex-grow: 2;
+}
+
+.feature .content {
+  font-size: 1.3em;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.featureNum {
+  display: inline-block;
+  width: 1.5em;
+  height: 1.5em;
+  text-align: center;
+  border-radius: 50%;
+  border: solid 3px var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+  margin-right: 0.5em;
+  font-family: var(--ifm-font-family-monospace);
+}
+
+.codeBlock {
+  background-color: rgb(28, 29, 33);
+  --ifm-pre-border-radius: 15px;
+  border-radius: var(--ifm-pre-border-radius);
+}
+
+.codeBlock pre {
+  padding: 0.5em 1em !important;
+}
+
+.codeBlockTitle {
+  padding: 0.5em 1em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+  font-size: 1.1em;
+  font-weight: bold;
+  color: white;
+}

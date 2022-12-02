@@ -81,7 +81,7 @@ can ask for help in the "tooling" channel of the [Roblox OSS Discord](https://di
 
 ## Deploy your first project
 
-Now it's time to deploy your first project! Run `mantle deploy examples/getting-started --environment dev`
+Now it's time to deploy your first project! Run `mantle deploy projects/getting-started --environment dev`
 to deploy the getting started project.
 
 :::caution
@@ -98,19 +98,19 @@ First, Mantle tells us about the project we are trying to deploy:
 ```ansi title="mantle deploy"
 Loading project:
   ╷
-  │  Loaded config file [36mexamples/getting-started/mantle.yml[0m
+  │  Loaded config file [36mprojects/getting-started/mantle.yml[0m
   │  Selected provided environment configuration [36mdev[0m
-  │  Loading previous state from local file [36mexamples/getting-started/.mantle-state.yml[0m
+  │  Loading previous state from local file [36mprojects/getting-started/.mantle-state.yml[0m
   │  No previous state for environment [36mdev[0m
   │
   ╰─ Succeeded
 ```
 
-Here we can see the configuration file that Mantle used was `examples/getting-started/mantle.yml`
+Here we can see the configuration file that Mantle used was `projects/getting-started/mantle.yml`
 because by default Mantle will look for a file called `mantle.yml` in the provided folder. It also
 tells us that it is targeting the `dev` environment configuration because we passed `--environment dev`
 to the deployment command. Finally, it tells us that it is looking for previous state from the
-local file `examples/getting-started/.mantle-state.yml` and that no previous state was found. We'll
+local file `projects/getting-started/.mantle-state.yml` and that no previous state was found. We'll
 come back to this state file in more detail later, but for now you can just know that Mantle
 realized we didn't have a state file yet so it created a new one.
 
@@ -149,13 +149,13 @@ Next, Mantle tells us where it is saving the state of the current deployment:
 ```ansi title="mantle deploy"
 Saving state:
   ╷
-  │  Saving to local file [36mexamples/getting-started/.mantle-state.yml[0m. It is recommended you commit this file to your source control
+  │  Saving to local file [36mprojects/getting-started/.mantle-state.yml[0m. It is recommended you commit this file to your source control
   │
   ╰─ Succeeded
 ```
 
 Here's the mysterious state file again! Let's crack it open and take a look. Run
-`cat examples/getting-started/.mantle-state.yml` to print the file's contents into your terminal. As
+`cat projects/getting-started/.mantle-state.yml` to print the file's contents into your terminal. As
 you can see, it's a YAML file containing a list of all of the resources in each environment. If you
 look closely, you'll see that its contents actually look very similar to the output which Mantle
 already printed out for us. Mantle uses this file to know which resources need to be changed between
@@ -183,11 +183,11 @@ Open one of the links to view and play your new experience! It should look like 
 ![Roblox place created with Mantle](/img/tutorial/getting-started-place.png)
 
 Let's modify the configuration and see how Mantle responds. Open the
-`examples/getting-started/mantle.yml` file in your favourite text editor (I use
+`projects/getting-started/mantle.yml` file in your favourite text editor (I use
 [VSCode](https://code.visualstudio.com/)) and change the start place configuration's `name` field to
 something new:
 
-```yml title="examples/getting-started/mantle.yml" {15}
+```yml title="projects/getting-started/mantle.yml" {15}
 environments:
   - name: dev
     targetNamePrefix: environmentName
@@ -207,7 +207,7 @@ target:
             Made with Mantle
 ```
 
-Now, re-run the deploy command (`mantle deploy examples/getting-started -e dev`) and see what
+Now, re-run the deploy command (`mantle deploy projects/getting-started -e dev`) and see what
 happens.
 
 You should see a very similar output to the first deployment, except instead of recreating all of
@@ -247,7 +247,7 @@ a state file!
 Let's make a couple more changes to our configuration file. Add a `maxPlayerCount` to the start
 place's configuration and add some social links to your experience:
 
-```yml title="examples/getting-started/mantle.yml" {16,19-23}
+```yml title="projects/getting-started/mantle.yml" {16,19-23}
 environments:
   - name: dev
     targetNamePrefix: environmentName
@@ -291,11 +291,11 @@ things you can try on your own:
 - Try deploying some of the other example projects
 
 To see what all of the options are for the configuration file, check out the
-[Configuration](/docs/configuration) guide!
+[Configuration](/docs/configuration) reference!
 
 ## Destroy the project when you are finished
 
 If you are done with the example project and you would like to get rid of the places it created in
-your Roblox account, you can run `mantle destroy examples/getting-started --environment dev` to
+your Roblox account, you can run `mantle destroy projects/getting-started --environment dev` to
 destroy the project. Note that the resources will still be in Roblox but they will be archived and
 hidden wherever possible.

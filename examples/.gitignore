@@ -1,0 +1,5 @@
+*.lock
+
+# only for the examples repo: you should include this file in your own repo unless you are using remote state
+# management
+.mantle-state.yml

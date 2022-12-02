@@ -1,0 +1,17 @@
+environments:
+  - label: dev
+    targetNamePrefix: environmentLabel
+  - label: prod
+    targetAccess: public
+
+target:
+  experience:
+    configuration:
+      genre: building
+    places:
+      start:
+        file: game.rbxlx
+        configuration:
+          name: Getting Started with Mantle
+          description: |-
+            Made with Mantle

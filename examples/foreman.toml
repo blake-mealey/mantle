@@ -1,0 +1,2 @@
+[tools]
+mantle = { source = "blake-mealey/mantle", version = "0.11" }

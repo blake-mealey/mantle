@@ -16,9 +16,10 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
+            mantle/target/
           key: ${{ runner.os }}-integration-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Run integration tests
+        working-directory: mantle
         run: cargo test --locked --test '*' -- --test-threads=1
         env:
           ROBLOSECURITY: ${{ secrets.INTEGRATION_TESTS_COOKIE }}

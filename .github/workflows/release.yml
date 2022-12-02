@@ -18,15 +18,16 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
+            mantle/target/
           key: ${{ runner.os }}-release-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Build release binary
+        working-directory: mantle
         run: cargo build --verbose --locked --release
       - name: Zip binary
         uses: thedoctor0/zip-release@0.6.0
         with:
           filename: mantle-win64.zip
-          path: target/release/mantle.exe
+          path: mantle/target/release/mantle.exe
       - name: Upload binary artifact
         uses: actions/upload-artifact@v2
         with:
@@ -43,11 +44,12 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
+            mantle/target/
           key: ${{ runner.os }}-release-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install rust
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - name: Build release binary
+        working-directory: mantle
         run: |
           source $HOME/.cargo/env
           cargo build --verbose --locked --release
@@ -57,7 +59,7 @@ jobs:
         uses: thedoctor0/zip-release@0.6.0
         with:
           filename: mantle-macos.zip
-          path: target/release/mantle
+          path: mantle/target/release/mantle
       - name: Upload binary artifact
         uses: actions/upload-artifact@v2
         with:
@@ -74,9 +76,10 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
+            mantle/target/
           key: ${{ runner.os }}-release-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Build release binary
+        working-directory: mantle
         run: cargo build --locked --verbose --release
         env:
           OPENSSL_STATIC: 1
@@ -84,19 +87,20 @@ jobs:
         uses: thedoctor0/zip-release@0.6.0
         with:
           filename: mantle-linux.zip
-          path: target/release/mantle
+          path: mantle/target/release/mantle
       - name: Upload binary artifact
         uses: actions/upload-artifact@v2
         with:
           name: mantle-linux
           path: mantle-linux.zip
       - name: Generate schema
+        working-directory: mantle
         run: cargo run --release --bin gen_schema > schema.json
       - name: Upload schema artifact
         uses: actions/upload-artifact@v2
         with:
           name: schema
-          path: schema.json
+          path: mantle/schema.json
   release:
     runs-on: ubuntu-latest
     needs: [windows, macos, linux]

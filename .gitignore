@@ -1,14 +1,6 @@
-/target
-integration_tmp
+node_modules
 
 *.env
-
-*.rbxl
-*.rbxlx
-*.rbxl.lock
-*.rbxlx.lock
-
-*.png
 
 *.DS_Store
 

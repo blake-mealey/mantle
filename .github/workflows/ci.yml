@@ -20,13 +20,16 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
+            mantle/target/
           key: ${{ runner.os }}-ci-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Build
+        working-directory: mantle
         run: cargo build --locked --verbose
       - name: Run linters
+        working-directory: mantle
         run: |
           cargo fmt -- --check
           cargo clippy -- -D warnings
       - name: Generate schema
+        working-directory: mantle
         run: cargo run --bin gen_schema

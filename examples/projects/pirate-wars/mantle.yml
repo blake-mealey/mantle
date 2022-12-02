@@ -1,0 +1,33 @@
+environments:
+  - label: dev
+    targetNamePrefix: environmentLabel
+  - label: prod
+    targetAccess: public
+
+target:
+  experience:
+    icon: marketing/game-icon.png
+    thumbnails:
+      - marketing/game-thumbnail-default.png
+      - marketing/game-thumbnail-fall-update.png
+    configuration:
+      genre: naval
+      playableDevices: [computer]
+      privateServers:
+        price: 50
+      enableStudioAccessToApis: true
+    places:
+      start:
+        file: lobby.rbxlx
+        configuration:
+          name: Pirate Wars!
+          description: |-
+            Duke it out on the high seas in your pirate ship!
+
+            🍂 Fall update: new cannons, new ship types!
+          maxPlayerCount: 100
+      battle:
+        file: battle.rbxlx
+        configuration:
+          name: Pirate Wars! (Battle)
+          description: The place you get teleported to when you join a battle

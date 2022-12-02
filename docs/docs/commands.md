@@ -23,9 +23,9 @@ example project for the first time, running the outputs command will print somet
 ```ansi title="mantle deploy"
 Load outputs:
   ╷
-  │  Loaded config file [36mexamples/getting-started/mantle.yml[0m
+  │  Loaded config file [36mprojects/getting-started/mantle.yml[0m
   │  Selected provided environment configuration [36mdev[0m
-  │  Loading previous state from local file [36mexamples/getting-started/.mantle-state.yml[0m
+  │  Loading previous state from local file [36mprojects/getting-started/.mantle-state.yml[0m
   │
   ╰─ Succeeded
 

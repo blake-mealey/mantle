@@ -2,20 +2,11 @@
 
 An infrastructure-as-code and deployment tool for Roblox.
 
-## Installation with Foreman
+This is a monorepo for the Mantle project. You can find further information about subprojects within the
+directories:
 
-It is recommended to install with Foreman, with the following config:
+- [mantle](mantle/README.md): the Mantle project itself.
+- [docs](docs/README.md): the docs site for the Mantle project.
+- [examples](examples/README.md): example Mantle projects.
 
-```toml
-# foreman.toml
-
-[tools]
-mantle = { source = "blake-mealey/mantle", version = "0.11.3" }
-```
-
-You can learn more about Foreman including how to install it from [its
-documentation](https://github.com/Roblox/foreman#readme).
-
-## Documentation
-
-Check out the [docs site](https://mantle-docs.vercel.app) for more info.
+For more information about the project, visit the [docs site](https://mantle-docs.vercel.app).

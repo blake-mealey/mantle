@@ -1,23 +1,14 @@
-[package]
-name = "mantle"
-version = "0.11.5"
-edition = "2021"
+[workspace]
+members = [
+    # bins
+    "mantle",
+    "gen_schema",
 
-[dependencies]
-rbx_mantle = { path = "../rbx_mantle" }
-rbx_api = { path = "../rbx_api" }
-rbx_auth = { path = "../rbx_auth" }
-logger = { path = "../logger" }
-integration_executor = { path = "../integration_executor" }
-
-serde_json = { version = "1.0.59" }
-serde_yaml = { version = "0.8" }
-serde = { version = "1.0", features = ["derive"] }
-clap = "2.33.0"
-tokio = { version = "1", features = ["full"] }
-yansi = "0.5.0"
-log = "0.4.14"
-env_logger = "0.9.0"
-
-[dev-dependencies]
-test-generator = "0.3.0"
+    # libs
+    "rbx_mantle",
+    "rbx_api",
+    "rbx_auth",
+    "rbx_cookie",
+    "logger",
+    "integration_executor"
+]

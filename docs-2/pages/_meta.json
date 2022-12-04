@@ -3,6 +3,8 @@
     "type": "page",
     "display": "hidden",
     "theme": {
+      "sidebar": false,
+      "toc": false,
       "layout": "raw"
     }
   }

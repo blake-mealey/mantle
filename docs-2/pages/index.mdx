@@ -1,3 +1,133 @@
-# Title
+import {
+  Feature,
+  FeatureContent,
+  FeatureTitle,
+  FeatureDescription,
+  FeatureAction,
+  FeatureDisplay,
+} from '@components/feature';
+import Link from 'next/link'
 
-Hello world!
+<heading className="w-full p-10 flex flex-col items-center justify-center">
+  <div>Mantle Logo</div>
+  <p>Roblox infra-as-code and deployment tool</p>
+</heading>
+
+<div className="max-w-[90rem] mx-auto pl-[max(env(safe-area-inset-left),1.5rem)] pr-[max(env(safe-area-inset-right),1.5rem)]">
+  <Feature reverse>
+    <FeatureContent>
+      <FeatureTitle>Declarative configuration</FeatureTitle>
+      <FeatureDescription>
+        Describe the Roblox infrastructure you want and Mantle will take care of
+        the rest.
+      </FeatureDescription>
+      <FeatureAction href="/configuration">Learn More</FeatureAction>
+    </FeatureContent>
+    <FeatureDisplay title="mantle.yml">
+```yaml
+environments:
+  - label: dev
+    targetNamePrefix: environmentLabel
+  - label: prod
+    targetAccess: public
+
+target:
+  experience:
+    configuration:
+      genre: building
+    places:
+      start:
+        file: game.rbxlx
+        configuration:
+          name: Getting Started with Mantle
+          description: |-
+            Made with Mantle
+```
+        </FeatureDisplay>
+  </Feature>
+
+  <Feature>
+    <FeatureContent>
+      <FeatureTitle>Smart deployments</FeatureTitle>
+      <FeatureDescription>
+        Mantle makes the minimum required changes to keep your deployments fast and stable.
+      </FeatureDescription>
+      <FeatureAction href="/getting-started">Learn More</FeatureAction>
+    </FeatureContent>
+    <FeatureDisplay title={<><span className="italic">$ </span><span>mantle deploy</span></>}>
+```txt
+Deploying resources:
+  ╷
+  │  [33m~[0m Updating: placeConfiguration_start
+  │    ╷
+  │    │  Dependencies:
+  │    │      [2m- place:[0m
+  │    │      [2m    assetId: 8635420754[0m
+  │    │  Inputs:
+  │    │      [2mplaceConfiguration:[0m
+  │    │    [31m-[0m [31m  name: Getting Started with Mantle[0m
+  │    │    [32m+[0m [32m  name: Going to the moon with Mantle[0m
+  │    │      [2m  description: Made with Mantle[0m
+  │    │      [2m  maxPlayerCount: 50[0m
+  │    │      [2m  allowCopying: false[0m
+  │    │      [2m  socialSlotType: Automatic[0m
+  │    │      [2m  customSocialSlotsCount: ~[0m
+  │    │  
+  │    ╰─ Succeeded with outputs:
+  │           [2mplaceConfiguration[0m
+  │  
+  │  
+  ╰─ Succeeded with 0 create(s), 1 update(s), 0 delete(s), 5 noop(s), 0 skip(s)
+```
+        </FeatureDisplay>
+  </Feature>
+
+  <Feature reverse>
+    <FeatureContent>
+      <FeatureTitle>Integrated with Roblox tooling</FeatureTitle>
+      <FeatureDescription>
+        Mantle integrates with the best of the Roblox OSS community. Install with
+        [Foreman](https://github.com/roblox/foreman) and build with [Rojo](https://rojo.space).
+      </FeatureDescription>
+      <FeatureAction href="/installation">Learn More</FeatureAction>
+    </FeatureContent>
+    <FeatureDisplay title="foreman.toml">
+```toml
+[tools]
+mantle = { source = "blake-mealey/mantle", version = "0.11" }
+```
+    </FeatureDisplay>
+  </Feature>
+
+  <Feature>
+    <FeatureContent>
+      <FeatureTitle>Automate with continuous deployments</FeatureTitle>
+      <FeatureDescription>
+        Mantle is designed for continuous deployment environments like GitHub Actions.
+      </FeatureDescription>
+      <FeatureAction href="/continuous-deployment">Learn More</FeatureAction>
+    </FeatureContent>
+    <FeatureDisplay title=".github/workflows/deploy.yml">
+```yaml
+name: Deploy
+on: push
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: Roblox/setup-foreman@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build project
+        run: rojo build --output game.rbxlx
+      - name: Deploy project
+        run: mantle deploy
+        env:
+          ROBLOSECURITY: ${{ secrets.ROBLOSECURITY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+```
+        </FeatureDisplay>
+  </Feature>
+</div>

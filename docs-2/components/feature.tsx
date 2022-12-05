@@ -14,7 +14,7 @@ export function Feature({ children, reverse }: FeatureProps) {
         {
           'flex-row-reverse': reverse,
         },
-        'relative overflow-hidden bg-gradient-to-r to-neutral-800/20 border border-neutral-500/20 rounded-xl p-16 flex flex-wrap gap-32 mb-16'
+        'relative overflow-hidden border border-neutral-500/20 rounded-xl p-16 flex flex-wrap gap-32 mb-16'
       )}
     >
       {children}

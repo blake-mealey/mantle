@@ -62,9 +62,9 @@ export function FeatureAction({ children, href }: FeatureActionProps) {
   return (
     <Link
       href={href}
-      className="rounded-lg bg-white text-black font-semibold px-5 py-2 text-xl w-fit block"
+      className="font-semibold text-md text-white/70 w-fit block hover:text-white/80 focus:text-white/90 transition-colors"
     >
-      {children}
+      {children} →
     </Link>
   );
 }

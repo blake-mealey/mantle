@@ -42,7 +42,11 @@ interface FeatureContentProps {
 }
 
 export function FeatureContent({ children }: FeatureContentProps) {
-  return <div className="flex-1 flex flex-col gap-4">{children}</div>;
+  return (
+    <div className="flex-1 flex flex-col gap-4 text-black dark:text-white">
+      {children}
+    </div>
+  );
 }
 
 export function FeatureTitle({ children }: FeatureContentProps) {
@@ -62,7 +66,7 @@ export function FeatureAction({ children, href }: FeatureActionProps) {
   return (
     <Link
       href={href}
-      className="font-semibold text-md text-white/70 w-fit block hover:text-white/80 focus:text-white/90 transition-colors"
+      className="font-semibold text-md text-black/70 dark:text-white/70 w-fit block hover:text-black/80 focus:text-black/90 dark:hover:text-white/80 dark:focus:text-white/90 transition-colors"
     >
       {children} →
     </Link>
@@ -76,8 +80,8 @@ interface FeatureDisplayProps {
 
 export function FeatureDisplay({ children, title }: FeatureDisplayProps) {
   return (
-    <div className="flex-1 rounded-xl border border-neutral-500/20 bg-neutral-900/50 backdrop-blur-3xl">
-      <div className="border-b border-neutral-500/20 p-4 font-medium">
+    <div className="flex-1 rounded-xl border border-neutral-500/20 bg-neutral-100/50 dark:bg-neutral-900/50 backdrop-blur-3xl">
+      <div className="border-b border-neutral-500/20 p-4 font-medium dark:text-white">
         {title}
       </div>
       <div className="py-4">{children}</div>

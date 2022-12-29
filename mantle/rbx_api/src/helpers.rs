@@ -9,13 +9,13 @@ use tokio_util::codec::{BytesCodec, FramedRead};
 
 use crate::{errors::RobloxApiErrorResponse, RobloxApiError, RobloxApiResult};
 
-pub async fn get_roblox_api_error_message_from_response(response: reqwest::Response) -> String {
+pub async fn get_roblox_api_error_from_response(response: reqwest::Response) -> RobloxApiError {
     let status_code = response.status();
     let reason = {
         if let Some(content_type) = response.headers().get(reqwest::header::CONTENT_TYPE) {
             if content_type == "application/json" {
                 match response.json::<RobloxApiErrorResponse>().await {
-                    Ok(error) => Some(error.reason_or_status_code(status_code)),
+                    Ok(error) => error.reason(),
                     Err(_) => None,
                 }
             } else if content_type == "text/html"
@@ -41,7 +41,11 @@ pub async fn get_roblox_api_error_message_from_response(response: reqwest::Respo
             None
         }
     };
-    reason.unwrap_or_else(|| format!("Unknown error (status {})", status_code))
+
+    RobloxApiError::Roblox {
+        status_code,
+        reason: reason.unwrap_or_else(|| "Unknown error".to_owned()),
+    }
 }
 
 pub async fn handle(
@@ -60,9 +64,7 @@ pub async fn handle(
             if response.status().is_success() {
                 Ok(response)
             } else {
-                Err(RobloxApiError::Roblox(
-                    get_roblox_api_error_message_from_response(response).await,
-                ))
+                Err(get_roblox_api_error_from_response(response).await)
             }
         }
         Err(error) => Err(error.into()),
@@ -90,9 +92,10 @@ where
     let data = response.bytes().await?;
     if let Ok(error) = serde_json::from_slice::<RobloxApiErrorResponse>(&data) {
         if !error.success.unwrap_or(false) {
-            return Err(RobloxApiError::Roblox(
-                error.reason_or_status_code(status_code),
-            ));
+            return Err(RobloxApiError::Roblox {
+                status_code,
+                reason: error.reason().unwrap_or_else(|| "Unknown error".to_owned()),
+            });
         }
     }
     Ok(serde_json::from_slice::<T>(&data)?)

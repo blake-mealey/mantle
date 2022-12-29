@@ -2,7 +2,7 @@ pub mod models;
 
 use std::{fs, path::PathBuf};
 
-use reqwest::{header, Body};
+use reqwest::{header, Body, StatusCode};
 
 use crate::{
     errors::{RobloxApiError, RobloxApiResult},
@@ -51,9 +51,33 @@ impl RobloxApi {
             .header("Content-Type", content_type)
             .body(body);
 
-        handle(req).await?;
+        let result = handle(req).await;
 
-        Ok(())
+        match result {
+            Err(RobloxApiError::Roblox {
+                status_code,
+                reason,
+            }) => match (file_format, status_code) {
+                (PlaceFileFormat::Xml, StatusCode::PAYLOAD_TOO_LARGE) => {
+                    Err(RobloxApiError::RbxlxPlaceFileSizeTooLarge)
+                }
+                (PlaceFileFormat::Xml, StatusCode::NOT_FOUND) => {
+                    Err(RobloxApiError::RbxlxPlaceFileSizeMayBeTooLarge)
+                }
+                (PlaceFileFormat::Binary, StatusCode::PAYLOAD_TOO_LARGE) => {
+                    Err(RobloxApiError::RbxlPlaceFileSizeTooLarge)
+                }
+                (PlaceFileFormat::Binary, StatusCode::NOT_FOUND) => {
+                    Err(RobloxApiError::RbxlPlaceFileSizeMayBeTooLarge)
+                }
+                _ => Err(RobloxApiError::Roblox {
+                    status_code,
+                    reason,
+                }),
+            },
+            Err(e) => Err(e),
+            Ok(_) => Ok(()),
+        }
     }
 
     pub async fn get_place(&self, place_id: AssetId) -> RobloxApiResult<GetPlaceResponse> {

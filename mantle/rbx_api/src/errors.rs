@@ -13,8 +13,11 @@ pub enum RobloxApiError {
     #[error("Authorization has been denied for this request. Check your ROBLOSECURITY cookie.")]
     Authorization,
 
-    #[error("Roblox error: {0}")]
-    Roblox(String),
+    #[error("Roblox error ({status_code}): {reason}")]
+    Roblox {
+        status_code: StatusCode,
+        reason: String,
+    },
 
     #[error("Failed to parse JSON response: {0}")]
     ParseJson(#[from] serde_json::Error),
@@ -39,6 +42,18 @@ pub enum RobloxApiError {
 
     #[error("No create quotas found for asset type {0}")]
     MissingCreateQuota(AssetTypeId),
+
+    #[error("Place file size is too large. Consider switching to the rbxl format.")]
+    RbxlxPlaceFileSizeTooLarge,
+
+    #[error("Place file size may be too large. Consider switching to the rbxl format.")]
+    RbxlxPlaceFileSizeMayBeTooLarge,
+
+    #[error("Place file size is too large.")]
+    RbxlPlaceFileSizeTooLarge,
+
+    #[error("Place file size may be too large.")]
+    RbxlPlaceFileSizeMayBeTooLarge,
 }
 
 // Temporary to make the new errors backwards compatible with the String errors throughout the project.
@@ -88,10 +103,5 @@ impl RobloxApiErrorResponse {
         } else {
             None
         }
-    }
-
-    pub fn reason_or_status_code(self, status_code: StatusCode) -> String {
-        self.reason()
-            .unwrap_or_else(|| format!("Unknown error ({})", status_code))
     }
 }

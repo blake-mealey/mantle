@@ -847,6 +847,19 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     )
                     .await?;
 
+                if audio_asset.is_some() {
+                    self.roblox_api
+                        .grant_asset_permissions(
+                            asset_id,
+                            GrantAssetPermissionsRequestRequest {
+                                subject_id: experience.asset_id,
+                                subject_type: GrantAssetPermissionRequestSubjectType::Universe,
+                                action: GrantAssetPermissionRequestAction::Use,
+                            },
+                        )
+                        .await?;
+                }
+
                 Ok(RobloxOutputs::AssetAlias(AssetAliasOutputs {
                     name: inputs.name,
                 }))

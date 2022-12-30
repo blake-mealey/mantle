@@ -1,3 +1,4 @@
+mod aws_credentials_provider;
 mod legacy_resources;
 pub mod v1;
 pub mod v2;
@@ -20,6 +21,7 @@ use rbx_api::{
     social_links::models::SocialLinkType,
     RobloxApi,
 };
+use rusoto_core::{HttpClient, Region};
 use rusoto_s3::{S3Client, S3};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -36,8 +38,8 @@ use super::{
 };
 
 use self::{
-    v1::ResourceStateV1, v2::ResourceStateV2, v3::ResourceStateV3, v4::ResourceStateV4,
-    v5::ResourceStateV5,
+    aws_credentials_provider::AwsCredentialsProvider, v1::ResourceStateV1, v2::ResourceStateV2,
+    v3::ResourceStateV3, v4::ResourceStateV4, v5::ResourceStateV5,
 };
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -117,6 +119,14 @@ fn get_state_from_file(
     Ok(None)
 }
 
+fn create_client(region: Region) -> S3Client {
+    S3Client::new_with(
+        HttpClient::new().unwrap(),
+        AwsCredentialsProvider::new(),
+        region,
+    )
+}
+
 async fn get_state_from_remote(
     config: &RemoteStateConfig,
 ) -> Result<Option<ResourceState>, String> {
@@ -125,7 +135,7 @@ async fn get_state_from_remote(
         Paint::cyan(config)
     ));
 
-    let client = S3Client::new(config.region.clone());
+    let client = create_client(config.region.clone());
     let object_res = client
         .get_object(rusoto_s3::GetObjectRequest {
             bucket: config.bucket.clone(),
@@ -816,7 +826,7 @@ pub async fn import_graph(
 pub async fn save_state_to_remote(config: &RemoteStateConfig, data: &[u8]) -> Result<(), String> {
     logger::log(format!("Saving to remote object {}", Paint::cyan(config)));
 
-    let client = S3Client::new(config.region.clone());
+    let client = create_client(config.region.clone());
     let res = client
         .put_object(rusoto_s3::PutObjectRequest {
             bucket: config.bucket.clone(),

@@ -20,15 +20,15 @@ export function Feature({ children, reverse }: FeatureProps) {
       {children}
       {reverse ? (
         <>
-          <span className="-z-10 absolute w-[1000px] h-[1000px] -bottom-[500px] -right-[500px] rounded-full bg-orange-700" />
-          <span className="-z-10 absolute w-[500px] h-[500px] -top-[250px] -right-[250px] rounded-full bg-orange-600" />
-          <span className="-z-10 absolute w-[1000px] h-[1000px] -top-[500px] -left-[500px] rounded-full bg-orange-400" />
-          <span className="-z-10 absolute w-[500px] h-[500px] -bottom-[250px] -left-[250px] rounded-full bg-orange-500" />
+          {/* <span className="-z-10 absolute w-[1000px] h-[1000px] -bottom-[500px] -right-[500px] rounded-full bg-orange-500" /> */}
+          {/* <span className="-z-10 absolute w-[500px] h-[500px] -top-[250px] -right-[250px] rounded-full bg-orange-400" /> */}
+          <span className="-z-10 absolute w-[1000px] h-[1000px] -top-[500px] -left-[500px] rounded-full bg-orange-600" />
+          <span className="-z-10 absolute w-[500px] h-[500px] -bottom-[250px] -left-[250px] rounded-full bg-orange-700" />
         </>
       ) : (
         <>
-          <span className="-z-10 absolute w-[1000px] h-[1000px] -top-[500px] -left-[500px] rounded-full bg-orange-700" />
-          <span className="-z-10 absolute w-[500px] h-[500px] -bottom-[250px] -left-[250px] rounded-full bg-orange-600" />
+          {/* <span className="-z-10 absolute w-[1000px] h-[1000px] -top-[500px] -left-[500px] rounded-full bg-orange-700" /> */}
+          {/* <span className="-z-10 absolute w-[500px] h-[500px] -bottom-[250px] -left-[250px] rounded-full bg-orange-600" /> */}
           <span className="-z-10 absolute w-[1000px] h-[1000px] -bottom-[500px] -right-[500px] rounded-full bg-orange-400" />
           <span className="-z-10 absolute w-[500px] h-[500px] -top-[250px] -right-[250px] rounded-full bg-orange-500" />
         </>
@@ -43,18 +43,18 @@ interface FeatureContentProps {
 
 export function FeatureContent({ children }: FeatureContentProps) {
   return (
-    <div className="flex-1 flex flex-col gap-4 text-black dark:text-white">
+    <div className="flex-1 flex flex-col justify-center gap-4 text-black dark:text-white">
       {children}
     </div>
   );
 }
 
 export function FeatureTitle({ children }: FeatureContentProps) {
-  return <div className="text-3xl font-bold">{children}</div>;
+  return <div className="text-5xl font-bold">{children}</div>;
 }
 
 export function FeatureDescription({ children }: FeatureContentProps) {
-  return <div className="text-xl font-medium">{children}</div>;
+  return <div className="text-2xl font-medium">{children}</div>;
 }
 
 interface FeatureActionProps {

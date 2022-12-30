@@ -101,11 +101,6 @@ where
     Ok(serde_json::from_slice::<T>(&data)?)
 }
 
-pub async fn handle_as_html(request_builder: reqwest::RequestBuilder) -> RobloxApiResult<Html> {
-    let text = handle(request_builder).await?.text().await?;
-    Ok(Html::parse_fragment(&text))
-}
-
 pub async fn get_file_part(file_path: PathBuf) -> RobloxApiResult<Part> {
     let file = File::open(&file_path).await?;
     let reader = Body::wrap_stream(FramedRead::new(file, BytesCodec::new()));
@@ -121,19 +116,4 @@ pub async fn get_file_part(file_path: PathBuf) -> RobloxApiResult<Part> {
         .file_name(file_name)
         .mime_str(mime.as_ref())
         .unwrap())
-}
-
-pub fn get_input_value(html: &Html, selector: &str) -> RobloxApiResult<String> {
-    let input_selector = Selector::parse(selector).unwrap();
-    let input_element = html
-        .select(&input_selector)
-        .next()
-        .ok_or(RobloxApiError::ParseHtml)?;
-    let input_value = input_element
-        .value()
-        .attr("value")
-        .ok_or(RobloxApiError::ParseHtml)?
-        .to_owned();
-
-    Ok(input_value)
 }

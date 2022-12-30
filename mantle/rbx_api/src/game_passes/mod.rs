@@ -5,9 +5,9 @@ use std::path::PathBuf;
 use reqwest::multipart::Form;
 
 use crate::{
-    errors::{RobloxApiError, RobloxApiResult},
-    helpers::{get_file_part, get_input_value, handle, handle_as_html, handle_as_json},
-    models::{AssetId, AssetTypeId},
+    errors::RobloxApiResult,
+    helpers::{get_file_part, handle, handle_as_json},
+    models::AssetId,
     RobloxApi,
 };
 
@@ -75,80 +75,23 @@ impl RobloxApi {
 
     pub async fn create_game_pass(
         &self,
-        start_place_id: AssetId,
+        experience_id: AssetId,
         name: String,
         description: String,
         icon_file: PathBuf,
     ) -> RobloxApiResult<CreateGamePassResponse> {
-        let form_verification_token = {
-            let req = self
-                .client
-                .get("https://www.roblox.com/build/upload")
-                .query(&[
-                    ("assetTypeId", &AssetTypeId::GamePass.to_string()),
-                    ("targetPlaceId", &start_place_id.to_string()),
-                ]);
-
-            let html = handle_as_html(req).await?;
-            get_input_value(
-                &html,
-                "#upload-form input[name=\"__RequestVerificationToken\"]",
-            )?
-        };
-
-        let (form_verification_token, icon_asset_id) = {
-            let req = self
-                .client
-                .post("https://www.roblox.com/build/verifyupload")
-                .multipart(
-                    Form::new()
-                        .part("file", get_file_part(icon_file).await?)
-                        .text("__RequestVerificationToken", form_verification_token)
-                        .text("assetTypeId", AssetTypeId::GamePass.to_string())
-                        .text("targetPlaceId", start_place_id.to_string())
-                        .text("name", name.clone())
-                        .text("description", description.clone()),
-                );
-
-            let html = handle_as_html(req).await?;
-            let form_verification_token = get_input_value(
-                &html,
-                "#upload-form input[name=\"__RequestVerificationToken\"]",
-            )?;
-            let icon_asset_id =
-                get_input_value(&html, "#upload-form input[name=\"assetImageId\"]")?
-                    .parse::<AssetId>()
-                    .map_err(|_| RobloxApiError::ParseAssetId)?;
-
-            (form_verification_token, icon_asset_id)
-        };
-
         let req = self
             .client
-            .post("https://www.roblox.com/build/doverifiedupload")
+            .post("https://apis.roblox.com/game-passes/v1/game-passes")
             .multipart(
                 Form::new()
-                    .text("__RequestVerificationToken", form_verification_token)
-                    .text("assetTypeId", AssetTypeId::GamePass.to_string())
-                    .text("targetPlaceId", start_place_id.to_string())
-                    .text("name", name)
-                    .text("description", description)
-                    .text("assetImageId", icon_asset_id.to_string()),
+                    .text("Name", name.clone())
+                    .text("Description", description.clone())
+                    .text("UniverseId", experience_id.to_string())
+                    .part("File", get_file_part(icon_file).await?),
             );
 
-        let response = handle(req).await?;
-
-        let location = response.url();
-        let asset_id = location
-            .query_pairs()
-            .find_map(|(k, v)| if k == "uploadedId" { Some(v) } else { None })
-            .and_then(|v| v.parse::<AssetId>().ok())
-            .ok_or(RobloxApiError::ParseAssetId)?;
-
-        Ok(CreateGamePassResponse {
-            asset_id,
-            icon_asset_id,
-        })
+        handle_as_json(req).await
     }
 
     pub async fn update_game_pass(

@@ -2,9 +2,10 @@ use serde::Deserialize;
 
 use crate::models::AssetId;
 
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateGamePassResponse {
-    pub asset_id: AssetId,
-    pub icon_asset_id: AssetId,
+    pub game_pass_id: AssetId,
 }
 
 #[derive(Deserialize, Clone)]

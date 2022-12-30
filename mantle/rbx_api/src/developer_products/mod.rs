@@ -87,7 +87,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<ListDeveloperProductsResponse> {
         let req = self
             .client
-            .get("https://api.roblox.com/developerproducts/list")
+            .get("https://apis.roblox.com/developer-products/v1/developer-products/list")
             .query(&[
                 ("universeId", &experience_id.to_string()),
                 ("page", &page.to_string()),

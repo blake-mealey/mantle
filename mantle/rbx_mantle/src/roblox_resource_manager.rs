@@ -529,21 +529,22 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
             RobloxInputs::Pass(inputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
-                let CreateGamePassResponse {
-                    asset_id,
-                    icon_asset_id,
-                } = self
+                let CreateGamePassResponse { game_pass_id } = self
                     .roblox_api
                     .create_game_pass(
-                        experience.start_place_id,
+                        experience.asset_id,
                         inputs.name.clone(),
                         inputs.description.clone(),
                         self.get_path(inputs.icon_file_path),
                     )
                     .await?;
-                self.roblox_api
+                let GetGamePassResponse {
+                    icon_image_asset_id,
+                    ..
+                } = self
+                    .roblox_api
                     .update_game_pass(
-                        asset_id,
+                        game_pass_id,
                         inputs.name,
                         inputs.description,
                         inputs.price,
@@ -552,8 +553,8 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     .await?;
 
                 Ok(RobloxOutputs::Pass(PassOutputs {
-                    asset_id,
-                    icon_asset_id,
+                    asset_id: game_pass_id,
+                    icon_asset_id: icon_image_asset_id,
                 }))
             }
             RobloxInputs::Badge(inputs) => {

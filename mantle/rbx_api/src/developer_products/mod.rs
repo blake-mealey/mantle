@@ -6,51 +6,32 @@ use reqwest::{header, multipart::Form};
 use serde_json::json;
 
 use crate::{
-    errors::{RobloxApiError, RobloxApiResult},
-    helpers::{get_file_part, get_input_value, handle, handle_as_html, handle_as_json},
+    errors::RobloxApiResult,
+    helpers::{get_file_part, handle, handle_as_json},
     models::AssetId,
     RobloxApi,
 };
 
 use self::models::{
-    CreateDeveloperProductResponse, GetDeveloperProductResponse, ListDeveloperProductResponseItem,
-    ListDeveloperProductsResponse,
+    CreateDeveloperProductIconResponse, CreateDeveloperProductResponse,
+    GetDeveloperProductResponse, ListDeveloperProductResponseItem, ListDeveloperProductsResponse,
 };
 
 impl RobloxApi {
     pub async fn create_developer_product_icon(
         &self,
-        experience_id: AssetId,
+        developer_product_id: AssetId,
         icon_file: PathBuf,
-    ) -> RobloxApiResult<AssetId> {
-        let image_verification_token = {
-            let req = self
-                .client
-                .get("https://www.roblox.com/places/create-developerproduct")
-                .query(&[("universeId", &experience_id.to_string())]);
-
-            let html = handle_as_html(req).await?;
-            get_input_value(
-                &html,
-                "#DeveloperProductImageUpload input[name=\"__RequestVerificationToken\"]",
-            )?
-        };
-
+    ) -> RobloxApiResult<CreateDeveloperProductIconResponse> {
         let req = self
             .client
-            .post("https://www.roblox.com/places/developerproduct-icon")
-            .query(&[("developerProductId", "0")])
-            .multipart(
-                Form::new()
-                    .part("DeveloperProductImageFile", get_file_part(icon_file).await?)
-                    .text("__RequestVerificationToken", image_verification_token),
-            );
+            .post(format!(
+                "https://apis.roblox.com/developer-products/v1/developer-products/{}/image",
+                developer_product_id
+            ))
+            .multipart(Form::new().part("imageFile", get_file_part(icon_file).await?));
 
-        let html = handle_as_html(req).await?;
-
-        get_input_value(&html, "#developerProductIcon input[id=\"assetId\"]")?
-            .parse()
-            .map_err(|_| RobloxApiError::ParseAssetId)
+        handle_as_json(req).await
     }
 
     pub async fn create_developer_product(
@@ -59,9 +40,8 @@ impl RobloxApi {
         name: String,
         price: u32,
         description: String,
-        icon_asset_id: Option<AssetId>,
     ) -> RobloxApiResult<CreateDeveloperProductResponse> {
-        let mut req = self
+        let req = self
             .client
             .post(&format!(
                 "https://develop.roblox.com/v1/universes/{}/developerproducts",
@@ -73,9 +53,6 @@ impl RobloxApi {
                 ("priceInRobux", &price.to_string()),
                 ("description", &description),
             ]);
-        if let Some(icon_asset_id) = icon_asset_id {
-            req = req.query(&[("iconImageAssetId", &icon_asset_id.to_string())]);
-        }
 
         handle_as_json(req).await
     }
@@ -136,7 +113,6 @@ impl RobloxApi {
         name: String,
         price: u32,
         description: String,
-        icon_asset_id: Option<AssetId>,
     ) -> RobloxApiResult<()> {
         let req = self
             .client
@@ -148,7 +124,6 @@ impl RobloxApi {
                 "Name": name,
                 "PriceInRobux": price,
                 "Description": description,
-                "IconImageAssetId": icon_asset_id
             }));
 
         handle(req).await?;

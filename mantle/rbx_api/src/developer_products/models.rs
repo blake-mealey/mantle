@@ -4,6 +4,12 @@ use crate::models::AssetId;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CreateDeveloperProductIconResponse {
+    pub image_asset_id: AssetId,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateDeveloperProductResponse {
     pub id: AssetId,
 }

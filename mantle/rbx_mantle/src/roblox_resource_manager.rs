@@ -11,7 +11,10 @@ use rbx_api::{
         CreateAssetQuota, CreateAudioAssetResponse, CreateImageAssetResponse, QuotaDuration,
     },
     badges::models::CreateBadgeResponse,
-    developer_products::models::{CreateDeveloperProductResponse, GetDeveloperProductResponse},
+    developer_products::models::{
+        CreateDeveloperProductIconResponse, CreateDeveloperProductResponse,
+        GetDeveloperProductResponse,
+    },
     experiences::models::{CreateExperienceResponse, ExperienceConfigurationModel},
     game_passes::models::{CreateGamePassResponse, GetGamePassResponse},
     models::{AssetId, AssetTypeId, CreatorType, UploadImageResponse},
@@ -488,21 +491,22 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 Ok(RobloxOutputs::SocialLink(AssetOutputs { asset_id: id }))
             }
             RobloxInputs::ProductIcon(inputs) => {
-                let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
+                let product = single_output!(dependency_outputs, RobloxOutputs::Product);
 
-                let asset_id = self
+                let CreateDeveloperProductIconResponse { image_asset_id } = self
                     .roblox_api
                     .create_developer_product_icon(
-                        experience.asset_id,
+                        product.asset_id,
                         self.get_path(inputs.file_path),
                     )
                     .await?;
 
-                Ok(RobloxOutputs::ProductIcon(AssetOutputs { asset_id }))
+                Ok(RobloxOutputs::ProductIcon(AssetOutputs {
+                    asset_id: image_asset_id,
+                }))
             }
             RobloxInputs::Product(inputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
-                let icon = optional_output!(dependency_outputs, RobloxOutputs::ProductIcon);
 
                 let CreateDeveloperProductResponse { id } = self
                     .roblox_api
@@ -511,7 +515,6 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                         inputs.name,
                         inputs.price,
                         inputs.description,
-                        icon.map(|i| i.asset_id),
                     )
                     .await?;
 
@@ -762,7 +765,6 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
             }
             (RobloxInputs::Product(inputs), RobloxOutputs::Product(outputs)) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
-                let icon = optional_output!(dependency_outputs, RobloxOutputs::ProductIcon);
 
                 self.roblox_api
                     .update_developer_product(
@@ -771,7 +773,6 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                         inputs.name,
                         inputs.price,
                         inputs.description,
-                        icon.map(|i| i.asset_id),
                     )
                     .await?;
 
@@ -965,7 +966,6 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                         format!("zzz_DEPRECATED({})", utc.format("%F %T%.f")),
                         0,
                         "".to_owned(),
-                        None,
                     )
                     .await?;
             }

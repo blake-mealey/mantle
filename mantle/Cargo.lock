@@ -536,6 +536,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
 
 [[package]]
+name = "dotenv"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
+
+[[package]]
 name = "dtoa"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1222,9 +1228,10 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 
 [[package]]
 name = "mantle"
-version = "0.11.5"
+version = "0.11.6"
 dependencies = [
  "clap",
+ "dotenv",
  "env_logger",
  "integration_executor",
  "log",
@@ -1953,7 +1960,7 @@ dependencies = [
 
 [[package]]
 name = "rbx_api"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64",
  "log",
@@ -2027,7 +2034,7 @@ dependencies = [
 
 [[package]]
 name = "rbx_mantle"
-version = "0.11.5"
+version = "0.11.6"
 dependencies = [
  "async-trait",
  "chrono",

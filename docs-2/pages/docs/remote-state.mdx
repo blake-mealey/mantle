@@ -1,0 +1,14 @@
+# Remote State
+
+Mantle saves the state of your resources in state files which enables it to make only the required
+changes to your resources after your configuration and files change.
+
+By default, Mantle will save your state to a local `.mantle-state.yml` file which you can check-in
+to your Git repo. But Mantle can also save your state to remote files stored in a cloud provider
+which comes with a few benefits.
+
+Since a remote state file can be accessed and updated from anywhere, you can share it across
+branches and computers. This makes it less likely your state files gets out of sync with the real
+resources in Roblox, and it is ideal for continuous deployment (CD) scenarios.
+
+Currently, the only supported cloud provider for remote state is [Amazon S3 →](/remote-state/amazon-s3)

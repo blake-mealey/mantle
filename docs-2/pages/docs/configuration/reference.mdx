@@ -1,0 +1,23 @@
+import { useSSG } from 'nextra/ssg';
+import { getSchemas, processSchema } from '@lib/schemas';
+import { LatestSchema } from '@components/latest-schema';
+
+# Reference
+
+export async function getStaticProps() {
+  const { schemas, latestVersion } = await getSchemas();
+  const latestSchema = schemas[latestVersion];
+  const processedSchema = await processSchema({
+    version: latestVersion,
+    schema: latestSchema,
+  });
+  return {
+    props: {
+      ssg: {
+        schema: processedSchema,
+      },
+    },
+  };
+}
+
+<LatestSchema />

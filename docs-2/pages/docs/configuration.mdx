@@ -1,0 +1,71 @@
+# Configuration
+
+## Config file resolution
+
+All Mantle commands accept a `PROJECT` argument which tells Mantle where to look for your config file.
+Mantle uses the following rules to find your config file:
+
+1. If the `PROJECT` argument was _not provided_, use the `mantle.yml` file in the current directory as the
+   config file (if it exists).
+2. If the `PROJECT` argument was _a directory_, use the `mantle.yml` file in that directory as
+   the config file (if it exists).
+3. If the `PROJECT` argument was _a file_, use it as the config file (if it exists).
+
+If no config file is found, Mantle will exit with an error code.
+
+## File path resolution
+
+Many Mantle config properties require file paths or globs. All file paths should be written relative to the
+config file's directory.
+
+For example, with the directory structure:
+
+```txt
+.
+╰── project/
+    ├── mantle.yml
+    ├── game.rbxlx
+    ╰── marketing/
+        ├── game-icon.png
+        ├── thumbnail-1.png
+        ╰── thumbnail-2.png
+```
+
+You would use the config:
+
+```yaml filename="project/mantle.yml"
+target:
+  experience:
+    configuration:
+      icon: marketing/game-icon.png
+      thumbnails:
+        - marketing/thumbnail-1.png
+        - marketing/thumbnail-2.png
+    places:
+      start:
+        file: game.rbxlx
+```
+
+Mantle will correctly find the referenced files no matter where you execute Mantle from.
+
+## YAML syntax
+
+Mantle config files use YAML syntax, and should have either a `.yml` or `.yaml` file extension. To
+quickly get started with the YAML syntax, see "[Learn YAML in Y Minutes](https://learnxinyminutes.com/docs/yaml/)"
+or read through the examples in this guide and in the [Examples](https://github.com/blake-mealey/mantle/tree/main/examples)
+repo.
+
+## Schema
+
+You can view the JSON schema for the config file in the [Releases](https://github.com/blake-mealey/mantle/releases)
+assets (only for versions above `0.11.0`). You can also use the schema to add autocomplete to your editor. For
+VSCode, you can install the [YAML](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml) extension
+and add the following to your VSCode settings:
+
+```json
+"yaml.schemas": {
+   "https://mantledeploy.vercel.app/schemas/{{ schemaVersion }}/schema.json": "mantle.yml"
+}
+```
+
+Now you should see autocomplete suggestions and documentation while editing your `mantle.yml` config files.

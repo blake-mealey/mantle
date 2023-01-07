@@ -2,10 +2,22 @@
   "index": {
     "type": "page",
     "display": "hidden",
+    "title": "Mantle",
     "theme": {
       "sidebar": false,
       "toc": false,
       "layout": "raw"
     }
+  },
+  "docs": {
+    "title": "Docs",
+    "type": "page",
+    "href": "/docs"
+  },
+  "examples": {
+    "title": "Examples",
+    "type": "page",
+    "href": "https://github.com/blake-mealey/mantle/tree/main/examples",
+    "newWindow": true
   }
 }

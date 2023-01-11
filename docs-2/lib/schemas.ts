@@ -10,7 +10,14 @@ interface Schemas {
   latestVersion: string | undefined;
 }
 
+// cache per-build/dev server
+let schemasCache: Schemas | undefined;
+
 export async function getSchemas(): Promise<Schemas> {
+  if (schemasCache) {
+    return schemasCache;
+  }
+
   const client = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
   const repoParams = { owner: 'blake-mealey', repo: 'mantle' };
@@ -44,7 +51,8 @@ export async function getSchemas(): Promise<Schemas> {
     })
   );
 
-  return { schemas, latestVersion: releases[0]?.tag_name };
+  schemasCache = { schemas, latestVersion: releases[0]?.tag_name };
+  return schemasCache;
 }
 
 export interface Schema {

@@ -1,13 +1,16 @@
-import { JSONSchema7, JSONSchema7TypeName } from 'json-schema';
+import { JSONSchema7, JSONSchema7TypeName, JSONSchema7Type } from 'json-schema';
 import { compileMdx } from 'nextra/compile';
+import { isDefined } from './is-defined';
 import { translateToNextra } from './remark-plugins/translate-to-nextra';
 
 export interface SchemaProperty {
   id: string;
   required: boolean;
   level: number;
-  compiledContent: string;
+  compiledContent: string | null;
   type: string;
+  propertyType: PropertyType;
+  default: { value: JSONSchema7Type } | null;
 }
 
 export async function flattenSchemaProperties(
@@ -30,24 +33,24 @@ export async function flattenSchemaProperties(
             return;
           }
           const formattedId = formatId(id, parentId);
-          const level = getLevel(formattedId);
-          const content = [
-            `${'#'.repeat(level)} \`${formattedId}\``,
-            definition.description,
-          ]
-            .filter(Boolean)
-            .join('\n\n');
 
           properties.push({
             id: formattedId,
-            level,
+            level: getLevel(formattedId),
             required: requiredProps.includes(id),
-            compiledContent: (
-              await compileMdx(content, {
-                mdxOptions: { remarkPlugins: [translateToNextra] },
-              })
-            ).result,
+            compiledContent: definition.description
+              ? (
+                  await compileMdx(definition.description, {
+                    mdxOptions: { remarkPlugins: [translateToNextra] },
+                  })
+                ).result
+              : null,
             type: getType(definition),
+            propertyType: getSchemaPropertyType(definition),
+            default:
+              definition.default === undefined
+                ? null
+                : { value: definition.default },
           });
           properties.push(
             ...(await flattenSchemaProperties(definition, formattedId))
@@ -127,6 +130,136 @@ function isType(schema: JSONSchema7, type: JSONSchema7TypeName) {
   }
 }
 
+export type PropertyType =
+  | { type: 'primitive'; value: string }
+  | { type: 'enum'; values: PropertyType[] }
+  | { type: 'array'; valueType: PropertyType }
+  | { type: 'dictionary'; valueType: PropertyType }
+  | { type: 'object'; properties: [string, PropertyType][] }
+  | { type: 'oneOf'; values: PropertyType[] }
+  | { type: 'anyOf'; values: PropertyType[] };
+
+function getValuePropertyType(type: JSONSchema7Type): PropertyType {
+  if (typeof type === 'object') {
+    if (Array.isArray(type)) {
+      const item = type[0];
+      return {
+        type: 'array',
+        valueType: item
+          ? getValuePropertyType(item)
+          : { type: 'primitive', value: 'unknown' },
+      };
+    }
+    // TODO: include object properties?
+    return {
+      type: 'primitive',
+      value: 'object',
+    };
+  }
+  return {
+    type: 'primitive',
+    value: type.toString(),
+  };
+}
+
+function getSchemaPropertyType(schema: JSONSchema7): PropertyType {
+  let type: string | undefined;
+  if (Array.isArray(schema.type)) {
+    type = schema.type.find((x) => x !== 'null');
+  } else {
+    type = schema.type;
+  }
+
+  if (schema.enum) {
+    let values = schema.enum;
+    if (type === 'string') {
+      values = values.map((value) => `'${value}'`);
+    }
+    return {
+      type: 'enum',
+      values: values.map(getValuePropertyType),
+    };
+  }
+
+  if (type === 'number' || type === 'integer') {
+    return {
+      type: 'primitive',
+      value: schema.format ?? type,
+    };
+  }
+
+  if (
+    type === 'array' &&
+    schema.items &&
+    typeof schema.items !== 'boolean' &&
+    !Array.isArray(schema.items)
+  ) {
+    return {
+      type: 'array',
+      valueType: getSchemaPropertyType(schema.items),
+    };
+  }
+
+  if (type === 'object') {
+    if (schema.additionalProperties) {
+      return {
+        type: 'dictionary',
+        valueType:
+          typeof schema.additionalProperties !== 'boolean'
+            ? getSchemaPropertyType(schema.additionalProperties)
+            : { type: 'primitive', value: 'unknown' },
+      };
+    }
+    return {
+      type: 'object',
+      properties: Object.entries(schema.properties ?? {})
+        .map(([name, property]): [string, PropertyType] | undefined =>
+          typeof property !== 'boolean'
+            ? [name, getSchemaPropertyType(property)]
+            : undefined
+        )
+        .filter(isDefined),
+    };
+  }
+
+  if (schema.oneOf) {
+    const oneOf = {
+      type: 'oneOf',
+      values: schema.oneOf
+        .filter(
+          (definition): definition is JSONSchema7 =>
+            typeof definition !== 'boolean'
+        )
+        .map(getSchemaPropertyType),
+    } as const;
+    if (oneOf.values.length === 1) {
+      return oneOf.values[0]!;
+    }
+    return oneOf;
+  }
+
+  if (schema.anyOf) {
+    const anyOf = {
+      type: 'anyOf',
+      values: schema.anyOf
+        .filter(
+          (definition): definition is JSONSchema7 =>
+            typeof definition !== 'boolean'
+        )
+        .map(getSchemaPropertyType),
+    } as const;
+    if (anyOf.values.length === 1) {
+      return anyOf.values[0]!;
+    }
+    return anyOf;
+  }
+
+  return {
+    type: 'primitive',
+    value: type ?? 'unknown',
+  };
+}
+
 function getType(schema: JSONSchema7): string {
   let type: string | undefined;
   if (Array.isArray(schema.type)) {
@@ -140,7 +273,7 @@ function getType(schema: JSONSchema7): string {
     if (type === 'string') {
       values = values.map((value) => `'${value}'`);
     }
-    return values.join(' | ');
+    return `enum(${values.join(', ')})`;
   }
 
   if (type === 'number' || type === 'integer') {
@@ -153,7 +286,7 @@ function getType(schema: JSONSchema7): string {
     typeof schema.items !== 'boolean' &&
     !Array.isArray(schema.items)
   ) {
-    return `[${getType(schema.items)}]`;
+    return `${getType(schema.items)}[]`;
   }
 
   if (type === 'object' && schema.additionalProperties) {
@@ -161,23 +294,23 @@ function getType(schema: JSONSchema7): string {
   }
 
   if (schema.oneOf) {
-    return schema.oneOf
+    return `oneOf(${schema.oneOf
       .filter(
         (definition): definition is JSONSchema7 =>
           typeof definition !== 'boolean'
       )
       .map(getType)
-      .join(' | ');
+      .join(', ')})`;
   }
 
   if (schema.anyOf) {
-    return schema.anyOf
+    return `anyOf(${schema.anyOf
       .filter(
         (definition): definition is JSONSchema7 =>
           typeof definition !== 'boolean'
       )
       .map(getType)
-      .join(' | ');
+      .join(', ')})`;
   }
 
   return type ?? 'unknown';

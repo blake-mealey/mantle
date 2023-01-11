@@ -11,6 +11,7 @@
   "dependencies": {
     "@mdx-js/mdx": "^2.2.1",
     "@octokit/rest": "^19.0.5",
+    "@radix-ui/react-tooltip": "^1.0.2",
     "autoprefixer": "^10.4.13",
     "clsx": "^1.2.1",
     "json-schema": "^0.4.0",

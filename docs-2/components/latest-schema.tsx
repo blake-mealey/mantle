@@ -6,8 +6,8 @@ import { useMDXComponents } from 'nextra-theme-docs';
 import { MDXRemote } from 'next-mdx-remote';
 import clsx from 'clsx';
 import { JSONSchema7Type } from 'json-schema';
-import { PropertyType as PropertyTypeToken } from '@lib/flatten-schema-properties';
 import { Tooltip } from './tooltip';
+import { PropertyType } from '@lib/flatten-schema-properties';
 
 function Heading({
   level,
@@ -16,6 +16,7 @@ function Heading({
   level: number;
   children: React.ReactNode;
   id: string;
+  style?: React.CSSProperties;
 }) {
   const components = useMDXComponents();
   const tag = `h${level}` as keyof JSX.IntrinsicElements;
@@ -30,6 +31,23 @@ function slugify(value: string) {
     .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(/[^\w-]/g, '');
+}
+
+function TooltipToken({
+  children,
+  type,
+}: {
+  children: ReactNode;
+  type: MetaTokenProps['type'];
+}) {
+  return (
+    <MetaToken
+      type={type}
+      className="border-b border-dotted border-gray-500 group-hover:border-yellow-700 group-focus:border-yellow-700 group-hover:text-yellow-500 group-focus:text-yellow-500 transition-colors"
+    >
+      {children}
+    </MetaToken>
+  );
 }
 
 interface MetaTokenProps {
@@ -57,7 +75,7 @@ function PropertyTypeToken({
   root = false,
   nested = false,
 }: {
-  propertyType: PropertyTypeToken;
+  propertyType: PropertyType;
   root?: boolean;
   nested?: boolean;
 }) {
@@ -131,12 +149,7 @@ function PropertyTypeToken({
             </div>
           }
         >
-          <MetaToken
-            type="type"
-            className="border-b border-dotted border-gray-500 group-hover:border-yellow-700 group-hover:text-yellow-500 transition-colors"
-          >
-            object
-          </MetaToken>
+          <TooltipToken type="type">object</TooltipToken>
         </Tooltip>
       );
     }
@@ -159,12 +172,9 @@ function PropertyTypeToken({
           </Fragment>
         ))}
       >
-        <MetaToken
-          type="type"
-          className="border-b border-dotted border-gray-500 group-hover:border-yellow-700 group-hover:text-yellow-500 transition-colors"
-        >
+        <TooltipToken type="type">
           {propertyType.type === 'enum' ? 'enum' : 'union'}
-        </MetaToken>
+        </TooltipToken>
       </Tooltip>
     );
   } else {
@@ -198,12 +208,7 @@ function OptionalToken({
 
   return (
     <Tooltip header="Default" content={<Code>{value}</Code>}>
-      <MetaToken
-        type="optional"
-        className="border-b border-dotted border-gray-500 group-hover:border-yellow-700 group-hover:text-yellow-500 transition-colors"
-      >
-        optional
-      </MetaToken>
+      <TooltipToken type="optional">optional</TooltipToken>
     </Tooltip>
   );
 }
@@ -216,11 +221,15 @@ export function LatestSchema() {
   return properties.map((property) => {
     return (
       <Fragment key={property.id}>
-        <div className="flex items-center justify-between">
-          <Heading level={property.level} id={slugify(property.id)}>
+        <div className="flex items-start justify-between flex-col md:flex-row md:items-center">
+          <Heading
+            level={property.level}
+            id={slugify(property.id)}
+            style={{ maxWidth: '100%' }}
+          >
             <Code>{property.id}</Code>
           </Heading>
-          <div className="nx-mt-8 flex gap-2">
+          <div className="flex gap-2 mt-1 md:mt-8">
             {property.required ? (
               <MetaToken type="required">required</MetaToken>
             ) : (

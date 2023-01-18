@@ -43,6 +43,11 @@ export default {
   },
   docsRepositoryBase: 'https://github.com/blake-mealey/mantle/tree/main/docs-2',
   primaryHue: 13,
+  head: (
+    <>
+      <link rel="icon" href="/favicon.png" />
+    </>
+  ),
   useNextSeoProps() {
     const { route } = useRouter();
     if (route !== '/') {

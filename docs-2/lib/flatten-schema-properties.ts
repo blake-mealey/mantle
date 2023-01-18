@@ -27,36 +27,34 @@ export async function flattenSchemaProperties(
 
   if (isType(schema, 'object')) {
     if (schema.properties) {
-      await Promise.all(
-        Object.entries(schema.properties).map(async ([id, definition]) => {
-          if (typeof definition === 'boolean') {
-            return;
-          }
-          const formattedId = formatId(id, parentId);
+      for (const [id, definition] of Object.entries(schema.properties)) {
+        if (typeof definition === 'boolean') {
+          continue;
+        }
+        const formattedId = formatId(id, parentId);
 
-          properties.push({
-            id: formattedId,
-            level: getLevel(formattedId),
-            required: requiredProps.includes(id),
-            compiledContent: definition.description
-              ? (
-                  await compileMdx(definition.description, {
-                    mdxOptions: { remarkPlugins: [translateToNextra] },
-                  })
-                ).result
-              : null,
-            type: getType(definition),
-            propertyType: getSchemaPropertyType(definition),
-            default:
-              definition.default === undefined
-                ? null
-                : { value: definition.default },
-          });
-          properties.push(
-            ...(await flattenSchemaProperties(definition, formattedId))
-          );
-        })
-      );
+        properties.push({
+          id: formattedId,
+          level: getLevel(formattedId),
+          required: requiredProps.includes(id),
+          compiledContent: definition.description
+            ? (
+                await compileMdx(definition.description, {
+                  mdxOptions: { remarkPlugins: [translateToNextra] },
+                })
+              ).result
+            : null,
+          type: getType(definition),
+          propertyType: getSchemaPropertyType(definition),
+          default:
+            definition.default === undefined
+              ? null
+              : { value: definition.default },
+        });
+        properties.push(
+          ...(await flattenSchemaProperties(definition, formattedId))
+        );
+      }
     }
     if (
       schema.additionalProperties &&
@@ -71,41 +69,28 @@ export async function flattenSchemaProperties(
     }
   } else if (isType(schema, 'array')) {
     const items = Array.isArray(schema.items) ? schema.items : [schema.items];
-    await Promise.all(
-      items.map(async (definition) => {
-        if (!definition || typeof definition === 'boolean') {
-          return;
-        }
-        properties.push(
-          ...(await flattenSchemaProperties(
-            definition,
-            formatId('*', parentId)
-          ))
-        );
-      })
-    );
+    for (const definition of items) {
+      if (!definition || typeof definition === 'boolean') {
+        continue;
+      }
+      properties.push(
+        ...(await flattenSchemaProperties(definition, formatId('*', parentId)))
+      );
+    }
   } else if (schema.oneOf) {
-    await Promise.all(
-      schema.oneOf.map(async (definition) => {
-        if (typeof definition === 'boolean') {
-          return;
-        }
-        properties.push(
-          ...(await flattenSchemaProperties(definition, parentId))
-        );
-      })
-    );
+    for (const definition of schema.oneOf) {
+      if (typeof definition === 'boolean') {
+        continue;
+      }
+      properties.push(...(await flattenSchemaProperties(definition, parentId)));
+    }
   } else if (schema.anyOf) {
-    await Promise.all(
-      schema.anyOf.map(async (definition) => {
-        if (typeof definition === 'boolean') {
-          return;
-        }
-        properties.push(
-          ...(await flattenSchemaProperties(definition, parentId))
-        );
-      })
-    );
+    for (const definition of schema.anyOf) {
+      if (typeof definition === 'boolean') {
+        continue;
+      }
+      properties.push(...(await flattenSchemaProperties(definition, parentId)));
+    }
   } else {
     if (
       schema.type !== 'string' &&

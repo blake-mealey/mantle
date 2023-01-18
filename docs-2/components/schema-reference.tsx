@@ -1,8 +1,7 @@
-import { Fragment, ReactNode, useMemo } from 'react';
+import { Fragment, ReactNode } from 'react';
 import { Schema } from '@lib/schemas';
-import { useSSG } from 'nextra/ssg';
 import { Code } from 'nextra/components';
-import { useMDXComponents } from 'nextra-theme-docs';
+import { Callout, Tab, Tabs, useMDXComponents } from 'nextra-theme-docs';
 import { MDXRemote } from 'next-mdx-remote';
 import clsx from 'clsx';
 import { JSONSchema7Type } from 'json-schema';
@@ -161,6 +160,7 @@ function PropertyTypeToken({
     );
   }
 
+  const separator = propertyType.type === 'enum' ? ', ' : ' | ';
   if (root) {
     return (
       <Tooltip
@@ -168,7 +168,7 @@ function PropertyTypeToken({
         content={propertyType.values.map((item, i) => (
           <Fragment key={i}>
             <PropertyTypeToken key={i} propertyType={item} />
-            {i !== propertyType.values.length - 1 && <span>, </span>}
+            {i !== propertyType.values.length - 1 && <span>{separator}</span>}
           </Fragment>
         ))}
       >
@@ -183,7 +183,7 @@ function PropertyTypeToken({
         {propertyType.values.map((item, i) => (
           <Fragment key={i}>
             <PropertyTypeToken propertyType={item} nested={nested} />
-            {i !== propertyType.values.length - 1 && <span>, </span>}
+            {i !== propertyType.values.length - 1 && <span>{separator}</span>}
           </Fragment>
         ))}
       </MetaToken>
@@ -213,39 +213,46 @@ function OptionalToken({
   );
 }
 
-export function LatestSchema() {
-  const { schema } = useSSG() as { schema: Schema };
+interface SchemaReferenceProps {
+  schema: Schema;
+}
+
+export function SchemaReference({ schema }: SchemaReferenceProps) {
   const { properties } = schema;
   const components = useMDXComponents();
 
-  return properties.map((property) => {
-    return (
-      <Fragment key={property.id}>
-        <div className="flex items-start justify-between flex-col md:flex-row md:items-center">
-          <Heading
-            level={property.level}
-            id={slugify(property.id)}
-            style={{ maxWidth: '100%' }}
-          >
-            <Code>{property.id}</Code>
-          </Heading>
-          <div className="flex gap-2 mt-1 md:mt-8">
-            {property.required ? (
-              <MetaToken type="required">required</MetaToken>
-            ) : (
-              <OptionalToken defaultValue={property.default?.value} />
+  return (
+    <>
+      {properties.map((property) => {
+        return (
+          <Fragment key={property.id}>
+            <div className="flex items-start justify-between flex-col md:flex-row md:items-center">
+              <Heading
+                level={property.level}
+                id={slugify(property.id)}
+                style={{ maxWidth: '100%' }}
+              >
+                <Code>{property.id}</Code>
+              </Heading>
+              <div className="flex gap-2 mt-1 md:mt-8">
+                {property.required ? (
+                  <MetaToken type="required">required</MetaToken>
+                ) : (
+                  <OptionalToken defaultValue={property.default?.value} />
+                )}
+                <PropertyTypeToken propertyType={property.propertyType} root />
+              </div>
+            </div>
+            {property.compiledContent && (
+              <MDXRemote
+                key={property.id}
+                compiledSource={property.compiledContent}
+                components={{ ...components, Callout, Tab, Tabs }}
+              />
             )}
-            <PropertyTypeToken propertyType={property.propertyType} root />
-          </div>
-        </div>
-        {property.compiledContent && (
-          <MDXRemote
-            key={property.id}
-            compiledSource={property.compiledContent}
-            components={components}
-          />
-        )}
-      </Fragment>
-    );
-  });
+          </Fragment>
+        );
+      })}
+    </>
+  );
 }

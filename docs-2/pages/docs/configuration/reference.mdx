@@ -1,6 +1,5 @@
-import { useSSG } from 'nextra/ssg';
 import { getSchemas, processSchema } from '@lib/schemas';
-import { LatestSchema } from '@components/latest-schema';
+import { LatestSchemaReference } from '@components/latest-schema-reference';
 
 # Reference
 
@@ -14,10 +13,10 @@ export async function getStaticProps() {
   return {
     props: {
       ssg: {
-        schema: processedSchema,
+        latestSchema: processedSchema,
       },
     },
   };
 }
 
-<LatestSchema />
+<LatestSchemaReference />

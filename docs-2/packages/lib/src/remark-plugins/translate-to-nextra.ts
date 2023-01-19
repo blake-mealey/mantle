@@ -46,7 +46,7 @@ export const translateToNextra: Plugin<[]> = function (this: Processor) {
 
     // Docusaurus uses `:::type` admonitions syntax, while Nextra uses the
     // `<Callout type="">` component.
-    visit(tree, [{ type: 'paragraph' }], (node, index, parent) => {
+    visit(tree, [{ type: 'paragraph' }], (node, index, parent: any) => {
       const paragraphNode = node as unknown as ParagraphNode;
       const firstChild = paragraphNode.children[0] as
         | ParagraphChildNode
@@ -73,7 +73,7 @@ export const translateToNextra: Plugin<[]> = function (this: Processor) {
           data: { _mdxExplicitJsx: true },
         });
 
-        parent.children.splice(index, 1, callout);
+        parent.children.splice(index as number, 1, callout);
       }
     });
 

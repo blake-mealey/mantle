@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { JSONSchema7 } from 'json-schema';
+import { Plugin } from 'unified';
 import {
   flattenSchemaProperties,
   SchemaProperty,
@@ -60,15 +61,23 @@ export interface Schema {
   properties: SchemaProperty[];
 }
 
-export async function processSchema({
-  version,
-  schema,
-}: {
-  version: string;
-  schema: JSONSchema7;
-}): Promise<Schema> {
+export type CompileMdx = (
+  md: string,
+  options: { mdxOptions: { remarkPlugins: Plugin[] } }
+) => Promise<{ result: string }>;
+
+export async function processSchema(
+  compileMdx: CompileMdx,
+  {
+    version,
+    schema,
+  }: {
+    version: string;
+    schema: JSONSchema7;
+  }
+): Promise<Schema> {
   return {
     version,
-    properties: await flattenSchemaProperties(schema),
+    properties: await flattenSchemaProperties(compileMdx, schema),
   };
 }

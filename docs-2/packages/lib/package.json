@@ -1,0 +1,33 @@
+{
+  "name": "lib",
+  "version": "0.0.0-dev",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsup src/index.ts --format cjs,esm --dts --sourcemap --watch --clean",
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "check:types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/json-schema": "^7.0.11",
+    "@types/node": "18.11.10",
+    "tsup": "^6.5.0",
+    "typescript": "^4.9.3"
+  },
+  "dependencies": {
+    "@mdx-js/mdx": "^2.2.1",
+    "@octokit/rest": "^19.0.5",
+    "json-schema": "^0.4.0",
+    "unified": "^10.1.2",
+    "unist-builder": "^3.0.0",
+    "unist-util-visit": "^4.1.1"
+  }
+}

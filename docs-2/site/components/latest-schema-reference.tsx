@@ -1,4 +1,4 @@
-import { Schema } from '@lib/schemas';
+import { Schema } from 'lib';
 import { useSSG } from 'nextra/ssg';
 import { SchemaReference } from './schema-reference';
 

@@ -1,19 +1,19 @@
 import { JSONSchema7, JSONSchema7TypeName, JSONSchema7Type } from 'json-schema';
-import { compileMdx } from 'nextra/compile';
 import { isDefined } from './is-defined';
 import { translateToNextra } from './remark-plugins/translate-to-nextra';
+import { CompileMdx } from './schemas';
 
 export interface SchemaProperty {
   id: string;
   required: boolean;
   level: number;
   compiledContent: string | null;
-  type: string;
   propertyType: PropertyType;
   default: { value: JSONSchema7Type } | null;
 }
 
 export async function flattenSchemaProperties(
+  compileMdx: CompileMdx,
   schema: JSONSchema7,
   parentId?: string
 ) {
@@ -44,7 +44,6 @@ export async function flattenSchemaProperties(
                 })
               ).result
             : null,
-          type: getType(definition),
           propertyType: getSchemaPropertyType(definition),
           default:
             definition.default === undefined
@@ -52,7 +51,11 @@ export async function flattenSchemaProperties(
               : { value: definition.default },
         });
         properties.push(
-          ...(await flattenSchemaProperties(definition, formattedId))
+          ...(await flattenSchemaProperties(
+            compileMdx,
+            definition,
+            formattedId
+          ))
         );
       }
     }
@@ -62,6 +65,7 @@ export async function flattenSchemaProperties(
     ) {
       properties.push(
         ...(await flattenSchemaProperties(
+          compileMdx,
           schema.additionalProperties,
           formatId('<label>', parentId)
         ))
@@ -74,7 +78,11 @@ export async function flattenSchemaProperties(
         continue;
       }
       properties.push(
-        ...(await flattenSchemaProperties(definition, formatId('*', parentId)))
+        ...(await flattenSchemaProperties(
+          compileMdx,
+          definition,
+          formatId('*', parentId)
+        ))
       );
     }
   } else if (schema.oneOf) {
@@ -82,14 +90,18 @@ export async function flattenSchemaProperties(
       if (typeof definition === 'boolean') {
         continue;
       }
-      properties.push(...(await flattenSchemaProperties(definition, parentId)));
+      properties.push(
+        ...(await flattenSchemaProperties(compileMdx, definition, parentId))
+      );
     }
   } else if (schema.anyOf) {
     for (const definition of schema.anyOf) {
       if (typeof definition === 'boolean') {
         continue;
       }
-      properties.push(...(await flattenSchemaProperties(definition, parentId)));
+      properties.push(
+        ...(await flattenSchemaProperties(compileMdx, definition, parentId))
+      );
     }
   } else {
     if (
@@ -243,62 +255,6 @@ function getSchemaPropertyType(schema: JSONSchema7): PropertyType {
     type: 'primitive',
     value: type ?? 'unknown',
   };
-}
-
-function getType(schema: JSONSchema7): string {
-  let type: string | undefined;
-  if (Array.isArray(schema.type)) {
-    type = schema.type.find((x) => x !== 'null');
-  } else {
-    type = schema.type;
-  }
-
-  if (schema.enum) {
-    let values = schema.enum;
-    if (type === 'string') {
-      values = values.map((value) => `'${value}'`);
-    }
-    return `enum(${values.join(', ')})`;
-  }
-
-  if (type === 'number' || type === 'integer') {
-    return schema.format ?? type;
-  }
-
-  if (
-    type === 'array' &&
-    schema.items &&
-    typeof schema.items !== 'boolean' &&
-    !Array.isArray(schema.items)
-  ) {
-    return `${getType(schema.items)}[]`;
-  }
-
-  if (type === 'object' && schema.additionalProperties) {
-    return 'dictionary';
-  }
-
-  if (schema.oneOf) {
-    return `oneOf(${schema.oneOf
-      .filter(
-        (definition): definition is JSONSchema7 =>
-          typeof definition !== 'boolean'
-      )
-      .map(getType)
-      .join(', ')})`;
-  }
-
-  if (schema.anyOf) {
-    return `anyOf(${schema.anyOf
-      .filter(
-        (definition): definition is JSONSchema7 =>
-          typeof definition !== 'boolean'
-      )
-      .map(getType)
-      .join(', ')})`;
-  }
-
-  return type ?? 'unknown';
 }
 
 function formatId(id: string, parentId?: string) {

@@ -4,5 +4,6 @@
   "authentication": "Authentication",
   "remote-state": "Remote State",
   "continuous-deployment": "Continuous Deployment",
-  "commands": "Commands"
+  "commands": "Commands",
+  "configuration": "Configuration"
 }

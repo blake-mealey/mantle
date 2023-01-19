@@ -1,12 +1,12 @@
 import { Fragment, ReactNode } from 'react';
-import { Schema } from '@lib/schemas';
+import { Schema } from 'lib';
 import { Code } from 'nextra/components';
-import { Callout, Tab, Tabs, useMDXComponents } from 'nextra-theme-docs';
-import { MDXRemote } from 'next-mdx-remote';
+import { Callout, Tabs, Tab, useMDXComponents } from 'nextra-theme-docs';
 import clsx from 'clsx';
 import { JSONSchema7Type } from 'json-schema';
 import { Tooltip } from './tooltip';
-import { PropertyType } from '@lib/flatten-schema-properties';
+import { PropertyType } from 'lib';
+import { MDXRemote } from 'next-mdx-remote';
 
 function Heading({
   level,
@@ -50,7 +50,7 @@ function TooltipToken({
 }
 
 interface MetaTokenProps {
-  type: 'optional' | 'required' | 'default' | 'type';
+  type: 'optional' | 'required' | 'type';
   children: ReactNode;
   className?: string;
 }
@@ -61,7 +61,6 @@ function MetaToken({ type, className, children }: MetaTokenProps) {
       className={clsx(className, 'tracking-tighter font-medium', {
         'nx-text-gray-500': type === 'optional',
         'text-red-500': type === 'required',
-        'text-cyan-500': type === 'default',
       })}
     >
       {children}
@@ -160,35 +159,53 @@ function PropertyTypeToken({
     );
   }
 
-  const separator = propertyType.type === 'enum' ? ', ' : ' | ';
-  if (root) {
-    return (
-      <Tooltip
-        header={propertyType.type === 'enum' ? 'Enum' : 'Union'}
-        content={propertyType.values.map((item, i) => (
-          <Fragment key={i}>
-            <PropertyTypeToken key={i} propertyType={item} />
-            {i !== propertyType.values.length - 1 && <span>{separator}</span>}
-          </Fragment>
-        ))}
-      >
-        <TooltipToken type="type">
-          {propertyType.type === 'enum' ? 'enum' : 'union'}
-        </TooltipToken>
-      </Tooltip>
-    );
-  } else {
+  if (propertyType.type === 'anyOf' || propertyType.type === 'oneOf') {
     return (
       <MetaToken type="type">
         {propertyType.values.map((item, i) => (
           <Fragment key={i}>
-            <PropertyTypeToken propertyType={item} nested={nested} />
-            {i !== propertyType.values.length - 1 && <span>{separator}</span>}
+            <PropertyTypeToken
+              propertyType={item}
+              nested={nested}
+              root={root}
+            />
+            {i !== propertyType.values.length - 1 && <span> | </span>}
           </Fragment>
         ))}
       </MetaToken>
     );
   }
+
+  if (propertyType.type === 'enum') {
+    if (root) {
+      return (
+        <Tooltip
+          header="Enum"
+          content={propertyType.values.map((item, i) => (
+            <Fragment key={i}>
+              <PropertyTypeToken key={i} propertyType={item} />
+              {i !== propertyType.values.length - 1 && <span>, </span>}
+            </Fragment>
+          ))}
+        >
+          <TooltipToken type="type">enum</TooltipToken>
+        </Tooltip>
+      );
+    } else {
+      return (
+        <MetaToken type="type">
+          {propertyType.values.map((item, i) => (
+            <Fragment key={i}>
+              <PropertyTypeToken propertyType={item} nested={nested} />
+              {i !== propertyType.values.length - 1 && <span>, </span>}
+            </Fragment>
+          ))}
+        </MetaToken>
+      );
+    }
+  }
+
+  return null;
 }
 
 function OptionalToken({

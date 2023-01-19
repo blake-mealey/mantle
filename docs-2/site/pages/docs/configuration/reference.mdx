@@ -1,4 +1,5 @@
-import { getSchemas, processSchema } from '@lib/schemas';
+import { compileMdx } from 'nextra/compile';
+import { getSchemas, processSchema } from 'lib';
 import { LatestSchemaReference } from '@components/latest-schema-reference';
 
 # Reference
@@ -6,7 +7,7 @@ import { LatestSchemaReference } from '@components/latest-schema-reference';
 export async function getStaticProps() {
   const { schemas, latestVersion } = await getSchemas();
   const latestSchema = schemas[latestVersion];
-  const processedSchema = await processSchema({
+  const processedSchema = await processSchema(compileMdx, {
     version: latestVersion,
     schema: latestSchema,
   });

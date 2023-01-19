@@ -14,7 +14,11 @@ importers:
       '@octokit/rest': ^19.0.5
       '@types/json-schema': ^7.0.11
       '@types/node': 18.11.10
+      chalk-template: ^0.5.0
       json-schema: ^0.4.0
+      remark: ^14.0.2
+      remark-gfm: ^3.0.1
+      remark-mdx: ^2.2.1
       tsup: ^6.5.0
       typescript: ^4.9.3
       unified: ^10.1.2
@@ -23,13 +27,30 @@ importers:
     dependencies:
       '@mdx-js/mdx': 2.2.1
       '@octokit/rest': 19.0.5
+      chalk-template: 0.5.0
       json-schema: 0.4.0
+      remark: 14.0.2
+      remark-gfm: 3.0.1
+      remark-mdx: 2.2.1
       unified: 10.1.2
       unist-builder: 3.0.0
       unist-util-visit: 4.1.1
     devDependencies:
       '@types/json-schema': 7.0.11
       '@types/node': 18.11.10
+      tsup: 6.5.0_typescript@4.9.4
+      typescript: 4.9.4
+
+  scripts:
+    specifiers:
+      dotenv: ^16.0.3
+      lib: workspace:*
+      tsup: ^6.5.0
+      typescript: ^4.9.3
+    dependencies:
+      dotenv: 16.0.3
+      lib: link:../packages/lib
+    devDependencies:
       tsup: 6.5.0_typescript@4.9.4
       typescript: 4.9.4
 
@@ -46,9 +67,9 @@ importers:
       json-schema: ^0.4.0
       lib: workspace:*
       next: ^13.0.6
-      next-mdx-remote: ^4.2.0
-      nextra: 2.2.7
-      nextra-theme-docs: 2.2.7
+      next-mdx-remote: 4.2.0
+      nextra: ^2.2.7
+      nextra-theme-docs: ^2.2.7
       postcss: ^8.4.19
       react: ^18.2.0
       react-dom: ^18.2.0
@@ -910,6 +931,13 @@ packages:
       color-convert: 1.9.3
     dev: false
 
+  /ansi-styles/4.3.0:
+    resolution: {integrity: sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==}
+    engines: {node: '>=8'}
+    dependencies:
+      color-convert: 2.0.1
+    dev: false
+
   /any-promise/1.3.0:
     resolution: {integrity: sha512-7UvmKalWRt1wgjL1RrGxoSJW/0QZFIegpeGvZG9kjp8vrRu55XTHbwnqq2GpXm9uLbcuhxm3IqX9OB4MZR1b2A==}
     dev: true
@@ -1037,6 +1065,13 @@ packages:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
     dev: false
 
+  /chalk-template/0.5.0:
+    resolution: {integrity: sha512-r6AUjtuzcj1878vCCAbAqizipEN5zxbQEx1Ug7LcAG+iSOBzOuQnKPXtZJGDPHOyXOblG5/J0md+KY10xqtpVQ==}
+    engines: {node: '>=14.16'}
+    dependencies:
+      chalk: 4.1.2
+    dev: false
+
   /chalk/2.3.0:
     resolution: {integrity: sha512-Az5zJR2CBujap2rqXGaJKaPHyJ0IrUimvYNX+ncCy8PJP4ltOGTrHUIo097ZaL2zMeKYpiCdqDvS6zdrTFok3Q==}
     engines: {node: '>=4'}
@@ -1044,6 +1079,14 @@ packages:
       ansi-styles: 3.2.1
       escape-string-regexp: 1.0.5
       supports-color: 4.5.0
+    dev: false
+
+  /chalk/4.1.2:
+    resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
+    engines: {node: '>=10'}
+    dependencies:
+      ansi-styles: 4.3.0
+      supports-color: 7.2.0
     dev: false
 
   /character-entities-html4/2.1.0:
@@ -1097,6 +1140,13 @@ packages:
     resolution: {integrity: sha512-QfAUtd+vFdAtFQcC8CCyYt1fYWxSqAiK2cSD6zDB8N3cpsEBAvRxp9zOGg6G/SHHJYAT88/az/IuDGALsNVbGg==}
     dependencies:
       color-name: 1.1.3
+    dev: false
+
+  /color-convert/2.0.1:
+    resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==}
+    engines: {node: '>=7.0.0'}
+    dependencies:
+      color-name: 1.1.4
     dev: false
 
   /color-name/1.1.3:
@@ -1213,6 +1263,11 @@ packages:
 
   /dlv/1.1.3:
     resolution: {integrity: sha512-+HlytyjlPKnIG8XuRG8WvmBP8xs8P71y+SKKS6ZXWoEgLuePxtDoUEiH7WkdePWrQ5JBpE6aoVqfZfJUQkjXwA==}
+    dev: false
+
+  /dotenv/16.0.3:
+    resolution: {integrity: sha512-7GO6HghkA5fYG9TYnNxi14/7K9f5occMlp3zXAuSxn7CKCxt9xbNWG7yF8hTCSUchlfWSe3uLmlPfigevRItzQ==}
+    engines: {node: '>=12'}
     dev: false
 
   /electron-to-chromium/1.4.284:
@@ -1661,6 +1716,11 @@ packages:
   /has-flag/2.0.0:
     resolution: {integrity: sha512-P+1n3MnwjR/Epg9BBo1KT8qbye2g2Ou4sFumihwt6I4tsUX7jnLcX4BTOSKg/B1ZrIYMN9FcEnG4x5a7NB8Eng==}
     engines: {node: '>=0.10.0'}
+    dev: false
+
+  /has-flag/4.0.0:
+    resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
+    engines: {node: '>=8'}
     dev: false
 
   /has/1.0.3:
@@ -3361,6 +3421,13 @@ packages:
     engines: {node: '>=4'}
     dependencies:
       has-flag: 2.0.0
+    dev: false
+
+  /supports-color/7.2.0:
+    resolution: {integrity: sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==}
+    engines: {node: '>=8'}
+    dependencies:
+      has-flag: 4.0.0
     dev: false
 
   /supports-preserve-symlinks-flag/1.0.0:

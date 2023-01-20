@@ -75,12 +75,13 @@ export function Tooltip({
       </RadixPopover.Trigger>
       <RadixPopover.Portal>
         <RadixPopover.Content
+          className="bg-neutral-900/80 backdrop-blur-md rounded border border-1 border-white/10 z-30"
           sideOffset={8}
           onEscapeKeyDown={() => dispatch('close')}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
-          <div className="px-4 py-3 max-w-lg bg-neutral-900/80 backdrop-blur-md rounded border border-1 border-white/10 z-30">
+          <div className="px-4 py-3 max-w-lg bg-transparent">
             <header className="font-bold mb-1">{header}</header>
             {content}
           </div>

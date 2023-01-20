@@ -1,7 +1,6 @@
 import { MDXRemote } from 'next-mdx-remote';
-import { Callout, Tab, Tabs } from 'nextra-theme-docs';
+import { Callout, Tab, Tabs, useMDXComponents } from 'nextra-theme-docs';
 import { useSSG } from 'nextra/data';
-import { useMDXComponents } from 'nextra/mdx';
 
 export function DynamicMarkdown({ name }: { name: string }) {
   const { dynamicMarkdown } = useSSG() as {

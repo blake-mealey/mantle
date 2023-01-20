@@ -2,16 +2,18 @@
   "name": "scripts",
   "private": true,
   "scripts": {
-    "dev": "tsup src/*.ts --sourcemap --watch --clean",
+    "dev": "tsup src/*.ts --sourcemap --watch",
     "build": "tsup src/*.ts --clean",
     "check:types": "tsc --noEmit",
-    "download-releases": "node dist/download-releases.js"
+    "download-releases": "node dist/download-releases.js",
+    "build-schemas": "node dist/build-schemas.js"
   },
   "devDependencies": {
     "tsup": "^6.5.0",
     "typescript": "^4.9.3"
   },
   "dependencies": {
+    "@pnpm/find-workspace-dir": "^5.0.1",
     "dotenv": "^16.0.3",
     "lib": "workspace:*"
   },

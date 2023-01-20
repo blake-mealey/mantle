@@ -22,7 +22,7 @@ export function Tooltip({ children, header, content, open }: TooltipProps) {
         </RadixTooltip.Trigger>
         <RadixTooltip.Portal>
           <RadixTooltip.Content asChild sideOffset={8}>
-            <div className="px-4 py-3 max-w-lg bg-neutral-900 border rounded border-neutral-300 dark:border-neutral-600">
+            <div className="px-4 py-3 max-w-lg bg-neutral-900/80 backdrop-blur-md rounded border border-1 border-white/10 z-30">
               <header className="font-bold mb-1">{header}</header>
               {content}
             </div>

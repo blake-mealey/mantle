@@ -3,7 +3,9 @@
   "private": true,
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build"
+    "build": "turbo run build",
+    "download-releases": "pnpm --filter scripts download-releases",
+    "build-schemas": "pnpm --filter scripts build-schemas"
   },
   "dependencies": {
     "turbo": "^1.7.0"

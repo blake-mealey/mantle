@@ -1,7 +1,6 @@
 import { JSONSchema7, JSONSchema7TypeName, JSONSchema7Type } from 'json-schema';
 import { isDefined } from './is-defined';
-import { translateToNextra } from './remark-plugins/translate-to-nextra';
-import { CompileMdx } from './schemas';
+import { CompileMdx } from './types';
 
 export interface SchemaProperty {
   id: string;
@@ -38,11 +37,7 @@ export async function flattenSchemaProperties(
           level: getLevel(formattedId),
           required: requiredProps.includes(id),
           compiledContent: definition.description
-            ? (
-                await compileMdx(definition.description, {
-                  mdxOptions: { remarkPlugins: [translateToNextra] },
-                })
-              ).result
+            ? (await compileMdx(definition.description)).result
             : null,
           propertyType: getSchemaPropertyType(definition),
           default:
@@ -109,8 +104,9 @@ export async function flattenSchemaProperties(
       schema.type !== 'integer' &&
       schema.type !== 'boolean' &&
       schema.type !== 'number'
-    )
+    ) {
       console.log(schema.type, Object.keys(schema));
+    }
   }
 
   return properties;

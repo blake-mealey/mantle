@@ -3,4 +3,8 @@ import { config } from 'dotenv';
 
 config();
 
-refreshReleasesCache().catch(console.error);
+async function main() {
+  await refreshReleasesCache();
+}
+
+main().catch(console.error);

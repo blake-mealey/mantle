@@ -5,11 +5,9 @@ import { join } from 'path';
 import { Octokit } from '@octokit/rest';
 import { isDefined } from './is-defined';
 import chalk from 'chalk-template';
-import { remark } from 'remark';
-import remarkGfm from 'remark-gfm';
-import remarkMdx from 'remark-mdx';
-import { translateToNextra } from './remark-plugins/translate-to-nextra';
-import { createSchemaTransformer } from './transform-schema-markdown';
+import { getTranslateToNextraTransformer } from './schema-transformers';
+import { getWorkspaceDir } from './get-workspace-dir';
+import { gt } from 'semver';
 
 export type QualifiedSchema = Exclude<JSONSchema7, boolean>;
 
@@ -18,7 +16,7 @@ export interface Release {
   configurationSchema: QualifiedSchema;
 }
 
-const CACHE_DIR = join(__dirname, '.releases-cache');
+const CACHE_DIR = '.releases-cache';
 const GITHUB_OWNER = 'blake-mealey';
 const GITHUB_REPO = 'mantle';
 
@@ -32,11 +30,8 @@ async function loadFromGitHub(): Promise<Release[]> {
     repoParams
   );
 
-  const processor = remark()
-    .use(remarkGfm)
-    .use(translateToNextra)
-    .use(remarkMdx);
-  const transformSchema = createSchemaTransformer(processor);
+  // transformer to translate old schemas to new md syntax
+  const transformSchema = getTranslateToNextraTransformer();
 
   return (
     await Promise.all(
@@ -70,19 +65,23 @@ async function loadFromGitHub(): Promise<Release[]> {
 }
 
 async function loadFromCache(): Promise<Release[] | undefined> {
-  if (!existsSync(CACHE_DIR)) {
+  const cacheDir = await getWorkspaceDir(CACHE_DIR);
+  if (!existsSync(cacheDir)) {
     return undefined;
   }
 
-  const versions = await readdir(CACHE_DIR);
+  const versions = await readdir(cacheDir);
   if (versions.length === 0) {
     return undefined;
   }
 
-  return Promise.all(
+  const releases = await Promise.all(
     versions.map(async (version) => {
+      const versionDir = join(cacheDir, version);
+      console.log(chalk`{grey Loading} ${version} {grey from} ${versionDir}`);
+
       const configurationSchema = await readFile(
-        join(CACHE_DIR, version, 'configurationSchema.json'),
+        join(versionDir, 'configurationSchema.json'),
         'utf8'
       );
       return {
@@ -91,19 +90,24 @@ async function loadFromCache(): Promise<Release[] | undefined> {
       };
     })
   );
+
+  console.log(`Loaded ${releases.length} releases from cache`);
+
+  return releases;
 }
 
 async function saveToCache(releases: Release[]) {
   console.log(`Saving ${releases.length} releases to cache...`);
 
-  if (existsSync(CACHE_DIR)) {
-    await rm(CACHE_DIR, { recursive: true });
+  const cacheDir = await getWorkspaceDir(CACHE_DIR);
+  if (existsSync(cacheDir)) {
+    await rm(cacheDir, { recursive: true });
   }
-  await mkdir(CACHE_DIR);
+  await mkdir(cacheDir);
 
   await Promise.all(
     releases.map(async (release) => {
-      const versionDir = join(CACHE_DIR, release.version);
+      const versionDir = join(cacheDir, release.version);
 
       console.log(
         chalk`{grey Saving} ${release.version} {grey to} ${versionDir}`
@@ -118,16 +122,31 @@ async function saveToCache(releases: Release[]) {
   );
 }
 
+// let releases: Release[] | undefined;
+
 export async function refreshReleasesCache() {
+  // releases = await loadFromGitHub();
   const releases = await loadFromGitHub();
   saveToCache(releases);
 }
 
 export async function getReleases() {
+  // if (!releases) {
+  //   releases = await loadFromGitHub();
+  // }
+  // releases.sort((a, b) => {
+  //   return gt(a.version, b.version) ? -1 : 1;
+  // });
+  // return releases;
+  console.log('Loading releases from cache...');
   let releases = await loadFromCache();
   if (!releases) {
+    console.log('Cache miss');
     releases = await loadFromGitHub();
     await saveToCache(releases);
   }
-  return loadFromGitHub();
+  releases.sort((a, b) => {
+    return gt(a.version, b.version) ? -1 : 1;
+  });
+  return releases;
 }

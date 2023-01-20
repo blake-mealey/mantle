@@ -1,5 +1,5 @@
 import { Fragment, ReactNode } from 'react';
-import { Schema } from 'lib';
+import { ProcessedSchema } from 'lib';
 import { Code } from 'nextra/components';
 import { Callout, Tabs, Tab, useMDXComponents } from 'nextra-theme-docs';
 import clsx from 'clsx';
@@ -231,7 +231,7 @@ function OptionalToken({
 }
 
 interface SchemaReferenceProps {
-  schema: Schema;
+  schema: ProcessedSchema;
 }
 
 export function SchemaReference({ schema }: SchemaReferenceProps) {

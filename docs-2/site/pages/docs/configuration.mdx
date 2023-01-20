@@ -1,3 +1,22 @@
+import { compileMdx } from 'nextra/compile';
+import { getSchemasSnippetContent, getSchemasListContent } from 'lib';
+import { DynamicMarkdown } from '@components/dynamic-markdown';
+
+export async function getStaticProps() {
+  const schemasSnippet = await getSchemasSnippetContent(compileMdx);
+  const schemasList = await getSchemasListContent(compileMdx);
+  return {
+    props: {
+      ssg: {
+        dynamicMarkdown: {
+          schemasSnippet,
+          schemasList,
+        },
+      },
+    },
+  };
+}
+
 # Configuration
 
 ## Config file resolution
@@ -33,7 +52,7 @@ For example, with the directory structure:
 
 You would use the config:
 
-```yaml filename="project/mantle.yml"
+```yaml filename="project/mantle.yml" {4,6-7,10}
 target:
   experience:
     configuration:
@@ -55,17 +74,13 @@ quickly get started with the YAML syntax, see "[Learn YAML in Y Minutes](https:/
 or read through the examples in this guide and in the [Examples](https://github.com/blake-mealey/mantle/tree/main/examples)
 repo.
 
-## Schema
+## Schemas
 
-You can view the JSON schema for the config file in the [Releases](https://github.com/blake-mealey/mantle/releases)
-assets (only for versions above `0.11.0`). You can also use the schema to add autocomplete to your editor. For
-VSCode, you can install the [YAML](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml) extension
-and add the following to your VSCode settings:
+You can view the JSON schemas for the config files below (only for versions above `0.11.0`). You can also use
+the schema to add autocomplete to your editor while editing your `mantle.yml` files. For VSCode, you can
+install the [YAML](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml) extension and add
+the following to your VSCode settings:
 
-```json
-"yaml.schemas": {
-   "https://mantledeploy.vercel.app/schemas/{{ schemaVersion }}/schema.json": "mantle.yml"
-}
-```
+<DynamicMarkdown name="schemasSnippet" />
 
-Now you should see autocomplete suggestions and documentation while editing your `mantle.yml` config files.
+<DynamicMarkdown name="schemasList" />

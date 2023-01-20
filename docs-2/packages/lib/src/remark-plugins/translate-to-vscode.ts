@@ -32,16 +32,16 @@ export const translateToVscode: Plugin<[]> = function (this: Processor) {
       delete node.lang;
     });
 
-    // VSCode does not support callouts, so we replace with a blockquote with a leading emoji
-    visit(
-      tree,
-      [{ type: 'mdxJsxFlowElement', name: 'Callout' }],
-      (node: any, index, parent: any) => {
-        const calloutType = node.attributes?.find(
-          (attribute: any) => attribute.name === 'type'
-        )?.value;
+    // Replace callouts with blockquotes and emoji
+    visit(tree, [{ type: 'paragraph' }], (node: any, index, parent: any) => {
+      const firstChild = node.children?.[0];
+      if (
+        firstChild?.type === 'html' &&
+        firstChild.value.startsWith('<Callout')
+      ) {
+        const calloutType = firstChild.value.match(/type="(\w*)"/)?.[1];
 
-        let firstTextNode = node.children[0];
+        let firstTextNode = node.children[1];
         if (firstTextNode?.type === 'paragraph') {
           firstTextNode = firstTextNode.children[0];
         }
@@ -56,13 +56,14 @@ export const translateToVscode: Plugin<[]> = function (this: Processor) {
           ].join(' ');
         }
 
-        const blockquote = u('blockquote', {
-          children: node.children,
-        });
+        const childrenWithoutHtmlTags = node.children.slice(1, -1);
+        const blockquote = u('blockquote', [
+          u('paragraph', childrenWithoutHtmlTags),
+        ]);
 
         parent.children.splice(index as number, 1, blockquote);
       }
-    );
+    });
 
     // Make relative URLs point to the docs
     visit(tree, 'link', (node: any) => {

@@ -31,7 +31,7 @@ export const translateToNextra: Plugin<[]> = function (this: Processor) {
 
     // Docusaurus uses `:::type` admonitions syntax, while Nextra uses the
     // `<Callout type="">` component.
-    visit(tree, [{ type: 'paragraph' }], (node: any, index, parent: any) => {
+    visit(tree, [{ type: 'paragraph' }], (node: any) => {
       const firstChild = node.children[0];
 
       if (firstChild?.value.startsWith(':::')) {
@@ -45,16 +45,14 @@ export const translateToNextra: Plugin<[]> = function (this: Processor) {
 
         const calloutType =
           admonitionTypeToCalloutType[type ?? 'note'] ?? 'default';
-        const callout = u('mdxJsxFlowElement', {
-          name: 'Callout',
-          attributes: [
-            { type: 'mdxJsxAttribute', name: 'type', value: calloutType },
-          ],
-          children: node.children,
-          data: { _mdxExplicitJsx: true },
-        });
 
-        parent.children.splice(index as number, 1, callout);
+        node.children = [
+          u('html', {
+            value: `<Callout type="${calloutType}">`,
+          }),
+          ...node.children,
+          u('html', { value: '</Callout>' }),
+        ];
       }
     });
 

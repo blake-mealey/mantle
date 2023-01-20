@@ -30,5 +30,5 @@ mantle destroy projects/getting-started --environment dev
 
 To get a good understanding of Mantle, you are encouraged to play around with the example projects
 and see how things change when you re-run `mantle deploy`. Check out the
-[Configuration](https://mantledeploy.vercel.app/docs/Configuration) reference for the full list of
+[Configuration Reference](https://mantledeploy.vercel.app/docs/configuration/reference) for the full list of
 options.

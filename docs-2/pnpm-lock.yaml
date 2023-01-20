@@ -70,6 +70,7 @@ importers:
       '@types/react': ^18.0.27
       autoprefixer: ^10.4.13
       clsx: ^1.2.1
+      github-slugger: ^2.0.0
       json-schema: ^0.4.0
       lib: workspace:*
       next: ^13.0.6
@@ -91,6 +92,7 @@ importers:
       '@radix-ui/react-popover': 1.0.3_5ndqzdd6t4rivxsukjv3i3ak2q
       autoprefixer: 10.4.13_postcss@8.4.21
       clsx: 1.2.1
+      github-slugger: 2.0.0
       json-schema: 0.4.0
       lib: link:../packages/lib
       next: 13.1.2_biqbaboplfbrettd7655fr4n2y

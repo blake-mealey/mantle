@@ -1,4 +1,4 @@
-import { Fragment, ReactNode } from 'react';
+import { Fragment, ReactNode, useMemo } from 'react';
 import { ProcessedSchema } from 'lib';
 import { Code } from 'nextra/components';
 import { Callout, Tabs, Tab, useMDXComponents } from 'nextra-theme-docs';
@@ -7,6 +7,7 @@ import { JSONSchema7Type } from 'json-schema';
 import { Tooltip } from './tooltip';
 import { PropertyType } from 'lib';
 import { MDXRemote } from 'next-mdx-remote';
+import GithubSlugger from 'github-slugger';
 
 function Heading({
   level,
@@ -22,16 +23,6 @@ function Heading({
   const Tag = components[tag] ?? tag;
   return <Tag {...props} />;
 }
-
-// TODO: improve for nested properties
-// note that changes will probably break links
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w-]/g, '');
-}
-
 function TooltipToken({
   children,
   type,
@@ -238,6 +229,8 @@ export function SchemaReference({ schema }: SchemaReferenceProps) {
   const { properties } = schema;
   const components = useMDXComponents();
 
+  const slugger = new GithubSlugger();
+
   return (
     <>
       {properties.map((property) => {
@@ -246,7 +239,7 @@ export function SchemaReference({ schema }: SchemaReferenceProps) {
             <div className="flex items-start justify-between flex-col md:flex-row md:items-center">
               <Heading
                 level={property.level}
-                id={slugify(property.id)}
+                id={slugger.slug(property.id.replaceAll('.', ' '), true)}
                 style={{ maxWidth: '100%' }}
               >
                 <Code>{property.id}</Code>

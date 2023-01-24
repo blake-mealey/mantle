@@ -1,3 +1,4 @@
 {
-  "buildCommand": "pnpm compile && pnpm download-releases && pnpm build-schemas && pnpm build"
+  "buildCommand": "pnpm compile && pnpm download-releases && pnpm build-schemas && pnpm build",
+  "outputDirectory": "site/.next"
 }

@@ -1,5 +1,10 @@
 import { JSONSchema7, JSONSchema7TypeName, JSONSchema7Type } from 'json-schema';
+import { remark } from 'remark';
+import remarkGfm from 'remark-gfm';
+import remarkStringify from 'remark-stringify';
+import { unified } from 'unified';
 import { isDefined } from './is-defined';
+import { extractExamples } from './remark-plugins/extract-examples';
 import { CompileMdx } from './types';
 
 export interface SchemaProperty {
@@ -7,8 +12,26 @@ export interface SchemaProperty {
   required: boolean;
   level: number;
   compiledContent: string | null;
+  examplesCompiledContent: string[] | null;
   propertyType: PropertyType;
   default: { value: JSONSchema7Type } | null;
+}
+
+const extractExamplesProcessor = remark().use(remarkGfm).use(extractExamples);
+const examplesProcessor = unified().use(remarkStringify).use(remarkGfm);
+
+async function processDescription(description: string | undefined) {
+  if (!description) {
+    return {};
+  }
+
+  const result = await extractExamplesProcessor.process(description);
+  const examples = result.data.examples as any[] | undefined;
+  return {
+    description: result.value.toString(),
+    examples:
+      examples?.map((example) => examplesProcessor.stringify(example)) ?? [],
+  };
 }
 
 export async function flattenSchemaProperties(
@@ -32,12 +55,23 @@ export async function flattenSchemaProperties(
         }
         const formattedId = formatId(id, parentId);
 
+        const { description, examples } = await processDescription(
+          definition.description
+        );
+
         properties.push({
           id: formattedId,
           level: getLevel(formattedId),
           required: requiredProps.includes(id),
-          compiledContent: definition.description
-            ? (await compileMdx(definition.description)).result
+          compiledContent: description
+            ? (await compileMdx(description)).result
+            : null,
+          examplesCompiledContent: examples
+            ? await Promise.all(
+                examples.map(
+                  async (example) => (await compileMdx(example)).result
+                )
+              )
             : null,
           propertyType: getSchemaPropertyType(definition),
           default:

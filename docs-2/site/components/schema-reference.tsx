@@ -15,7 +15,7 @@ function Heading({
 }: {
   level: number;
   children: React.ReactNode;
-  id: string;
+  id?: string;
   style?: React.CSSProperties;
 }) {
   const components = useMDXComponents();
@@ -152,7 +152,7 @@ function PropertyTypeToken({
 
   if (propertyType.type === 'anyOf' || propertyType.type === 'oneOf') {
     return (
-      <MetaToken type="type">
+      <MetaToken type="type" className="whitespace-nowrap">
         {propertyType.values.map((item, i) => (
           <Fragment key={i}>
             <PropertyTypeToken
@@ -253,13 +253,31 @@ export function SchemaReference({ schema }: SchemaReferenceProps) {
                 <PropertyTypeToken propertyType={property.propertyType} root />
               </div>
             </div>
-            {property.compiledContent && (
-              <MDXRemote
-                key={property.id}
-                compiledSource={property.compiledContent}
-                components={{ ...components, Callout, Tab, Tabs }}
-              />
-            )}
+
+            <div
+              key={property.id}
+              className="mt-6 flex flex-col xl:flex-row xl:gap-4"
+            >
+              <div className="flex-1">
+                {property.compiledContent && (
+                  <MDXRemote
+                    key={property.id}
+                    compiledSource={property.compiledContent}
+                    components={{ ...components, Callout, Tab, Tabs }}
+                  />
+                )}
+              </div>
+
+              <aside className="mt-6 xl:mt-0 xl:w-96">
+                {property.examplesCompiledContent?.map((example, index) => (
+                  <MDXRemote
+                    key={index}
+                    compiledSource={example}
+                    components={{ ...components, Callout, Tab, Tabs }}
+                  />
+                ))}
+              </aside>
+            </div>
           </Fragment>
         );
       })}

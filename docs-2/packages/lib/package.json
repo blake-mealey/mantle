@@ -31,6 +31,7 @@
     "json-schema": "^0.4.0",
     "remark": "^14.0.2",
     "remark-gfm": "^3.0.1",
+    "remark-stringify": "^10.0.2",
     "semver": "^7.3.8",
     "unified": "^10.1.2",
     "unist-builder": "^3.0.0",

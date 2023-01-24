@@ -76,7 +76,7 @@ interface FeatureDisplayProps {
 
 export function FeatureDisplay({ children, title }: FeatureDisplayProps) {
   return (
-    <div className="flex-1 rounded-xl border border-neutral-500/20 bg-neutral-100/50 dark:bg-neutral-900/50 backdrop-blur-3xl">
+    <div className="flex-1 rounded-xl border border-neutral-500/20 bg-neutral-100/80 dark:bg-neutral-900/80 backdrop-blur-3xl">
       <div className="border-b border-neutral-500/20 p-4 font-medium dark:text-white">
         {title}
       </div>

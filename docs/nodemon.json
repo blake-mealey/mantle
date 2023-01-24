@@ -1,4 +1,0 @@
-{
-  "ext": "ts json hbs",
-  "ignore": ["static/schemas"]
-}

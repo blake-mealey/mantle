@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "tsup src/*.ts --sourcemap --watch",
-    "build": "tsup src/*.ts --clean",
+    "compile": "tsup src/*.ts --clean",
     "check:types": "tsc --noEmit",
     "download-releases": "node dist/download-releases.js",
     "build-schemas": "node dist/build-schemas.js"

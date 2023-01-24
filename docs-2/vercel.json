@@ -1,0 +1,4 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "pnpm compile && pnpm download-releases && pnpm build-schemas && pnpm build"
+}

@@ -13,7 +13,7 @@
   },
   "scripts": {
     "dev": "tsup src/index.ts --format cjs,esm --dts --sourcemap --watch",
-    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "compile": "tsup src/index.ts --format cjs,esm --dts --clean",
     "check:types": "tsc --noEmit"
   },
   "devDependencies": {

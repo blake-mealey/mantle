@@ -5,8 +5,12 @@
       "cache": false,
       "persistent": true
     },
+    "compile": {
+      "dependsOn": ["^compile"],
+      "outputs": ["./dist"]
+    },
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "^compile"],
       "outputs": [".next/**", "./dist"]
     }
   }

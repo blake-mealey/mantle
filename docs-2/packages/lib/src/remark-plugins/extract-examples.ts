@@ -7,8 +7,6 @@ import { Plugin } from 'unified';
 // them using vfile data.
 export const extractExamples: Plugin<[]> = function (this: Processor) {
   return (tree, file, done) => {
-    console.log(tree);
-
     visit(tree, [{ type: 'code' }], (node: any, index, parent: any) => {
       if (node.meta) {
         const match = (node.meta as string).match(/filename="(.*)"/);

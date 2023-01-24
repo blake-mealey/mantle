@@ -75,7 +75,7 @@ export function Tooltip({
       </RadixPopover.Trigger>
       <RadixPopover.Portal>
         <RadixPopover.Content
-          className="bg-neutral-900/80 backdrop-blur-md rounded border border-1 border-white/10 z-30"
+          className="bg-neutral-50/50 dark:bg-neutral-900/80 backdrop-blur-md rounded border border-1 border-black/10 dark:border-white/10 z-30"
           sideOffset={8}
           onEscapeKeyDown={() => dispatch('close')}
           onOpenAutoFocus={(e) => e.preventDefault()}
@@ -86,7 +86,7 @@ export function Tooltip({
             {content}
           </div>
           <RadixPopover.Arrow
-            className="fill-neutral-900/80 stroke-white/10 translate-y-[-1px]"
+            className="fill-white stroke-black/10 dark:fill-neutral-900/80 dark:stroke-white/10 translate-y-[-1px]"
             strokeWidth="2"
             strokeDashoffset={34}
             strokeDasharray={33}

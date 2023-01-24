@@ -1,5 +1,4 @@
 {
   "framework": "nextjs",
-  "buildCommand": "pnpm compile && pnpm download-releases && pnpm build-schemas && pnpm build",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./docs"
+  "buildCommand": "pnpm compile && pnpm download-releases && pnpm build-schemas && pnpm build"
 }

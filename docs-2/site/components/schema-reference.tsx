@@ -152,7 +152,7 @@ function PropertyTypeToken({
 
   if (propertyType.type === 'anyOf' || propertyType.type === 'oneOf') {
     return (
-      <MetaToken type="type" className="whitespace-nowrap">
+      <MetaToken type="type" className={clsx({ 'whitespace-nowrap': root })}>
         {propertyType.values.map((item, i) => (
           <Fragment key={i}>
             <PropertyTypeToken

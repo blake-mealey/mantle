@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import React, { ReactNode } from 'react';
 import { clsx } from 'clsx';
+import { ArrowRight } from 'react-feather';
 
 interface FeatureProps {
   children: ReactNode;
@@ -20,13 +21,13 @@ export function Feature({ children, reverse }: FeatureProps) {
       {children}
       {reverse ? (
         <>
-          <span className="-z-10 absolute w-[1000px] h-[1000px] -top-[500px] -left-[500px] rounded-full bg-orange-600" />
-          <span className="-z-10 absolute w-[500px] h-[500px] -bottom-[250px] -left-[250px] rounded-full bg-orange-700" />
+          <span className="-z-10 absolute w-[1000px] h-[1000px] -bottom-[500px] xl:-top-[500px] -left-[500px] rounded-full bg-orange-600" />
+          <span className="-z-10 absolute w-[500px] h-[500px] -bottom-[250px] xl:-left-[250px] -right-[250px] rounded-full bg-orange-700" />
         </>
       ) : (
         <>
           <span className="-z-10 absolute w-[1000px] h-[1000px] -bottom-[500px] -right-[500px] rounded-full bg-orange-400" />
-          <span className="-z-10 absolute w-[500px] h-[500px] -top-[250px] -right-[250px] rounded-full bg-orange-500" />
+          <span className="-z-10 absolute w-[500px] h-[500px] -bottom-[250px] xl:-top-[250px] xl:-right-[250px] xl:left-[unset] -left-[250px] rounded-full bg-orange-500" />
         </>
       )}
     </div>
@@ -62,9 +63,10 @@ export function FeatureAction({ children, href }: FeatureActionProps) {
   return (
     <Link
       href={href}
-      className="font-semibold text-md text-black/70 dark:text-white/70 w-fit block hover:text-black/80 focus:text-black/90 dark:hover:text-white/80 dark:focus:text-white/90 transition-colors"
+      className="font-semibold text-md text-neutral-500 dark:text-neutral-400 w-fit flex items-center gap-1 hover:text-black/80 focus:text-black/90 dark:hover:text-white/80 dark:focus:text-white/90 transition-colors"
     >
-      {children} →
+      {children}
+      <ArrowRight size={16} strokeWidth={3} />
     </Link>
   );
 }

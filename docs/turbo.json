@@ -7,11 +7,11 @@
     },
     "compile": {
       "dependsOn": ["^compile"],
-      "outputs": ["./dist"]
+      "outputs": ["./dist/**"]
     },
     "build": {
       "dependsOn": ["^build", "^compile"],
-      "outputs": [".next/**", "./dist"]
+      "outputs": [".next/**", "./dist/**"]
     }
   }
 }

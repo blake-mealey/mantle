@@ -239,7 +239,7 @@ export function SchemaReference({ schema }: SchemaReferenceProps) {
             <div className="flex items-start justify-between flex-col md:flex-row md:items-center">
               <Heading
                 level={property.level}
-                id={slugger.slug(property.id.replaceAll('.', ' '), true)}
+                id={slugger.slug(property.id.replaceAll('.', ' '))}
                 style={{ maxWidth: '100%' }}
               >
                 <Code>{property.id}</Code>

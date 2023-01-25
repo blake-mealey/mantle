@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 import { clsx } from 'clsx';
 
 interface FeatureProps {
@@ -12,9 +12,9 @@ export function Feature({ children, reverse }: FeatureProps) {
     <div
       className={clsx(
         {
-          'flex-row-reverse': reverse,
+          'xl:flex-row-reverse': reverse,
         },
-        'relative overflow-hidden border border-neutral-500/20 rounded-xl p-16 flex flex-wrap gap-32 mb-16'
+        'relative overflow-hidden border border-neutral-500/20 rounded-xl p-6 sm:p-16 flex flex-col xl:flex-row gap-8 xl:gap-32 mb-16'
       )}
     >
       {children}
@@ -39,18 +39,18 @@ interface FeatureContentProps {
 
 export function FeatureContent({ children }: FeatureContentProps) {
   return (
-    <div className="flex-1 flex flex-col justify-center gap-4 text-black dark:text-white">
+    <div className="flex-1 flex flex-col justify-center gap-2 xl:gap-4 text-black dark:text-white">
       {children}
     </div>
   );
 }
 
 export function FeatureTitle({ children }: FeatureContentProps) {
-  return <div className="text-5xl font-bold">{children}</div>;
+  return <div className="text-3xl sm:text-5xl font-bold">{children}</div>;
 }
 
 export function FeatureDescription({ children }: FeatureContentProps) {
-  return <div className="text-2xl font-medium">{children}</div>;
+  return <div className="text-lg sm:text-2xl font-medium">{children}</div>;
 }
 
 interface FeatureActionProps {
@@ -75,12 +75,18 @@ interface FeatureDisplayProps {
 }
 
 export function FeatureDisplay({ children, title }: FeatureDisplayProps) {
+  const mappedChildren = React.Children.map(children, (child) => {
+    return React.isValidElement(child)
+      ? React.cloneElement(child, { className: 'py-4 overflow-x-auto' } as any)
+      : null;
+  });
+
   return (
     <div className="flex-1 rounded-xl border border-neutral-500/20 bg-neutral-100/80 dark:bg-neutral-900/80 backdrop-blur-3xl">
       <div className="border-b border-neutral-500/20 p-4 font-medium dark:text-white">
         {title}
       </div>
-      <div className="py-4">{children}</div>
+      {mappedChildren}
     </div>
   );
 }

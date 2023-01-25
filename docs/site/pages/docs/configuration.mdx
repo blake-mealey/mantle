@@ -1,5 +1,6 @@
 import { compileMdx } from 'nextra/compile';
 import { getSchemasSnippetContent, getSchemasListContent } from 'lib';
+import { FileTree, Folder, File } from '@components/file-tree';
 import { DynamicMarkdown } from '@components/dynamic-markdown';
 
 export async function getStaticProps() {
@@ -39,16 +40,17 @@ config file's directory.
 
 For example, with the directory structure:
 
-```txt
-.
-╰── project/
-    ├── mantle.yml
-    ├── game.rbxlx
-    ╰── marketing/
-        ├── game-icon.png
-        ├── thumbnail-1.png
-        ╰── thumbnail-2.png
-```
+<FileTree>
+  <Folder name="project">
+    <File name="mantle.yml" />
+    <File name="game.rbxl" />
+    <Folder name="marketing">
+      <File name="game-icon.png" />
+      <File name="thumbnail-1.png" />
+      <File name="thumbnail-2.png" />
+    </Folder>
+  </Folder>
+</FileTree>
 
 You would use the config:
 
@@ -62,7 +64,7 @@ target:
         - marketing/thumbnail-2.png
     places:
       start:
-        file: game.rbxlx
+        file: game.rbxl
 ```
 
 Mantle will correctly find the referenced files no matter where you execute Mantle from.

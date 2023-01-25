@@ -9,6 +9,7 @@
     "build-schemas": "pnpm --filter scripts build-schemas"
   },
   "dependencies": {
+    "next": "^13.1.5",
     "turbo": "^1.7.0"
   }
 }

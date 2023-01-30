@@ -253,7 +253,7 @@ impl RobloxResource {
 }
 
 impl Resource<RobloxInputs, RobloxOutputs> for RobloxResource {
-    fn get_id(&self) -> String {
+    fn id(&self) -> String {
         self.id.clone()
     }
 
@@ -285,7 +285,7 @@ impl Resource<RobloxInputs, RobloxOutputs> for RobloxResource {
         .to_owned()
     }
 
-    fn get_inputs(&self) -> RobloxInputs {
+    fn inputs(&self) -> RobloxInputs {
         self.inputs.clone()
     }
 

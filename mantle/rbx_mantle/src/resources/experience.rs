@@ -1,49 +1,42 @@
 use async_trait::async_trait;
+use derive_resource::Resource;
 use rbx_api::models::AssetId;
 
 use super::{
     ManagedResource, Resource, ResourceId, ResourceInputs, ResourceManagerContext, ResourceOutputs,
+    WeakResourceRef,
 };
-
-pub struct ExperienceResource {
-    pub id: ResourceId,
-    pub inputs: ExperienceInputs,
-    pub outputs: Option<ExperienceOutputs>,
-}
 
 pub struct ExperienceInputs {
     pub group_id: Option<AssetId>,
 }
 impl ResourceInputs for ExperienceInputs {}
 
-pub struct ExperienceOutputs {
-    pub asset_id: AssetId,
-    pub start_place_id: AssetId,
+pub enum ExperienceOutputs {
+    Data {
+        asset_id: AssetId,
+        start_place_id: AssetId,
+    },
+    Empty,
 }
-impl ResourceOutputs for ExperienceOutputs {}
-
-impl<'a> Resource<'a> for ExperienceResource {
-    fn id(&self) -> ResourceId {
-        self.id
+impl ResourceOutputs for ExperienceOutputs {
+    fn has_outputs(&self) -> bool {
+        match self {
+            Self::Empty => false,
+            _ => true,
+        }
     }
+}
 
-    // TODO: Should this be a Box? Is there a better container for it?
-    fn inputs(&self) -> Box<dyn ResourceInputs> {
-        Box::new(self.inputs)
-    }
-
-    fn outputs(&self) -> Option<Box<dyn ResourceOutputs>> {
-        self.outputs
-            .map(|o| Box::new(o) as Box<dyn ResourceOutputs>)
-    }
-
-    fn dependencies(&self) -> Vec<&'a dyn ManagedResource> {
-        vec![]
-    }
+#[derive(Resource)]
+pub struct ExperienceResource {
+    pub id: ResourceId,
+    pub inputs: ExperienceInputs,
+    pub outputs: ExperienceOutputs,
 }
 
 #[async_trait]
-impl<'a> ManagedResource<'a> for ExperienceResource {
+impl ManagedResource for ExperienceResource {
     // async fn create(
     //     &mut self,
     //     context: &mut ResourceManagerContext,

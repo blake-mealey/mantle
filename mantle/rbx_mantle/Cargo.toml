@@ -16,6 +16,7 @@ include = [
 rbx_auth = { path = "../rbx_auth" }
 rbx_api = { path = "../rbx_api" }
 logger = { path = "../logger" }
+derive_resource = { path = "../derive_resource" }
 
 serde_yaml = { version = "0.8" }
 serde = { version = "1.0", features = ["derive"] }

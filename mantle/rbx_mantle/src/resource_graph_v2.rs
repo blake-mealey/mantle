@@ -1,46 +1,63 @@
-use std::collections::BTreeMap;
-
-use crate::resources::{
-    experience::*, place::*, ManagedResource, ResourceId, ResourceManagerContext,
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, RwLock},
 };
 
+use crate::resources::{experience::*, place::*, ResourceId, ResourceManagerContext, ResourceRef};
+
 fn create_graph() {
-    let mut experience = ExperienceResource {
+    let experience = Arc::new(RwLock::new(ExperienceResource {
         id: "singleton".to_owned(),
         inputs: ExperienceInputs { group_id: None },
-        outputs: None,
-    };
+        outputs: ExperienceOutputs::Empty,
+    }));
 
-    let mut place = PlaceResource {
+    let place = Arc::new(RwLock::new(PlaceResource {
         id: "start".to_owned(),
         inputs: PlaceInputs { is_start: true },
-        outputs: None,
-        experience: &experience,
-    };
+        outputs: PlaceOutputs::Empty,
+        experience: Arc::downgrade(&experience),
+    }));
 
-    let resources: Vec<&mut dyn ManagedResource> = vec![&mut experience, &mut place];
+    let resources: Vec<ResourceRef> = vec![experience, place];
     let graph = ResourceGraph::new(&resources);
 }
 
-pub struct ResourceGraph<'a> {
-    resources: BTreeMap<ResourceId, &'a mut dyn ManagedResource<'a>>,
+pub struct ResourceGraph {
+    resources: BTreeMap<ResourceId, ResourceRef>,
 }
 
-impl<'a> ResourceGraph<'a> {
-    pub fn new(resources: &[&mut dyn ManagedResource]) -> Self {
+impl ResourceGraph {
+    pub fn new(resources: &[ResourceRef]) -> Self {
         Self {
             resources: resources
                 .iter()
-                .map(|resource| (resource.id(), *resource))
+                .map(|resource| {
+                    (
+                        resource.read().unwrap().id().to_owned(),
+                        Arc::clone(resource),
+                    )
+                })
                 .collect(),
         }
     }
 
-    fn topological_order(&self) -> anyhow::Result<Vec<&'a mut dyn ManagedResource>> {
-        let mut dependency_graph: BTreeMap<ResourceId, Vec<&'a dyn ManagedResource>> = self
+    fn topological_order(&self) -> anyhow::Result<Vec<ResourceRef>> {
+        let mut dependency_graph: BTreeMap<ResourceId, Vec<String>> = self
             .resources
             .iter()
-            .map(|(id, resource)| (id.clone(), resource.dependencies()))
+            .map(|(id, resource)| {
+                (
+                    id.clone(),
+                    resource
+                        .read()
+                        .unwrap()
+                        .dependencies()
+                        .iter()
+                        .filter_map(|d| d.upgrade().map(|x| x.read().unwrap().id().to_owned()))
+                        .collect(),
+                )
+            })
             .collect();
 
         let mut start_nodes: Vec<ResourceId> = dependency_graph
@@ -58,8 +75,8 @@ impl<'a> ResourceGraph<'a> {
         while let Some(start_node) = start_nodes.pop() {
             ordered.push(start_node.clone());
             for (node, deps) in dependency_graph.iter_mut() {
-                if deps.iter().any(|dep| dep.id() == start_node) {
-                    deps.retain(|dep| dep.id() != start_node);
+                if deps.iter().any(|dep| *dep == start_node) {
+                    deps.retain(|dep| *dep != start_node);
                     if deps.is_empty() {
                         start_nodes.push(node.clone());
                     }
@@ -74,28 +91,30 @@ impl<'a> ResourceGraph<'a> {
             )),
             false => Ok(ordered
                 .iter()
-                .map(|id| *self.resources.get(id).unwrap())
+                .map(|id| Arc::clone(self.resources.get(id).unwrap()))
                 .collect()),
         }
     }
 
-    pub async fn evaluate_delete<'c>(
+    pub async fn evaluate_delete(
         &self,
-        resource: &'c mut dyn ManagedResource<'c>,
+        resource: ResourceRef,
         context: &mut ResourceManagerContext,
     ) -> anyhow::Result<()> {
-        resource.delete(context).await
+        resource.write().unwrap().delete(context).await?;
+        // .resource.delete(context).await;
+        Ok(())
     }
 
-    pub async fn evaluate<'b: 'a>(
-        &'a self,
-        previous_graph: &'b ResourceGraph<'b>,
+    pub async fn evaluate(
+        &self,
+        previous_graph: &ResourceGraph,
         context: &mut ResourceManagerContext,
     ) -> anyhow::Result<()> {
         let mut previous_resources = previous_graph.topological_order()?;
         previous_resources.reverse();
         for resource in previous_resources {
-            if self.resources.get(&resource.id()).is_some() {
+            if self.resources.get(resource.read().unwrap().id()).is_some() {
                 continue;
             }
 

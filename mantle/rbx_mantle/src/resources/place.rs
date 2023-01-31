@@ -1,49 +1,44 @@
+use std::sync::{RwLock, Weak};
+
 use async_trait::async_trait;
+use derive_resource::Resource;
 use rbx_api::models::AssetId;
 
 use super::{
     experience::ExperienceResource, ManagedResource, Resource, ResourceId, ResourceInputs,
-    ResourceManagerContext, ResourceOutputs,
+    ResourceManagerContext, ResourceOutputs, WeakResourceRef,
 };
 
-pub struct PlaceResource<'a> {
-    pub id: ResourceId,
-    pub inputs: PlaceInputs,
-    pub outputs: Option<PlaceOutputs>,
-    pub experience: &'a ExperienceResource,
-}
-
 pub struct PlaceInputs {
-    is_start: bool,
+    pub is_start: bool,
 }
 impl ResourceInputs for PlaceInputs {}
 
-pub struct PlaceOutputs {
-    pub asset_id: AssetId,
+pub enum PlaceOutputs {
+    Data { asset_id: AssetId },
+    Empty,
 }
-impl ResourceOutputs for PlaceOutputs {}
-
-impl<'a> Resource<'a> for PlaceResource<'a> {
-    fn id(&self) -> ResourceId {
-        self.id
+impl ResourceOutputs for PlaceOutputs {
+    fn has_outputs(&self) -> bool {
+        match self {
+            Self::Empty => false,
+            _ => true,
+        }
     }
+}
 
-    fn inputs(&self) -> Box<dyn ResourceInputs> {
-        Box::new(self.inputs)
-    }
+#[derive(Resource)]
+pub struct PlaceResource {
+    pub id: ResourceId,
+    pub inputs: PlaceInputs,
+    pub outputs: PlaceOutputs,
 
-    fn outputs(&self) -> Option<Box<dyn ResourceOutputs>> {
-        self.outputs
-            .map(|o| Box::new(o) as Box<dyn ResourceOutputs>)
-    }
-
-    fn dependencies(&self) -> Vec<&'a dyn ManagedResource> {
-        vec![self.experience]
-    }
+    #[dependency]
+    pub experience: Weak<RwLock<ExperienceResource>>,
 }
 
 #[async_trait]
-impl<'a> ManagedResource<'a> for PlaceResource<'a> {
+impl ManagedResource for PlaceResource {
     // async fn create(
     //     &mut self,
     //     context: &mut ResourceManagerContext,

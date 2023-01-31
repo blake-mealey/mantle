@@ -1,4 +1,7 @@
-use std::path::PathBuf;
+use std::{
+    path::PathBuf,
+    sync::{Arc, RwLock, Weak},
+};
 
 use async_trait::async_trait;
 use rbx_api::{models::CreatorType, RobloxApi};
@@ -20,22 +23,27 @@ pub enum UpdateStrategy {
 
 pub trait ResourceInputs {}
 
-pub trait ResourceOutputs {}
+pub trait ResourceOutputs {
+    fn has_outputs(&self) -> bool;
+}
 
 pub type ResourceId = String;
 
-pub trait Resource<'a> {
-    fn id(&self) -> ResourceId;
+pub type ResourceRef = Arc<RwLock<dyn ManagedResource>>;
+pub type WeakResourceRef = Weak<RwLock<dyn ManagedResource>>;
 
-    fn inputs(&self) -> Box<dyn ResourceInputs>;
+pub trait Resource {
+    fn id(&self) -> &str;
 
-    fn outputs(&self) -> Option<Box<dyn ResourceOutputs>>;
+    fn inputs(&self) -> &dyn ResourceInputs;
 
-    fn dependencies(&self) -> Vec<&'a dyn ManagedResource>;
+    fn outputs(&self) -> &dyn ResourceOutputs;
+
+    fn dependencies(&self) -> Vec<WeakResourceRef>;
 }
 
 #[async_trait]
-pub trait ManagedResource<'a>: Resource<'a> {
+pub trait ManagedResource: Resource {
     // async fn creation_price(
     //     &self,
     //     context: &mut ResourceManagerContext,

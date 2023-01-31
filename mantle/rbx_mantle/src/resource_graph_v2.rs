@@ -1,63 +1,46 @@
-use std::{
-    borrow::{Borrow, BorrowMut},
-    cell::RefCell,
-    collections::BTreeMap,
-    rc::Rc,
-};
+use std::collections::BTreeMap;
 
 use crate::resources::{
-    ExperienceInputs, ExperienceResource, PlaceInputs, PlaceResource, ResourceId, ResourceManager,
-    ResourceManagerContext, ResourceOutputs, ResourceRef, ResourceVec, WeakResourceVec,
+    experience::*, place::*, ManagedResource, ResourceId, ResourceManagerContext,
 };
 
 fn create_graph() {
-    let experience = Rc::new(RefCell::new(ExperienceResource {
+    let mut experience = ExperienceResource {
         id: "singleton".to_owned(),
-        inputs: Box::new(ExperienceInputs { group_id: None }),
+        inputs: ExperienceInputs { group_id: None },
         outputs: None,
-    }));
+    };
 
-    let place = Rc::new(RefCell::new(PlaceResource {
+    let mut place = PlaceResource {
         id: "start".to_owned(),
-        inputs: Box::new(PlaceInputs { is_start: true }),
+        inputs: PlaceInputs { is_start: true },
         outputs: None,
-        experience: Rc::downgrade(&experience),
-    }));
+        experience: &experience,
+    };
 
-    let resources: ResourceVec = vec![experience, place];
+    let resources: Vec<&mut dyn ManagedResource> = vec![&mut experience, &mut place];
     let graph = ResourceGraph::new(&resources);
 }
 
-pub struct ResourceGraph {
-    resources: BTreeMap<ResourceId, ResourceRef>,
+pub struct ResourceGraph<'a> {
+    resources: BTreeMap<ResourceId, &'a mut dyn ManagedResource<'a>>,
 }
 
-impl ResourceGraph {
-    pub fn new(resources: &[ResourceRef]) -> Self {
+impl<'a> ResourceGraph<'a> {
+    pub fn new(resources: &[&mut dyn ManagedResource]) -> Self {
         Self {
             resources: resources
                 .iter()
-                .map(|resource| (resource.borrow().id(), *resource))
+                .map(|resource| (resource.id(), *resource))
                 .collect(),
         }
     }
 
-    pub fn outputs(&self, resource_id: &str) -> Option<Box<dyn ResourceOutputs>> {
-        self.resources.get(resource_id).and_then(|resource| {
-            let resource = resource.borrow();
-            if resource.has_outputs() {
-                Some(resource.outputs())
-            } else {
-                None
-            }
-        })
-    }
-
-    fn topological_order(&self) -> anyhow::Result<ResourceVec> {
-        let mut dependency_graph: BTreeMap<ResourceId, WeakResourceVec> = self
+    fn topological_order(&self) -> anyhow::Result<Vec<&'a mut dyn ManagedResource>> {
+        let mut dependency_graph: BTreeMap<ResourceId, Vec<&'a dyn ManagedResource>> = self
             .resources
             .iter()
-            .map(|(id, resource)| (id.clone(), resource.borrow().dependencies()))
+            .map(|(id, resource)| (id.clone(), resource.dependencies()))
             .collect();
 
         let mut start_nodes: Vec<ResourceId> = dependency_graph
@@ -75,8 +58,8 @@ impl ResourceGraph {
         while let Some(start_node) = start_nodes.pop() {
             ordered.push(start_node.clone());
             for (node, deps) in dependency_graph.iter_mut() {
-                if deps.iter().any(|dep| dep.borrow().id() == start_node) {
-                    deps.retain(|dep| dep.borrow().id() != start_node);
+                if deps.iter().any(|dep| dep.id() == start_node) {
+                    deps.retain(|dep| dep.id() != start_node);
                     if deps.is_empty() {
                         start_nodes.push(node.clone());
                     }
@@ -96,18 +79,18 @@ impl ResourceGraph {
         }
     }
 
-    pub async fn evaluate_delete(
-        resource: Rc<RefCell<dyn ResourceManager>>,
+    pub async fn evaluate_delete<'c>(
+        &self,
+        resource: &'c mut dyn ManagedResource<'c>,
         context: &mut ResourceManagerContext,
     ) -> anyhow::Result<()> {
-        resource.borrow_mut().create(context, None);
-        Ok(())
+        resource.delete(context).await
     }
 
-    pub async fn evaluate(
-        &self,
-        previous_graph: &ResourceGraph,
-        context: &ResourceManagerContext,
+    pub async fn evaluate<'b: 'a>(
+        &'a self,
+        previous_graph: &'b ResourceGraph<'b>,
+        context: &mut ResourceManagerContext,
     ) -> anyhow::Result<()> {
         let mut previous_resources = previous_graph.topological_order()?;
         previous_resources.reverse();
@@ -117,6 +100,12 @@ impl ResourceGraph {
             }
 
             // TODO: delete
+            self.evaluate_delete(resource, context);
+        }
+
+        let current_resources = self.topological_order()?;
+        for resource in current_resources {
+            self.evaluate_delete(resource, context);
         }
 
         Ok(())

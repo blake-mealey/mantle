@@ -4,16 +4,20 @@ use async_trait::async_trait;
 use derive_resource::Resource;
 use rbx_api::models::AssetId;
 
+use crate::resource_graph_v2::evaluator::ResourceGraphEvaluatorContext;
+
 use super::{
     experience::ExperienceResource, ManagedResource, Resource, ResourceId, ResourceInputs,
-    ResourceManagerContext, ResourceOutputs, WeakResourceRef,
+    ResourceOutputs, UpdateStrategy, WeakResourceRef,
 };
 
+#[derive(Debug)]
 pub struct PlaceInputs {
     pub is_start: bool,
 }
 impl ResourceInputs for PlaceInputs {}
 
+#[derive(Debug)]
 pub enum PlaceOutputs {
     Data { asset_id: AssetId },
     Empty,
@@ -27,7 +31,7 @@ impl ResourceOutputs for PlaceOutputs {
     }
 }
 
-#[derive(Resource)]
+#[derive(Resource, Debug)]
 pub struct PlaceResource {
     pub id: ResourceId,
     pub inputs: PlaceInputs,
@@ -39,36 +43,26 @@ pub struct PlaceResource {
 
 #[async_trait]
 impl ManagedResource for PlaceResource {
-    // async fn create(
-    //     &mut self,
-    //     context: &mut ResourceManagerContext,
-    //     price: Option<u32>,
-    // ) -> anyhow::Result<()> {
-    //     let CreateExperienceResponse {
-    //         universe_id,
-    //         root_place_id,
-    //     } = context
-    //         .roblox_api
-    //         .create_experience(self.inputs.group_id)
-    //         .await?;
+    async fn delete(&mut self, _context: &mut ResourceGraphEvaluatorContext) -> anyhow::Result<()> {
+        todo!()
+    }
 
-    //     self.outputs = Some(Box::new(ExperienceOutputs {
-    //         asset_id: universe_id,
-    //         start_place_id: root_place_id,
-    //     }));
+    async fn price(
+        &mut self,
+        _context: &mut ResourceGraphEvaluatorContext,
+    ) -> anyhow::Result<Option<u32>> {
+        todo!()
+    }
 
-    //     Ok(())
-    // }
+    async fn create(
+        &mut self,
+        _context: &mut ResourceGraphEvaluatorContext,
+        _price: Option<u32>,
+    ) -> anyhow::Result<()> {
+        todo!()
+    }
 
-    // async fn update(
-    //     &mut self,
-    //     context: &mut ResourceManagerContext,
-    //     price: Option<u32>,
-    // ) -> anyhow::Result<()> {
-    //     Ok(())
-    // }
-
-    async fn delete(&mut self, context: &mut ResourceManagerContext) -> anyhow::Result<()> {
-        Ok(())
+    fn update_strategy<'a>(&'a mut self) -> UpdateStrategy<'a> {
+        UpdateStrategy::Recreate
     }
 }

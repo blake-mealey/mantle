@@ -1,29 +1,23 @@
 use std::{
-    path::PathBuf,
+    fmt::Debug,
     sync::{Arc, RwLock, Weak},
 };
 
 use async_trait::async_trait;
-use rbx_api::{models::CreatorType, RobloxApi};
+
+use crate::resource_graph_v2::evaluator::ResourceGraphEvaluatorContext;
 
 pub mod experience;
 pub mod place;
 
-pub struct ResourceManagerContext {
-    pub roblox_api: RobloxApi,
-    pub project_path: PathBuf,
-    pub payment_source: CreatorType,
-    pub allow_purchases: bool,
-}
+// pub enum UpdateStrategy {
+//     UpdateInPlace,
+//     Recreate,
+// }
 
-pub enum UpdateStrategy {
-    UpdateInPlace,
-    Recreate,
-}
+pub trait ResourceInputs: Debug {}
 
-pub trait ResourceInputs {}
-
-pub trait ResourceOutputs {
+pub trait ResourceOutputs: Debug {
     fn has_outputs(&self) -> bool;
 }
 
@@ -32,7 +26,7 @@ pub type ResourceId = String;
 pub type ResourceRef = Arc<RwLock<dyn ManagedResource>>;
 pub type WeakResourceRef = Weak<RwLock<dyn ManagedResource>>;
 
-pub trait Resource {
+pub trait Resource: Debug {
     fn id(&self) -> &str;
 
     fn inputs(&self) -> &dyn ResourceInputs;
@@ -68,5 +62,28 @@ pub trait ManagedResource: Resource {
     //     price: Option<u32>,
     // ) -> anyhow::Result<()>;
 
-    async fn delete(&mut self, context: &mut ResourceManagerContext) -> anyhow::Result<()>;
+    async fn delete(&mut self, context: &mut ResourceGraphEvaluatorContext) -> anyhow::Result<()>;
+
+    async fn price(
+        &mut self,
+        context: &mut ResourceGraphEvaluatorContext,
+    ) -> anyhow::Result<Option<u32>>;
+
+    async fn create(
+        &mut self,
+        context: &mut ResourceGraphEvaluatorContext,
+        price: Option<u32>,
+    ) -> anyhow::Result<()>;
+
+    fn update_strategy<'a>(&'a mut self) -> UpdateStrategy<'a>;
+}
+
+pub enum UpdateStrategy<'a> {
+    Update(&'a mut dyn UpdatableResource),
+    Recreate,
+}
+
+#[async_trait]
+pub trait UpdatableResource: ManagedResource {
+    async fn update(&mut self, context: &mut ResourceGraphEvaluatorContext) -> anyhow::Result<()>;
 }

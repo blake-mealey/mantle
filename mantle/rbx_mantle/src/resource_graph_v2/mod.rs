@@ -3,9 +3,11 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use crate::resources::{experience::*, place::*, ResourceId, ResourceManagerContext, ResourceRef};
+use crate::resources::{experience::*, place::*, ResourceId, ResourceRef};
 
-fn create_graph() {
+pub mod evaluator;
+
+fn _create_graph() {
     let experience = Arc::new(RwLock::new(ExperienceResource {
         id: "singleton".to_owned(),
         inputs: ExperienceInputs { group_id: None },
@@ -20,9 +22,10 @@ fn create_graph() {
     }));
 
     let resources: Vec<ResourceRef> = vec![experience, place];
-    let graph = ResourceGraph::new(&resources);
+    let _graph = ResourceGraph::new(&resources);
 }
 
+#[derive(Default)]
 pub struct ResourceGraph {
     resources: BTreeMap<ResourceId, ResourceRef>,
 }
@@ -42,7 +45,19 @@ impl ResourceGraph {
         }
     }
 
-    fn topological_order(&self) -> anyhow::Result<Vec<ResourceRef>> {
+    pub fn contains(&self, resource_id: &str) -> bool {
+        self.resources.contains_key(resource_id)
+    }
+
+    pub fn get(&self, resource_id: &str) -> Option<ResourceRef> {
+        self.resources.get(resource_id).map(|x| Arc::clone(x))
+    }
+
+    pub fn insert(&mut self, id: &ResourceId, resource: ResourceRef) {
+        self.resources.insert(id.to_owned(), resource);
+    }
+
+    pub fn topological_order(&self) -> anyhow::Result<Vec<ResourceRef>> {
         let mut dependency_graph: BTreeMap<ResourceId, Vec<String>> = self
             .resources
             .iter()
@@ -96,37 +111,37 @@ impl ResourceGraph {
         }
     }
 
-    pub async fn evaluate_delete(
-        &self,
-        resource: ResourceRef,
-        context: &mut ResourceManagerContext,
-    ) -> anyhow::Result<()> {
-        resource.write().unwrap().delete(context).await?;
-        // .resource.delete(context).await;
-        Ok(())
-    }
+    // pub async fn evaluate_delete(
+    //     &self,
+    //     resource: ResourceRef,
+    //     context: &mut ResourceManagerContext,
+    // ) -> anyhow::Result<()> {
+    //     resource.write().unwrap().delete(context).await?;
+    //     // .resource.delete(context).await;
+    //     Ok(())
+    // }
 
-    pub async fn evaluate(
-        &self,
-        previous_graph: &ResourceGraph,
-        context: &mut ResourceManagerContext,
-    ) -> anyhow::Result<()> {
-        let mut previous_resources = previous_graph.topological_order()?;
-        previous_resources.reverse();
-        for resource in previous_resources {
-            if self.resources.get(resource.read().unwrap().id()).is_some() {
-                continue;
-            }
+    // pub async fn evaluate(
+    //     &self,
+    //     previous_graph: &ResourceGraph,
+    //     context: &mut ResourceManagerContext,
+    // ) -> anyhow::Result<()> {
+    //     let mut previous_resources = previous_graph.topological_order()?;
+    //     previous_resources.reverse();
+    //     for resource in previous_resources {
+    //         if self.resources.get(resource.read().unwrap().id()).is_some() {
+    //             continue;
+    //         }
 
-            // TODO: delete
-            self.evaluate_delete(resource, context);
-        }
+    //         // TODO: delete
+    //         self.evaluate_delete(resource, context);
+    //     }
 
-        let current_resources = self.topological_order()?;
-        for resource in current_resources {
-            self.evaluate_delete(resource, context);
-        }
+    //     let current_resources = self.topological_order()?;
+    //     for resource in current_resources {
+    //         self.evaluate_delete(resource, context);
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 }

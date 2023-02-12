@@ -6,6 +6,7 @@ pub mod developer_products;
 pub mod errors;
 pub mod experiences;
 pub mod game_passes;
+pub mod groups;
 mod helpers;
 pub mod models;
 pub mod places;

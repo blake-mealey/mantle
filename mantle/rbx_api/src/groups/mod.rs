@@ -9,7 +9,7 @@ use crate::{
     RobloxApi,
 };
 
-use self::models::ListRolesResponse;
+use self::models::GroupAllRolesResponse;
 
 impl RobloxApi {
     /// * `role_id` - Not the same as rank, must be retrieved using [`RobloxApi::get_all_roles`]
@@ -32,7 +32,7 @@ impl RobloxApi {
         Ok(())
     }
 
-    pub async fn get_all_roles(&self, group_id: GroupId) -> RobloxApiResult<ListRolesResponse> {
+    pub async fn get_all_roles(&self, group_id: GroupId) -> RobloxApiResult<GroupAllRolesResponse> {
         let req = self.client.get(&format!(
             "https://groups.roblox.com/v1/groups/{}/roles",
             group_id

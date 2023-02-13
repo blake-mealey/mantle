@@ -43,7 +43,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<CreateDeveloperProductResponse> {
         let req = self
             .client
-            .post(&format!(
+            .post(format!(
                 "https://apis.roblox.com/developer-products/v1/universes/{}/developerproducts",
                 experience_id
             ))
@@ -116,7 +116,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<()> {
         let req = self
             .client
-            .post(&format!(
+            .post(format!(
                 "https://apis.roblox.com/developer-products/v1/universes/{}/developerproducts/{}/update",
                 experience_id, product_id
             ))

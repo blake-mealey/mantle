@@ -35,7 +35,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
     ) -> RobloxApiResult<GetExperienceResponse> {
-        let req = self.client.get(&format!(
+        let req = self.client.get(format!(
             "https://develop.roblox.com/v1/universes/{}",
             experience_id
         ));
@@ -47,7 +47,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
     ) -> RobloxApiResult<ExperienceConfigurationModel> {
-        let req = self.client.get(&format!(
+        let req = self.client.get(format!(
             "https://develop.roblox.com/v1/universes/{}/configuration",
             experience_id
         ));
@@ -62,7 +62,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<()> {
         let req = self
             .client
-            .patch(&format!(
+            .patch(format!(
                 "https://develop.roblox.com/v2/universes/{}/configuration",
                 experience_id
             ))
@@ -81,7 +81,7 @@ impl RobloxApi {
         let endpoint = if active { "activate" } else { "deactivate" };
         let req = self
             .client
-            .post(&format!(
+            .post(format!(
                 "https://develop.roblox.com/v1/universes/{}/{}",
                 experience_id, endpoint
             ))

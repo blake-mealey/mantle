@@ -1,0 +1,2 @@
+# Only breaks in CI so cannot autofix and has many warnings. Enable and fix later
+allow-mixed-uninlined-format-args=false

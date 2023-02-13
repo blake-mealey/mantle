@@ -21,7 +21,7 @@ impl RobloxApi {
         experience_id: AssetId,
         page_cursor: Option<String>,
     ) -> RobloxApiResult<ListGamePassesResponse> {
-        let mut req = self.client.get(&format!(
+        let mut req = self.client.get(format!(
             "https://games.roblox.com/v1/games/{}/game-passes",
             experience_id
         ));

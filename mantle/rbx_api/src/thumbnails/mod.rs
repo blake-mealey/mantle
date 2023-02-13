@@ -70,7 +70,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
     ) -> RobloxApiResult<Vec<GetExperienceThumbnailResponse>> {
-        let req = self.client.get(&format!(
+        let req = self.client.get(format!(
             "https://games.roblox.com/v1/games/{}/media",
             experience_id
         ));
@@ -87,7 +87,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<()> {
         let req = self
             .client
-            .post(&format!(
+            .post(format!(
                 "https://develop.roblox.com/v1/universes/{}/thumbnails/order",
                 experience_id
             ))
@@ -103,7 +103,7 @@ impl RobloxApi {
         experience_id: AssetId,
         thumbnail_id: AssetId,
     ) -> RobloxApiResult<()> {
-        let req = self.client.delete(&format!(
+        let req = self.client.delete(format!(
             "https://develop.roblox.com/v1/universes/{}/thumbnails/{}",
             experience_id, thumbnail_id
         ));

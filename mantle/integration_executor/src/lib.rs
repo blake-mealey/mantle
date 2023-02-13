@@ -18,14 +18,11 @@ struct SpecHeader {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 enum ExpectStatus {
+    #[default]
     Success,
     Failure,
-}
-impl Default for ExpectStatus {
-    fn default() -> Self {
-        ExpectStatus::Success
-    }
 }
 
 #[derive(Deserialize)]
@@ -74,7 +71,6 @@ pub fn execute_spec(spec: &str) {
     let data = fs::read_to_string(spec_path.clone()).unwrap();
 
     let mut docs = serde_yaml::Deserializer::from_str(&data)
-        .into_iter()
         .map(|document| serde_yaml::Value::deserialize(document).unwrap())
         .collect::<Vec<_>>();
 

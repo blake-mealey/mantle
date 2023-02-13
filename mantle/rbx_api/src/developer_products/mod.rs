@@ -44,7 +44,7 @@ impl RobloxApi {
         let req = self
             .client
             .post(&format!(
-                "https://develop.roblox.com/v1/universes/{}/developerproducts",
+                "https://apis.roblox.com/developer-products/v1/universes/{}/developerproducts",
                 experience_id
             ))
             .header(header::CONTENT_LENGTH, 0)
@@ -99,7 +99,7 @@ impl RobloxApi {
         developer_product_id: AssetId,
     ) -> RobloxApiResult<GetDeveloperProductResponse> {
         let req = self.client.get(format!(
-            "https://develop.roblox.com/v1/developerproducts/{}",
+            "https://apis.roblox.com/developer-products/v1/developer-products/{}",
             developer_product_id
         ));
 
@@ -117,7 +117,7 @@ impl RobloxApi {
         let req = self
             .client
             .post(&format!(
-                "https://develop.roblox.com/v1/universes/{}/developerproducts/{}/update",
+                "https://apis.roblox.com/developer-products/v1/universes/{}/developerproducts/{}/update",
                 experience_id, product_id
             ))
             .json(&json!({

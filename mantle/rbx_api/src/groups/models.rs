@@ -15,6 +15,6 @@ pub struct GroupRoleResponse {
     pub id: u64,
     pub name: String,
     pub description: Option<String>,
-    pub rank: u64,
+    pub rank: u32,
     pub member_count: u64,
 }

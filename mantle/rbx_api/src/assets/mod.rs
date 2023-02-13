@@ -96,7 +96,7 @@ impl RobloxApi {
     pub async fn archive_asset(&self, asset_id: AssetId) -> RobloxApiResult<()> {
         let req = self
             .client
-            .post(&format!(
+            .post(format!(
                 "https://develop.roblox.com/v1/assets/{}/archive",
                 asset_id
             ))

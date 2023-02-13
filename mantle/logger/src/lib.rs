@@ -32,7 +32,7 @@ where
 }
 
 fn get_line_prefix() -> String {
-    format!("{0}│{0}", SPACING).repeat(ACTION_COUNT.load(Ordering::SeqCst).into())
+    format!("{SPACING}│{SPACING}").repeat(ACTION_COUNT.load(Ordering::SeqCst).into())
 }
 
 pub fn log<S>(message: S)
@@ -40,7 +40,7 @@ where
     S: Display,
 {
     let line_prefix = get_line_prefix();
-    println!("{}", with_prefix(&message, &line_prefix));
+    println!("{}", with_prefix(&message, line_prefix));
 }
 
 pub fn start_action<S>(title: S)
@@ -64,13 +64,13 @@ where
     ACTION_COUNT.fetch_sub(1, Ordering::SeqCst);
 
     if let Some(message) = message {
-        log(&format!("{}╰─ {}", SPACING, message));
+        log(format!("{SPACING}╰─ {message}"));
     } else {
-        log(&format!("{}╰──○", SPACING));
+        log(format!("{SPACING}╰──○"));
     }
 
     if let Some(results) = results {
-        log_changeset_with_prefix(results, format!("{0}{0} ", SPACING));
+        log_changeset_with_prefix(results, format!("{SPACING}{SPACING} "));
     }
 
     log("");
@@ -98,23 +98,23 @@ pub fn log_changeset_with_prefix<S>(changeset: Changeset, prefix: S)
 where
     S: Display,
 {
-    log(&changeset
+    log(changeset
         .diffs
         .iter()
         .map(|diff| match diff {
             Difference::Same(same) => with_prefix_and_style(
                 same,
-                format!("{}{}{}", prefix, SPACING, SPACING),
+                format!("{prefix}{SPACING}{SPACING}"),
                 Style::default().dimmed(),
             ),
             Difference::Add(add) => with_prefix_and_style(
                 add,
-                &format!("{}{}{} ", prefix, SPACING, Paint::green("+")),
+                format!("{prefix}{SPACING}{} ", Paint::green("+")),
                 Style::new(Color::Green),
             ),
             Difference::Rem(rem) => with_prefix_and_style(
                 rem,
-                &format!("{}{}{} ", prefix, SPACING, Paint::red("-")),
+                format!("{prefix}{SPACING}{} ", Paint::red("-")),
                 Style::new(Color::Red),
             ),
         })

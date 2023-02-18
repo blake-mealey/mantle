@@ -28,6 +28,9 @@ jobs:
       - name: Run linters
         working-directory: mantle
         run: |
+          rustup show
+          cargo version
+          cargo clippy -V
           cargo fmt -- --check
           cargo clippy -- -D warnings
       - name: Generate schema

@@ -5,18 +5,18 @@ use serde_json::json;
 use crate::{
     errors::RobloxApiResult,
     helpers::{handle, handle_as_json},
-    models::{GroupId, UserId},
+    models::AssetId,
     RobloxApi,
 };
 
-use self::models::GroupAllRolesResponse;
+use self::models::ListGroupRolesResponse;
 
 impl RobloxApi {
-    /// * `role_id` - Not the same as rank, must be retrieved using [`RobloxApi::get_all_roles`]
-    pub async fn update_user_role(
+    /// * `role_id` - Not the same as rank, must be retrieved using [`RobloxApi::list_group_roles`]
+    pub async fn update_user_group_role(
         &self,
-        group_id: GroupId,
-        user_id: UserId,
+        group_id: AssetId,
+        user_id: AssetId,
         role_id: u64,
     ) -> RobloxApiResult<()> {
         let req = self
@@ -32,7 +32,10 @@ impl RobloxApi {
         Ok(())
     }
 
-    pub async fn get_all_roles(&self, group_id: GroupId) -> RobloxApiResult<GroupAllRolesResponse> {
+    pub async fn list_group_roles(
+        &self,
+        group_id: AssetId,
+    ) -> RobloxApiResult<ListGroupRolesResponse> {
         let req = self.client.get(&format!(
             "https://groups.roblox.com/v1/groups/{}/roles",
             group_id

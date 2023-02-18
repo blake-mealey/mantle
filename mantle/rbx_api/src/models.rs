@@ -4,8 +4,6 @@ use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 pub type AssetId = u64;
-pub type GroupId = u64;
-pub type UserId = u64;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "PascalCase")]

@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Duration, Timelike, Utc};
 use rbx_api::{
     asset_permissions::models::{
         GrantAssetPermissionRequestAction, GrantAssetPermissionRequestSubjectType,
@@ -341,8 +341,17 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     .get_create_badge_free_quota(experience.asset_id)
                     .await?;
 
-                let quota_reset =
-                    format_quota_reset((Utc::today() + Duration::days(1)).and_hms(0, 0, 0));
+                let quota_reset = format_quota_reset(
+                    (Utc::now() + Duration::days(1))
+                        .with_hour(0)
+                        .unwrap()
+                        .with_minute(0)
+                        .unwrap()
+                        .with_second(0)
+                        .unwrap()
+                        .with_nanosecond(0)
+                        .unwrap(),
+                );
 
                 if free_quota > 0 {
                     logger::log("");

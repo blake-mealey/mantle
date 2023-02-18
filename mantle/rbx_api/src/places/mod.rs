@@ -81,10 +81,9 @@ impl RobloxApi {
     }
 
     pub async fn get_place(&self, place_id: AssetId) -> RobloxApiResult<GetPlaceResponse> {
-        let req = self.client.get(&format!(
-            "https://develop.roblox.com/v2/places/{}",
-            place_id
-        ));
+        let req = self
+            .client
+            .get(format!("https://develop.roblox.com/v2/places/{}", place_id));
 
         handle_as_json(req).await
     }
@@ -171,10 +170,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<()> {
         let req = self
             .client
-            .patch(&format!(
-                "https://develop.roblox.com/v2/places/{}",
-                place_id
-            ))
+            .patch(format!("https://develop.roblox.com/v2/places/{}", place_id))
             .json(place_configuration);
 
         handle(req).await?;

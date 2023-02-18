@@ -1,15 +1,17 @@
 import { getReleases } from './releases';
 import { CompileMdx } from './types';
 
-export async function getSchemasListContent(compileMdx: CompileMdx) {
+export interface SchemaVersionItem {
+  version: string;
+  url: string;
+}
+
+export async function getSchemaVersionsList(): Promise<SchemaVersionItem[]> {
   const releases = await getReleases();
-  const schemasList = releases
-    .map(
-      (release) =>
-        `- [${release.version}](/schemas/${release.version}/schema.json)`
-    )
-    .join('\n');
-  return (await compileMdx(schemasList)).result;
+  return releases.map((release) => ({
+    version: release.version,
+    url: `/schemas/${release.version}/schema.json`,
+  }));
 }
 
 export async function getSchemasSnippetContent(compileMdx: CompileMdx) {

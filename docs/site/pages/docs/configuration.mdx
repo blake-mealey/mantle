@@ -1,18 +1,19 @@
 import { compileMdx } from 'nextra/compile';
-import { getSchemasSnippetContent, getSchemasListContent } from 'lib';
+import { getSchemasSnippetContent, getSchemaVersionsList } from 'lib';
 import { FileTree, Folder, File } from '@components/file-tree';
 import { DynamicMarkdown } from '@components/dynamic-markdown';
+import { SchemaVersionsList } from '@components/schema-versions-list';
 
 export async function getStaticProps() {
   const schemasSnippet = await getSchemasSnippetContent(compileMdx);
-  const schemasList = await getSchemasListContent(compileMdx);
+  const schemaVersionsList = await getSchemaVersionsList(compileMdx);
   return {
     props: {
       ssg: {
         dynamicMarkdown: {
           schemasSnippet,
-          schemasList,
         },
+        schemaVersionsList,
       },
     },
   };
@@ -85,4 +86,4 @@ the following to your VSCode settings:
 
 <DynamicMarkdown name="schemasSnippet" />
 
-<DynamicMarkdown name="schemasList" />
+<SchemaVersionsList />

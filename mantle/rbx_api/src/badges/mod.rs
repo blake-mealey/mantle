@@ -51,7 +51,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<()> {
         let req = self
             .client
-            .patch(&format!("https://badges.roblox.com/v1/badges/{}", badge_id))
+            .patch(format!("https://badges.roblox.com/v1/badges/{}", badge_id))
             .json(&json!({
                 "name": name,
                 "description": description,
@@ -67,7 +67,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
     ) -> RobloxApiResult<i32> {
-        let req = self.client.get(&format!(
+        let req = self.client.get(format!(
             "https://badges.roblox.com/v1/universes/{}/free-badges-quota",
             experience_id
         ));
@@ -80,7 +80,7 @@ impl RobloxApi {
         experience_id: AssetId,
         page_cursor: Option<String>,
     ) -> RobloxApiResult<ListBadgesResponse> {
-        let mut req = self.client.get(&format!(
+        let mut req = self.client.get(format!(
             "https://badges.roblox.com/v1/universes/{}/badges",
             experience_id
         ));

@@ -23,7 +23,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<CreateSocialLinkResponse> {
         let req = self
             .client
-            .post(&format!(
+            .post(format!(
                 "https://develop.roblox.com/v1/universes/{}/social-links",
                 experience_id
             ))
@@ -46,7 +46,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<()> {
         let req = self
             .client
-            .patch(&format!(
+            .patch(format!(
                 "https://develop.roblox.com/v1/universes/{}/social-links/{}",
                 experience_id, social_link_id
             ))
@@ -66,7 +66,7 @@ impl RobloxApi {
         experience_id: AssetId,
         social_link_id: AssetId,
     ) -> RobloxApiResult<()> {
-        let req = self.client.delete(&format!(
+        let req = self.client.delete(format!(
             "https://develop.roblox.com/v1/universes/{}/social-links/{}",
             experience_id, social_link_id
         ));
@@ -80,7 +80,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
     ) -> RobloxApiResult<Vec<GetSocialLinkResponse>> {
-        let req = self.client.get(&format!(
+        let req = self.client.get(format!(
             "https://games.roblox.com/v1/games/{}/social-links/list",
             experience_id
         ));

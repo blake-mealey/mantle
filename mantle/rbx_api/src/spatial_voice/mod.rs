@@ -15,7 +15,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<UpdateSpatialVoiceSettingsResponse> {
         let req = self
             .client
-            .post(&format!(
+            .post(format!(
                 "https://voice.roblox.com/v1/settings/universe/{}",
                 experience_id
             ))
@@ -28,7 +28,7 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
     ) -> RobloxApiResult<GetSpatialVoiceSettingsResponse> {
-        let req = self.client.get(&format!(
+        let req = self.client.get(format!(
             "https://voice.roblox.com/v1/settings/universe/{}",
             experience_id
         ));

@@ -21,7 +21,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<()> {
         let req = self
             .client
-            .patch(&format!(
+            .patch(format!(
                 "https://groups.roblox.com/v1/groups/{}/users/{}",
                 group_id, user_id
             ))
@@ -36,7 +36,7 @@ impl RobloxApi {
         &self,
         group_id: AssetId,
     ) -> RobloxApiResult<ListGroupRolesResponse> {
-        let req = self.client.get(&format!(
+        let req = self.client.get(format!(
             "https://groups.roblox.com/v1/groups/{}/roles",
             group_id
         ));

@@ -3,9 +3,8 @@ use std::path::PathBuf;
 use rbx_api::{models::CreatorType, RobloxApi};
 use rbx_auth::RobloxAuth;
 
-use crate::resources::{ResourceId, ResourceRef};
-
 use super::ResourceGraph;
+use crate::resources::{ResourceId, ResourceRef, UpdateStrategy};
 
 pub struct ResourceGraphEvaluatorOptions {
     pub project_path: PathBuf,
@@ -258,6 +257,16 @@ impl<'a> ResouceGraphEvaluator<'a> {
     fn update_resource(&mut self, resource: ResourceRef) {
         let mut resource_write_ref = resource.write().unwrap();
         let resource_id = resource_write_ref.id().to_owned();
+
+        // match resource.write().unwrap().update_strategy() {
+        //     UpdateStrategy::Recreate => {
+        //         self.create_resource(resource.clone()).await;
+        //         return;
+        //     }
+        //     UpdateStrategy::Update(updatable_resource) => {
+        //         updatable_resource.update(context);
+        //     }
+        // }
 
         println!("Updating: {}", resource_id);
     }

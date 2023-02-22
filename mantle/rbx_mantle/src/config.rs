@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    default, fmt, fs,
+    fmt, fs,
     path::{Path, PathBuf},
     str,
 };
@@ -114,40 +114,31 @@ pub struct Config {
 
 #[derive(JsonSchema, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub enum OwnerConfig {
+    #[default]
     Personal,
     Group(AssetId),
-}
-impl default::Default for OwnerConfig {
-    fn default() -> Self {
-        OwnerConfig::Personal
-    }
 }
 
 #[derive(JsonSchema, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub enum PaymentsConfig {
+    #[default]
     Owner,
     Personal,
     Group,
 }
-impl default::Default for PaymentsConfig {
-    fn default() -> Self {
-        PaymentsConfig::Owner
-    }
-}
 
 #[derive(JsonSchema, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub enum StateConfig {
+    #[default]
     Local,
     LocalKey(String),
     Remote(RemoteStateConfig),
-}
-impl default::Default for StateConfig {
-    fn default() -> Self {
-        StateConfig::Local
-    }
 }
 
 #[derive(JsonSchema, Deserialize)]
@@ -574,27 +565,21 @@ pub enum PlayabilityTargetConfig {
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub enum PaidAccessTargetConfig {
+    #[default]
     Disabled,
     Price(u32),
-}
-impl default::Default for PaidAccessTargetConfig {
-    fn default() -> Self {
-        PaidAccessTargetConfig::Disabled
-    }
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub enum PrivateServersTargetConfig {
+    #[default]
     Disabled,
     Free,
     Price(u32),
-}
-impl default::Default for PrivateServersTargetConfig {
-    fn default() -> Self {
-        PrivateServersTargetConfig::Disabled
-    }
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]

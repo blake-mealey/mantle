@@ -21,7 +21,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<()> {
         let req = self
             .client
-            .post(&format!(
+            .post(format!(
                 "https://develop.roblox.com/v1/universes/{}/aliases",
                 experience_id
             ))

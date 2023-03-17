@@ -523,6 +523,20 @@ pub struct ExperienceTargetConfig {
 
     /// Spatial voice configuration.
     pub spatial_voice: Option<SpatialVoiceTargetConfig>,
+
+    /// Notification strings configuration.
+    pub notifications: Option<Vec<NotificationTargetConfig>>,
+}
+
+#[derive(JsonSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NotificationTargetConfig {
+    /// The display name of the notification string on the Roblox website.
+    pub name: String,
+
+    /// The content of the notification string.
+    /// Must include {experienceName} placeholder and may include {displayName} placeholder once.
+    pub content: String,
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone)]

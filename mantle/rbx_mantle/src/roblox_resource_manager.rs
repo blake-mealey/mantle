@@ -113,6 +113,13 @@ pub struct SpatialVoiceInputs {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct NotificationInputs {
+    pub name: String,
+    pub content: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum RobloxInputs {
     Experience(ExperienceInputs),
@@ -134,6 +141,7 @@ pub enum RobloxInputs {
     AudioAsset(FileWithGroupIdInputs),
     AssetAlias(AssetAliasInputs),
     SpatialVoice(SpatialVoiceInputs),
+    Notification(NotificationInputs),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -147,6 +155,12 @@ pub struct ExperienceOutputs {
 #[serde(rename_all = "camelCase")]
 pub struct AssetOutputs {
     pub asset_id: AssetId,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetStringOutputs {
+    pub asset_id: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -211,6 +225,7 @@ pub enum RobloxOutputs {
     AudioAsset(AssetOutputs),
     AssetAlias(AssetAliasOutputs),
     SpatialVoice,
+    Notification(AssetStringOutputs),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -704,6 +719,19 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
                 Ok(RobloxOutputs::SpatialVoice)
             }
+            RobloxInputs::Notification(inputs) => {
+                let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
+
+                self.roblox_api
+                    .create_notification(
+                        experience.asset_id,
+                        inputs.name,
+                        inputs.content,
+                    )
+                    .await?;
+
+                Ok(RobloxOutputs::Notification)
+            }
         }
     }
 
@@ -889,6 +917,17 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
                 Ok(RobloxOutputs::SpatialVoice)
             }
+            (RobloxInputs::Notification(inputs), RobloxOutputs::Notification(outputs)) => {
+                self.roblox_api
+                    .update_notification(
+                        outputs.asset_id,
+                        inputs.name,
+                        inputs.content,
+                    )
+                    .await?;
+
+                Ok(RobloxOutputs::Notification(outputs))
+            }
             _ => unreachable!(),
         }
     }
@@ -1026,6 +1065,13 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     .update_spatial_voice_settings(
                         experience.asset_id,
                         UpdateSpatialVoiceSettingsRequest { opt_in: false },
+                    )
+                    .await?;
+            }
+            RobloxOutputs::Notification(outputs) => {
+                self.roblox_api
+                    .archive_notification(
+                        outputs.asset_id,
                     )
                     .await?;
             }

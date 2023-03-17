@@ -525,6 +525,19 @@ fn get_desired_experience_graph(
         ));
     }
 
+    if let Some(notifications) = &target_config.notifications {
+        for notification in notifications {
+            resources.push(RobloxResource::new(
+                &format!("notification_{}", notification.name),
+                RobloxInputs::Notification(NotificationInputs {
+                    name: notification.name.clone(),
+                    content: notification.content.to_string(),
+                }),
+                &[&experience],
+            ));
+        }
+    }
+
     Ok(ResourceGraph::new(&resources))
 }
 
@@ -816,6 +829,22 @@ pub async fn import_graph(
                 enabled: spatial_voice.is_universe_enabled_for_voice,
             }),
             RobloxOutputs::SpatialVoice,
+            &[&experience],
+        ));
+    }
+
+    logger::log("Importing notification");
+    let notifications = roblox_api.get_all_notifications(target_id).await?;
+    for notification in notifications {
+        resources.push(RobloxResource::existing(
+            &format!("notification_{}", notification.name),
+            RobloxInputs::Notification(NotificationInputs {
+                name: notification.name,
+                content: notification.content,
+            }),
+            RobloxOutputs::Notification(AssetStringOutputs {
+                asset_id: notification.id,
+            }),
             &[&experience],
         ));
     }

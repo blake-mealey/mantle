@@ -34,7 +34,7 @@ impl RobloxApi {
 
     pub async fn update_notification(
         &self,
-        notification_id: AssetId,
+        notification_id: String,
         name: String,
         content: String,
     ) -> RobloxApiResult<()> {
@@ -54,7 +54,7 @@ impl RobloxApi {
 
     pub async fn archive_notification(
         &self,
-        notification_id: AssetId,
+        notification_id: String,
     ) -> RobloxApiResult<()> {
         let req = self
             .client
@@ -74,7 +74,7 @@ impl RobloxApi {
         count: u8,
         page_cursor: Option<String>,
     ) -> RobloxApiResult<ListNotificationsResponse> {
-        let req = self
+        let mut req = self
             .client
             .get("https://apis.roblox.com/notifications/v1/developer-configuration/experience-notifications-list")
             .query(&[
@@ -97,9 +97,9 @@ impl RobloxApi {
         let mut page_cursor: Option<String> = None;
         loop {
             let res = self.list_notifications(experience_id, 100, page_cursor).await?;
-            all_notifications.extend(res.notificationStringConfigs);
+            all_notifications.extend(res.notification_string_configs);
 
-            if res.next_page_cursor.is_empty() {
+            if res.next_page_cursor.is_none() {
                 break;
             }
 

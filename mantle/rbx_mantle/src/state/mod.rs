@@ -526,11 +526,16 @@ fn get_desired_experience_graph(
     }
 
     if let Some(notifications) = &target_config.notifications {
-        for notification in notifications {
+        for (label, notification) in notifications {
+            let name = match &notification.name {
+                Some(name) => name.clone(),
+                None => label.clone(),
+            };
+
             resources.push(RobloxResource::new(
-                &format!("notification_{}", notification.name),
+                &format!("notification_{}", label),
                 RobloxInputs::Notification(NotificationInputs {
-                    name: notification.name.clone(),
+                    name: name,
                     content: notification.content.to_string(),
                 }),
                 &[&experience],
@@ -833,7 +838,7 @@ pub async fn import_graph(
         ));
     }
 
-    logger::log("Importing notification");
+    logger::log("Importing notifications");
     let notifications = roblox_api.get_all_notifications(target_id).await?;
     for notification in notifications {
         resources.push(RobloxResource::existing(
@@ -842,7 +847,7 @@ pub async fn import_graph(
                 name: notification.name,
                 content: notification.content,
             }),
-            RobloxOutputs::Notification(AssetStringOutputs {
+            RobloxOutputs::Notification(NotificationOutputs {
                 asset_id: notification.id,
             }),
             &[&experience],

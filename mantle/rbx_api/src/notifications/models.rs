@@ -1,10 +1,7 @@
-use reqwest::Url;
-use serde::{Deserialize, Serialize};
-
-use crate::models::AssetId;
+use serde::{Deserialize};
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "camelCase")]
 pub struct CreateNotificationResponse {
     pub id: String,
 }
@@ -12,9 +9,9 @@ pub struct CreateNotificationResponse {
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ListNotificationsResponse {
-    pub notificationStringConfigs: Vec<ListNotificationResponse>,
-	pub previousPageCursor: String,
-	pub nextPageCursor: String,
+    pub notification_string_configs: Vec<ListNotificationResponse>,
+	pub previous_page_config: Option<String>,
+	pub next_page_cursor: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]

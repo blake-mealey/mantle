@@ -15,6 +15,7 @@ use rbx_api::{
         CreateDeveloperProductIconResponse, CreateDeveloperProductResponse,
         GetDeveloperProductResponse,
     },
+    notifications::models::{CreateNotificationResponse},
     experiences::models::{CreateExperienceResponse, ExperienceConfigurationModel},
     game_passes::models::{CreateGamePassResponse, GetGamePassResponse},
     models::{AssetId, AssetTypeId, CreatorType, UploadImageResponse},
@@ -159,7 +160,7 @@ pub struct AssetOutputs {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct AssetStringOutputs {
+pub struct NotificationOutputs {
     pub asset_id: String,
 }
 
@@ -225,7 +226,7 @@ pub enum RobloxOutputs {
     AudioAsset(AssetOutputs),
     AssetAlias(AssetAliasOutputs),
     SpatialVoice,
-    Notification(AssetStringOutputs),
+    Notification(NotificationOutputs),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -722,7 +723,8 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
             RobloxInputs::Notification(inputs) => {
                 let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
-                self.roblox_api
+                let CreateNotificationResponse { id } = self
+                    .roblox_api
                     .create_notification(
                         experience.asset_id,
                         inputs.name,
@@ -730,7 +732,9 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     )
                     .await?;
 
-                Ok(RobloxOutputs::Notification)
+                Ok(RobloxOutputs::Notification(NotificationOutputs {
+                    asset_id: id,
+                }))
             }
         }
     }
@@ -918,9 +922,10 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 Ok(RobloxOutputs::SpatialVoice)
             }
             (RobloxInputs::Notification(inputs), RobloxOutputs::Notification(outputs)) => {
+                let asset_id = outputs.asset_id.clone();
                 self.roblox_api
                     .update_notification(
-                        outputs.asset_id,
+                        asset_id,
                         inputs.name,
                         inputs.content,
                     )

@@ -52,10 +52,7 @@ impl RobloxApi {
         Ok(())
     }
 
-    pub async fn archive_notification(
-        &self,
-        notification_id: String,
-    ) -> RobloxApiResult<()> {
+    pub async fn archive_notification(&self, notification_id: String) -> RobloxApiResult<()> {
         let req = self
             .client
             .post("https://apis.roblox.com/notifications/v1/developer-configuration/archive-notification")
@@ -96,7 +93,9 @@ impl RobloxApi {
 
         let mut page_cursor: Option<String> = None;
         loop {
-            let res = self.list_notifications(experience_id, 100, page_cursor).await?;
+            let res = self
+                .list_notifications(experience_id, 100, page_cursor)
+                .await?;
             all_notifications.extend(res.notification_string_configs);
 
             if res.next_page_cursor.is_none() {

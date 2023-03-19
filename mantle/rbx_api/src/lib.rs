@@ -9,11 +9,11 @@ pub mod game_passes;
 pub mod groups;
 mod helpers;
 pub mod models;
+pub mod notifications;
 pub mod places;
 pub mod social_links;
 pub mod spatial_voice;
 pub mod thumbnails;
-pub mod notifications;
 
 use errors::{RobloxApiError, RobloxApiResult};
 use helpers::handle;

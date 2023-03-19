@@ -15,10 +15,10 @@ use rbx_api::{
         CreateDeveloperProductIconResponse, CreateDeveloperProductResponse,
         GetDeveloperProductResponse,
     },
-    notifications::models::{CreateNotificationResponse},
     experiences::models::{CreateExperienceResponse, ExperienceConfigurationModel},
     game_passes::models::{CreateGamePassResponse, GetGamePassResponse},
     models::{AssetId, AssetTypeId, CreatorType, UploadImageResponse},
+    notifications::models::CreateNotificationResponse,
     places::models::{GetPlaceResponse, PlaceConfigurationModel},
     social_links::models::{CreateSocialLinkResponse, SocialLinkType},
     spatial_voice::models::UpdateSpatialVoiceSettingsRequest,
@@ -725,11 +725,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
 
                 let CreateNotificationResponse { id } = self
                     .roblox_api
-                    .create_notification(
-                        experience.asset_id,
-                        inputs.name,
-                        inputs.content,
-                    )
+                    .create_notification(experience.asset_id, inputs.name, inputs.content)
                     .await?;
 
                 Ok(RobloxOutputs::Notification(NotificationOutputs {
@@ -924,11 +920,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
             (RobloxInputs::Notification(inputs), RobloxOutputs::Notification(outputs)) => {
                 let asset_id = outputs.asset_id.clone();
                 self.roblox_api
-                    .update_notification(
-                        asset_id,
-                        inputs.name,
-                        inputs.content,
-                    )
+                    .update_notification(asset_id, inputs.name, inputs.content)
                     .await?;
 
                 Ok(RobloxOutputs::Notification(outputs))
@@ -1075,9 +1067,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
             }
             RobloxOutputs::Notification(outputs) => {
                 self.roblox_api
-                    .archive_notification(
-                        outputs.asset_id,
-                    )
+                    .archive_notification(outputs.asset_id)
                     .await?;
             }
         }

@@ -535,7 +535,7 @@ fn get_desired_experience_graph(
             resources.push(RobloxResource::new(
                 &format!("notification_{}", label),
                 RobloxInputs::Notification(NotificationInputs {
-                    name: name,
+                    name,
                     content: notification.content.to_string(),
                 }),
                 &[&experience],

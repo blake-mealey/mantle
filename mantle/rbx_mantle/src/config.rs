@@ -526,8 +526,8 @@ pub struct ExperienceTargetConfig {
 
     /// Notification strings for your experience.
     ///
-    /// By default, the name of the notification string (which is only visible to you in the creator portal)
-    /// is set to the label of the notification string. You can override this by setting the `name` field.
+    /// By default, the name of each notification (which is only visible to you in the creator portal) is set
+    /// to the label of the notification config. You can override this by setting the `name` property.
     ///
     /// ```yml title="Example"
     /// target:

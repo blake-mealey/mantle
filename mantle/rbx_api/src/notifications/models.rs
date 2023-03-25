@@ -10,7 +10,7 @@ pub struct CreateNotificationResponse {
 #[serde(rename_all = "camelCase")]
 pub struct ListNotificationsResponse {
     pub notification_string_configs: Vec<ListNotificationResponse>,
-    pub previous_page_config: Option<String>,
+    pub previous_page_cursor: Option<String>,
     pub next_page_cursor: Option<String>,
 }
 

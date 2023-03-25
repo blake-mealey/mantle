@@ -848,7 +848,7 @@ pub async fn import_graph(
                 content: notification.content,
             }),
             RobloxOutputs::Notification(NotificationOutputs {
-                asset_id: notification.id,
+                id: notification.id,
             }),
             &[&experience],
         ));

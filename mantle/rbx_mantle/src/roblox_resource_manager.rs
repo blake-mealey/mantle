@@ -161,7 +161,7 @@ pub struct AssetOutputs {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationOutputs {
-    pub asset_id: String,
+    pub id: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -728,9 +728,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     .create_notification(experience.asset_id, inputs.name, inputs.content)
                     .await?;
 
-                Ok(RobloxOutputs::Notification(NotificationOutputs {
-                    asset_id: id,
-                }))
+                Ok(RobloxOutputs::Notification(NotificationOutputs { id }))
             }
         }
     }

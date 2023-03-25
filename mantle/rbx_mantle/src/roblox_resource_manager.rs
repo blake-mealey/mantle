@@ -916,7 +916,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 Ok(RobloxOutputs::SpatialVoice)
             }
             (RobloxInputs::Notification(inputs), RobloxOutputs::Notification(outputs)) => {
-                let asset_id = outputs.asset_id.clone();
+                let asset_id = outputs.id.clone();
                 self.roblox_api
                     .update_notification(asset_id, inputs.name, inputs.content)
                     .await?;
@@ -1064,9 +1064,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     .await?;
             }
             RobloxOutputs::Notification(outputs) => {
-                self.roblox_api
-                    .archive_notification(outputs.asset_id)
-                    .await?;
+                self.roblox_api.archive_notification(outputs.id).await?;
             }
         }
         Ok(())

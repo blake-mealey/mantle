@@ -524,7 +524,27 @@ pub struct ExperienceTargetConfig {
     /// Spatial voice configuration.
     pub spatial_voice: Option<SpatialVoiceTargetConfig>,
 
-    /// Notification strings configuration.
+    /// Notification strings for your experience.
+    ///
+    /// By default, the name of the notification string (which is only visible to you in the creator portal)
+    /// is set to the label of the notification string. You can override this by setting the `name` field.
+    ///
+    /// ```yml title="Example"
+    /// target:
+    ///   experience:
+    ///     notifications:
+    ///       customInvitePrompt:
+    ///         content: '{displayName} is inviting you to join {experienceName}!'
+    /// ```
+    ///
+    /// ```yml title="Example with custom name"
+    /// target:
+    ///   experience:
+    ///     notifications:
+    ///       customInvitePrompt:
+    ///         name: Custom Invite Prompt
+    ///         content: '{displayName} is inviting you to join {experienceName}!'
+    /// ```
     pub notifications: Option<HashMap<String, NotificationTargetConfig>>,
 }
 

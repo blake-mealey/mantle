@@ -163,13 +163,13 @@ impl<'a> ResouceGraphEvaluator<'a> {
             panic!("Cannot use a graph evaluator more than once");
         }
 
-        self.delete_removed_resources().await?;
+        self.delete_removed_resources().await;
         self.create_or_update_added_or_changed_resources().await?;
 
         Ok((&self.results, &self.next_graph))
     }
 
-    async fn delete_removed_resources(&mut self) -> anyhow::Result<()> {
+    async fn delete_removed_resources(&mut self) {
         let mut previous_resources = self.previous_graph.topological_order()?;
 
         // Iterate over previous resources in reverse order so that leaf resources are removed first
@@ -201,8 +201,6 @@ impl<'a> ResouceGraphEvaluator<'a> {
                 }
             }
         }
-
-        Ok(())
     }
 
     async fn create_resource(&mut self, resource: ResourceRef) {

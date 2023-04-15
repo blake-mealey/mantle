@@ -1,0 +1,113 @@
+current_graph
+    initially: empty
+    later: graph containing resources with inputs, outputs, and dependencies
+desired_graph
+    graph containing resources with inputs, outputs, and dependencies
+next_graph
+    graph containing resources with inputs, outputs, and dependencies
+
+should resources be mutable??
+    we should leave resources as-is within each graph and build up each graph independently
+    delete:
+        experience
+            place
+
+        experience has dependents (place) - cannot be deleted yet
+        place has no dependents
+        delete place
+        place is no longer a dependent of experience - delete it
+
+        this is achieved simply by deleting in reverse topological order
+
+        when deleting;
+            call delete function
+            don't add to next_graph
+
+    create:
+        experience
+            place
+
+        place has dependencies (experience) - cannot be created yet
+        experience has no dependencies
+        create experience
+        place has created experiences - create it
+
+        this is achieved simply by creating in topological order
+
+        when creating:
+            call create function
+            add to next_graph: resource with the same inputs and dependencies, but with the outputs from the creation
+                !!we can reference dependencies within the same graph!!
+                dependency references are read-only (in fact can be written as copies!)
+                and.. resource actions can be immutable!
+        
+    update:
+        when updating (update-in-place strategy):
+            call update function
+            add to next_graph: resource with the same inputs and dependencies, but with the outputs from the update
+
+        when updating (recreate strategy):
+            call delete function
+            call create function
+            add to next_graph: resource with the same inputs and dependencies, but with the outputs from the creation
+
+also: using enums will be easier (but introduces duplication... which can be solved with macros!)
+
+
+
+
+Experience {
+    inputs: ExperienceInputs
+    outputs: Option<ExperienceOutputs>
+    dependencies: []
+}
+
+Place {
+    inputs: PlaceInputs
+    outputs: Option<PlaceOutputs>
+    dependencies: [Experience]
+}
+
+current_graph:
+    empty
+
+desired_graph:
+    ex = Experience(inputs, None, [])
+    insert(ex)
+    insert(Place(inputs, None, [ex]))
+
+next_graph:
+    nothing to delete
+    create experience:
+        let mut next_ex = Experience(ex.inputs, None, next_graph.get_deps(ex.deps))
+        next_ex.create() // populates outputs
+        next_graph.insert(next_ex)
+    create place:
+        let mut next_place = Place(pl.inputs, None, next_graph.get_deps(pl.deps))
+        next_place.create() // populates outputs
+        next_graph.insert(next_place)
+
+
+later:
+    delete place:
+        let mut next_place = Place(pl.inputs, pl.outputs, next_graph.get_deps(pl.deps))
+        next_place.delete() // deletes outputs (not important)
+        // don't add to next_graph
+    update place:
+        let mut next_place = Place(pl.inputs, pl.outputs, next_graph.get_deps(pl.deps))
+        next_place.update() // populates new outputs
+        next_graph.insert(next_place)
+    recreate place:
+        let mut next_place = Place(pl.inputs, pl.outputs, next_graph.get_deps(pl.deps))
+        next_place.delete() // deletes outputs
+        next_place.create() // populates new outputs
+        next_graph.insert(next_place)
+
+WAIT... can we just... CLONE it? And then manually SET deps? (i.e. a set_dependencies())
+
+NEED:
+    way to load deps from next_graph
+        pretty easy?
+    way to construct resource
+        not so sure...
+            gonna need some macros I think

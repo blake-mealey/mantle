@@ -119,6 +119,7 @@ pub mod tests {
             Resource,
         },
     };
+    use pretty_assertions::assert_eq;
 
     #[tokio::test]
     pub async fn create_resources() {
@@ -160,6 +161,11 @@ pub mod tests {
                     },
                     OperationResult {
                         resource_id: "place_start".to_owned(),
+                        operation_type: OperationType::Create,
+                        status: OperationStatus::Success
+                    },
+                    OperationResult {
+                        resource_id: "place_other".to_owned(),
                         operation_type: OperationType::Create,
                         status: OperationStatus::Success
                     }

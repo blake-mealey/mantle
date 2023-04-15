@@ -7,12 +7,12 @@ use async_trait::async_trait;
 
 use crate::resource_graph_v3::ResourceGraph;
 
-use self::{experience::ExperienceResource, place::PlaceResource};
+use self::{experience::Experience, place::Place};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Resource {
-    Experience(ExperienceResource),
-    Place(PlaceResource),
+    Experience(Experience),
+    Place(Place),
 }
 
 impl Resource {
@@ -23,17 +23,10 @@ impl Resource {
         }
     }
 
-    pub fn inputs(&self) -> &dyn Debug {
+    pub fn has_outputs(&self) -> bool {
         match self {
-            Self::Experience(resource) => &resource.inputs,
-            Self::Place(resource) => &resource.inputs,
-        }
-    }
-
-    pub fn outputs(&self) -> &dyn Debug {
-        match self {
-            Self::Experience(resource) => &resource.outputs,
-            Self::Place(resource) => &resource.outputs,
+            Self::Experience(resource) => resource.outputs.is_some(),
+            Self::Place(resource) => resource.outputs.is_some(),
         }
     }
 
@@ -44,18 +37,38 @@ impl Resource {
         }
     }
 
-    pub fn next(&self, graph: &ResourceGraph) -> anyhow::Result<Resource> {
+    pub fn next(
+        &self,
+        previous_graph: &ResourceGraph,
+        next_graph: &ResourceGraph,
+    ) -> anyhow::Result<Resource> {
         match self {
-            Self::Experience(resource) => Ok(Self::Experience(ExperienceResource {
+            Self::Experience(resource) => Ok(Self::Experience(Experience {
                 id: resource.id.clone(),
                 inputs: resource.inputs.clone(),
-                outputs: resource.outputs.clone(),
+                outputs: match previous_graph.get(&resource.id) {
+                    Some(previous_resource) => match previous_resource {
+                        Resource::Experience(previous_resource) => {
+                            previous_resource.outputs.clone()
+                        }
+                        _ => {
+                            return anyhow::Result::Err(anyhow::Error::msg("Expected 'experience'"))
+                        }
+                    },
+                    _ => None,
+                },
             })),
-            Self::Place(resource) => Ok(Self::Place(PlaceResource {
+            Self::Place(resource) => Ok(Self::Place(Place {
                 id: resource.id.clone(),
                 inputs: resource.inputs.clone(),
-                outputs: resource.outputs.clone(),
-                experience: match graph
+                outputs: match previous_graph.get(&resource.id) {
+                    Some(previous_resource) => match previous_resource {
+                        Resource::Place(previous_resource) => previous_resource.outputs.clone(),
+                        _ => return anyhow::Result::Err(anyhow::Error::msg("Expected 'place'")),
+                    },
+                    _ => None,
+                },
+                experience: match next_graph
                     .get(&resource.experience.id)
                     .ok_or(anyhow::Error::msg("Unable to find resource"))?
                 {

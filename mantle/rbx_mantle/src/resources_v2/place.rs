@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use rbx_api::models::AssetId;
 
-use super::{experience::ExperienceResource, ManagedResource};
+use super::{experience::Experience, ManagedResource};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlaceInputs {
@@ -12,17 +12,17 @@ pub struct PlaceOutputs {
     pub asset_id: AssetId,
 }
 #[derive(Debug, Clone, PartialEq)]
-pub struct PlaceResource {
+pub struct Place {
     pub id: String,
     pub inputs: PlaceInputs,
     pub outputs: Option<PlaceOutputs>,
 
     //#[dependency]
-    pub experience: ExperienceResource,
+    pub experience: Experience,
 }
 
 #[async_trait]
-impl ManagedResource for PlaceResource {
+impl ManagedResource for Place {
     async fn create(&mut self) -> anyhow::Result<()> {
         if self.inputs.is_start {
             self.outputs = Some(PlaceOutputs {

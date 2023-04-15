@@ -63,7 +63,7 @@ impl<'a> Evaluator<'a> {
 
         for desired_resource in desired_resources.into_iter() {
             if let Some(previous_resource) = self.previous_graph.get(desired_resource.id()) {
-                match desired_resource.next(&self.next_graph) {
+                match desired_resource.next(&self.previous_graph, &self.next_graph) {
                     Ok(mut next_resource) => {
                         if *previous_resource == next_resource {
                             self.results.noop(next_resource.id());
@@ -84,7 +84,7 @@ impl<'a> Evaluator<'a> {
                     Err(error) => self.results.update_failed(desired_resource.id(), error),
                 }
             } else {
-                match desired_resource.next(&self.next_graph) {
+                match desired_resource.next(&self.previous_graph, &self.next_graph) {
                     Ok(mut next_resource) => match next_resource.create().await {
                         Ok(()) => {
                             self.results.create_succeeded(next_resource.id());
@@ -114,8 +114,8 @@ pub mod tests {
             ResourceGraph,
         },
         resources_v2::{
-            experience::{ExperienceInputs, ExperienceResource},
-            place::{PlaceInputs, PlaceResource},
+            experience::{Experience, ExperienceInputs, ExperienceOutputs},
+            place::{Place, PlaceInputs, PlaceOutputs},
             Resource,
         },
     };
@@ -124,24 +124,24 @@ pub mod tests {
     #[tokio::test]
     pub async fn create_resources() {
         let mut desired_graph = ResourceGraph::default();
-        let desired_experience = ExperienceResource {
+        let desired_experience = Experience {
             id: "experience_singleton".to_owned(),
             inputs: ExperienceInputs { group_id: None },
             outputs: None,
         };
-        let desired_start_place = PlaceResource {
+        let desired_start_place = Place {
             id: "place_start".to_owned(),
             inputs: PlaceInputs { is_start: true },
             outputs: None,
             experience: desired_experience.clone(),
         };
-        let desired_other_place = PlaceResource {
+        desired_graph.insert(Resource::Place(desired_start_place));
+        let desired_other_place = Place {
             id: "place_other".to_owned(),
             inputs: PlaceInputs { is_start: false },
             outputs: None,
             experience: desired_experience.clone(),
         };
-        desired_graph.insert(Resource::Place(desired_start_place));
         desired_graph.insert(Resource::Place(desired_other_place));
         desired_graph.insert(Resource::Experience(desired_experience));
 
@@ -177,27 +177,30 @@ pub mod tests {
     #[tokio::test]
     pub async fn update_resources_noop() {
         let mut previous_graph = ResourceGraph::default();
-        let previous_experience = ExperienceResource {
+        let previous_experience = Experience {
             id: "experience_singleton".to_owned(),
             inputs: ExperienceInputs { group_id: None },
-            outputs: None,
+            outputs: Some(ExperienceOutputs {
+                asset_id: 1,
+                start_place_id: 2,
+            }),
         };
-        let previous_start_place = PlaceResource {
+        let previous_start_place = Place {
             id: "place_start".to_owned(),
             inputs: PlaceInputs { is_start: true },
-            outputs: None,
+            outputs: Some(PlaceOutputs { asset_id: 2 }),
             experience: previous_experience.clone(),
         };
         previous_graph.insert(Resource::Place(previous_start_place));
         previous_graph.insert(Resource::Experience(previous_experience));
 
         let mut desired_graph = ResourceGraph::default();
-        let desired_experience = ExperienceResource {
+        let desired_experience = Experience {
             id: "experience_singleton".to_owned(),
             inputs: ExperienceInputs { group_id: None },
             outputs: None,
         };
-        let desired_start_place = PlaceResource {
+        let desired_start_place = Place {
             id: "place_start".to_owned(),
             inputs: PlaceInputs { is_start: true },
             outputs: None,
@@ -231,12 +234,12 @@ pub mod tests {
     #[tokio::test]
     pub async fn update_resources_changes() {
         let mut previous_graph = ResourceGraph::default();
-        let previous_experience = ExperienceResource {
+        let previous_experience = Experience {
             id: "experience_singleton".to_owned(),
             inputs: ExperienceInputs { group_id: None },
             outputs: None,
         };
-        let previous_start_place = PlaceResource {
+        let previous_start_place = Place {
             id: "place_start".to_owned(),
             inputs: PlaceInputs { is_start: true },
             outputs: None,
@@ -246,14 +249,14 @@ pub mod tests {
         previous_graph.insert(Resource::Experience(previous_experience));
 
         let mut desired_graph = ResourceGraph::default();
-        let desired_experience = ExperienceResource {
+        let desired_experience = Experience {
             id: "experience_singleton".to_owned(),
             inputs: ExperienceInputs {
                 group_id: Some(123),
             },
             outputs: None,
         };
-        let desired_start_place = PlaceResource {
+        let desired_start_place = Place {
             id: "place_start".to_owned(),
             inputs: PlaceInputs { is_start: true },
             outputs: None,

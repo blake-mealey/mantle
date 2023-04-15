@@ -13,14 +13,14 @@ pub struct ExperienceOutputs {
     pub start_place_id: AssetId,
 }
 #[derive(Debug, Clone, PartialEq)]
-pub struct ExperienceResource {
+pub struct Experience {
     pub id: String,
     pub inputs: ExperienceInputs,
     pub outputs: Option<ExperienceOutputs>,
 }
 
 #[async_trait]
-impl ManagedResource for ExperienceResource {
+impl ManagedResource for Experience {
     async fn create(&mut self) -> anyhow::Result<()> {
         self.outputs = Some(ExperienceOutputs {
             asset_id: 1,

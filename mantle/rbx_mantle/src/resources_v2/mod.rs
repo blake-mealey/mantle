@@ -6,7 +6,7 @@ use std::fmt::Debug;
 use async_trait::async_trait;
 use derive_resource::ResourceGroup;
 
-use crate::resource_graph_v3::ResourceGraph;
+use crate::resource_graph_v2::ResourceGraph;
 
 use self::{experience::Experience, place::Place};
 

@@ -1,3 +1,5 @@
+use crate::resources_v2::ResourceGroup;
+
 use super::{evaluator_results::EvaluatorResults, ResourceGraph};
 
 pub struct Evaluator<'a> {
@@ -116,7 +118,7 @@ pub mod tests {
         resources_v2::{
             experience::{Experience, ExperienceInputs, ExperienceOutputs},
             place::{Place, PlaceInputs, PlaceOutputs},
-            Resource,
+            RbxResource,
         },
     };
     use pretty_assertions::assert_eq;
@@ -135,15 +137,15 @@ pub mod tests {
             outputs: None,
             experience: desired_experience.clone(),
         };
-        desired_graph.insert(Resource::Place(desired_start_place));
+        desired_graph.insert(RbxResource::Place(desired_start_place));
         let desired_other_place = Place {
             id: "place_other".to_owned(),
             inputs: PlaceInputs { is_start: false },
             outputs: None,
             experience: desired_experience.clone(),
         };
-        desired_graph.insert(Resource::Place(desired_other_place));
-        desired_graph.insert(Resource::Experience(desired_experience));
+        desired_graph.insert(RbxResource::Place(desired_other_place));
+        desired_graph.insert(RbxResource::Experience(desired_experience));
 
         let previous_graph = ResourceGraph::default();
 
@@ -191,8 +193,8 @@ pub mod tests {
             outputs: Some(PlaceOutputs { asset_id: 2 }),
             experience: previous_experience.clone(),
         };
-        previous_graph.insert(Resource::Place(previous_start_place));
-        previous_graph.insert(Resource::Experience(previous_experience));
+        previous_graph.insert(RbxResource::Place(previous_start_place));
+        previous_graph.insert(RbxResource::Experience(previous_experience));
 
         let mut desired_graph = ResourceGraph::default();
         let desired_experience = Experience {
@@ -206,8 +208,8 @@ pub mod tests {
             outputs: None,
             experience: desired_experience.clone(),
         };
-        desired_graph.insert(Resource::Place(desired_start_place));
-        desired_graph.insert(Resource::Experience(desired_experience));
+        desired_graph.insert(RbxResource::Place(desired_start_place));
+        desired_graph.insert(RbxResource::Experience(desired_experience));
 
         let mut evaluator = Evaluator::new(&previous_graph, &desired_graph);
         let (results, _next_graph) = evaluator.evaluate().await.unwrap();
@@ -245,8 +247,8 @@ pub mod tests {
             outputs: None,
             experience: previous_experience.clone(),
         };
-        previous_graph.insert(Resource::Place(previous_start_place));
-        previous_graph.insert(Resource::Experience(previous_experience));
+        previous_graph.insert(RbxResource::Place(previous_start_place));
+        previous_graph.insert(RbxResource::Experience(previous_experience));
 
         let mut desired_graph = ResourceGraph::default();
         let desired_experience = Experience {
@@ -262,8 +264,8 @@ pub mod tests {
             outputs: None,
             experience: desired_experience.clone(),
         };
-        desired_graph.insert(Resource::Place(desired_start_place));
-        desired_graph.insert(Resource::Experience(desired_experience));
+        desired_graph.insert(RbxResource::Place(desired_start_place));
+        desired_graph.insert(RbxResource::Experience(desired_experience));
 
         let mut evaluator = Evaluator::new(&previous_graph, &desired_graph);
         let (results, _next_graph) = evaluator.evaluate().await.unwrap();

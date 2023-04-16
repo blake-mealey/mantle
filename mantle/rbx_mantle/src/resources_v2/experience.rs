@@ -1,7 +1,8 @@
 use async_trait::async_trait;
+use derive_resource::Resource;
 use rbx_api::models::AssetId;
 
-use super::ManagedResource;
+use super::{ManagedResource, RbxResource, Resource};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExperienceInputs {
@@ -12,7 +13,7 @@ pub struct ExperienceOutputs {
     pub asset_id: AssetId,
     pub start_place_id: AssetId,
 }
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Resource)]
 pub struct Experience {
     pub id: String,
     pub inputs: ExperienceInputs,

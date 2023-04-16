@@ -3,15 +3,15 @@ pub mod evaluator_results;
 
 use std::collections::BTreeMap;
 
-use crate::resources_v2::Resource;
+use crate::resources_v2::{RbxResource, ResourceGroup};
 
 #[derive(Debug)]
 pub struct ResourceGraph {
-    resources: BTreeMap<String, Resource>,
+    resources: BTreeMap<String, RbxResource>,
 }
 
 impl ResourceGraph {
-    pub fn new(resources: Vec<Resource>) -> Self {
+    pub fn new(resources: Vec<RbxResource>) -> Self {
         Self {
             resources: resources
                 .into_iter()
@@ -28,16 +28,23 @@ impl ResourceGraph {
         self.resources.contains_key(resource_id)
     }
 
-    pub fn get(&self, resource_id: &str) -> Option<&Resource> {
+    pub fn get(&self, resource_id: &str) -> Option<&RbxResource> {
         self.resources.get(resource_id)
     }
 
-    pub fn insert(&mut self, resource: Resource) {
+    pub fn get_many(&self, resource_ids: Vec<&str>) -> Vec<&RbxResource> {
+        resource_ids
+            .iter()
+            .filter_map(|id| self.resources.get(*id))
+            .collect()
+    }
+
+    pub fn insert(&mut self, resource: RbxResource) {
         self.resources.insert(resource.id().to_owned(), resource);
     }
 
     // TODO: Can we make this less clone-y? Can we use actual resource references?
-    pub fn topological_order(&self) -> anyhow::Result<Vec<&Resource>> {
+    pub fn topological_order(&self) -> anyhow::Result<Vec<&RbxResource>> {
         let mut dependency_graph: BTreeMap<String, Vec<String>> = self
             .resources
             .iter()

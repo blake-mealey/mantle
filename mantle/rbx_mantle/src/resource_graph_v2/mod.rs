@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use crate::resources_v2::{RbxResource, ResourceGroup};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ResourceGraph {
     resources: BTreeMap<String, RbxResource>,
 }
@@ -18,10 +18,6 @@ impl ResourceGraph {
                 .map(|resource| (resource.id().to_owned(), resource))
                 .collect(),
         }
-    }
-
-    pub fn default() -> Self {
-        Self::new(vec![])
     }
 
     pub fn contains(&self, resource_id: &str) -> bool {

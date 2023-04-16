@@ -1,4 +1,4 @@
-use crate::resources_v2::ResourceGroup;
+use crate::resources_v2::{RbxResource, ResourceGroup};
 
 use super::{evaluator_results::EvaluatorResults, ResourceGraph};
 
@@ -29,17 +29,21 @@ impl<'a> Evaluator<'a> {
             ));
         }
 
-        self.delete_removed_resources().await?;
-        self.create_or_update_added_or_changed_resources().await?;
+        // ensure that both graphs are valid before we attempt to evaluate them
+        let mut previous_resources = self.previous_graph.topological_order()?;
+        previous_resources.reverse();
+
+        let desired_resources = self.desired_graph.topological_order()?;
+
+        self.delete_removed_resources(previous_resources).await;
+        self.create_or_update_added_or_changed_resources(desired_resources)
+            .await;
 
         Ok((&self.results, &self.next_graph))
     }
 
-    async fn delete_removed_resources(&mut self) -> anyhow::Result<()> {
-        let mut previous_resources = self.previous_graph.topological_order()?;
-        previous_resources.reverse();
-
-        for resource in previous_resources.into_iter() {
+    async fn delete_removed_resources(&mut self, previous_resources_reverse: Vec<&RbxResource>) {
+        for resource in previous_resources_reverse.into_iter() {
             if self.desired_graph.contains(resource.id()) {
                 continue;
             }
@@ -56,13 +60,12 @@ impl<'a> Evaluator<'a> {
                 }
             }
         }
-
-        Ok(())
     }
 
-    async fn create_or_update_added_or_changed_resources(&mut self) -> anyhow::Result<()> {
-        let desired_resources = self.desired_graph.topological_order()?;
-
+    async fn create_or_update_added_or_changed_resources(
+        &mut self,
+        desired_resources: Vec<&RbxResource>,
+    ) {
         for desired_resource in desired_resources.into_iter() {
             if let Some(previous_resource) = self.previous_graph.get(desired_resource.id()) {
                 match desired_resource.next(&self.previous_graph, &self.next_graph) {
@@ -100,8 +103,6 @@ impl<'a> Evaluator<'a> {
                 }
             }
         }
-
-        Ok(())
     }
 }
 

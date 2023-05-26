@@ -1,59 +1,15 @@
 {
   "name": "mantle-docs",
-  "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "docusaurus start",
-    "build": "yarn compile-template-docs && docusaurus build",
-    "clear": "docusaurus clear",
-    "serve": "docusaurus serve",
-    "write-translations": "docusaurus write-translations",
-    "write-heading-ids": "docusaurus write-heading-ids",
-    "typecheck": "tsc",
-    "compile-template-docs": "NODE_ENV=production ts-node compile-templates",
-    "compile-template-docs:dev": "nodemon compile-templates/index.ts"
+    "dev": "turbo run dev",
+    "compile": "turbo run compile",
+    "build": "turbo run build",
+    "download-releases": "pnpm --filter scripts download-releases",
+    "build-schemas": "pnpm --filter scripts build-schemas"
   },
   "dependencies": {
-    "@docusaurus/core": "2.0.0-beta.15",
-    "@docusaurus/preset-classic": "2.0.0-beta.15",
-    "@mdx-js/react": "^1.6.21",
-    "@svgr/webpack": "^5.5.0",
-    "ansi-to-react": "^6.1.6",
-    "clsx": "^1.1.1",
-    "file-loader": "^6.2.0",
-    "github-buttons": "^2.21.1",
-    "handlebars-helper-repeat": "^2.0.0",
-    "prism-react-renderer": "^1.2.1",
-    "react": "^17.0.1",
-    "react-dom": "^17.0.1",
-    "url-loader": "^4.1.1"
-  },
-  "devDependencies": {
-    "@docusaurus/module-type-aliases": "2.0.0-beta.15",
-    "@octokit/rest": "^18.12.0",
-    "@tsconfig/docusaurus": "^1.0.4",
-    "@types/json-schema": "^7.0.9",
-    "@types/semver": "^7.3.9",
-    "handlebars": "^4.7.7",
-    "mdast-builder": "^1.1.1",
-    "nodemon": "^2.0.15",
-    "remark": "13",
-    "remark-gfm": "1.0.0",
-    "semver": "^7.3.5",
-    "ts-node": "^10.4.0",
-    "typescript": "^4.3.5",
-    "unist-util-visit": "2.0.3"
-  },
-  "browserslist": {
-    "production": [
-      ">0.5%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+    "next": "^13.1.5",
+    "turbo": "^1.7.0"
   }
 }

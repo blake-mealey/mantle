@@ -555,7 +555,7 @@ pub struct NotificationTargetConfig {
     pub name: Option<String>,
 
     /// The content of the notification string.
-    /// Must include {experienceName} placeholder and may include {displayName} placeholder once.
+    /// Must include `{experienceName}` placeholder and may include `{displayName}` placeholder once.
     pub content: String,
 }
 

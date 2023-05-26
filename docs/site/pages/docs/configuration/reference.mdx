@@ -1,0 +1,18 @@
+import { compileMdx } from 'nextra/compile';
+import { getLatestSchema } from 'lib';
+import { LatestSchemaReference } from '@components/latest-schema-reference';
+
+# Configuration Reference
+
+export async function getStaticProps() {
+  const latestSchema = await getLatestSchema(compileMdx);
+  return {
+    props: {
+      ssg: {
+        latestSchema,
+      },
+    },
+  };
+}
+
+<LatestSchemaReference />

@@ -89,7 +89,7 @@ the output.
 
 First, Mantle tells us about the project we are trying to deploy:
 
-```txt filename="mantle deploy"
+```ansi filename="mantle deploy"
 Loading project:
   ╷
   │  Loaded config file [36mprojects/getting-started/mantle.yml[0m
@@ -110,7 +110,7 @@ realized we didn't have a state file yet so it created a new one.
 
 Next, Mantle tells us about the resources it is deploying:
 
-```txt filename="mantle deploy"
+```ansi filename="mantle deploy"
 Deploying resources:
   ╷
   │  [32m+[0m Creating: experience_singleton
@@ -140,7 +140,7 @@ create 6 resources.
 
 Next, Mantle tells us where it is saving the state of the current deployment:
 
-```txt filename="mantle deploy"
+```ansi filename="mantle deploy"
 Saving state:
   ╷
   │  Saving to local file [36mprojects/getting-started/.mantle-state.yml[0m. It is recommended you commit this file to your source control
@@ -160,7 +160,7 @@ this, but this is just so that everyone can try their own deployments.
 Finally, Mantle tells us the final results of the deployment as it relates to the "target" resource
 which in this case was an experience:
 
-```txt filename="mantle deploy"
+```ansi filename="mantle deploy"
 Target results:
   ╷
   │  Experience:
@@ -207,7 +207,7 @@ happens.
 You should see a very similar output to the first deployment, except instead of recreating all of
 the resources, Mantle is able to just apply the single change you made to the place configuration:
 
-```txt filename="mantle deploy"
+```ansi filename="mantle deploy"
 Deploying resources:
   ╷
   │  [33m~[0m Updating: placeConfiguration_start

@@ -45,16 +45,14 @@ impl RobloxApi {
     ) -> RobloxApiResult<()> {
         let req = self
             .client
-            .post("https://api.roblox.com/universes/update-alias-v2")
+            .post("https://apis.roblox.com/content-aliases-api/v1/universes/update-alias")
             .query(&[
-                ("universeId", &experience_id.to_string()),
-                ("oldName", &previous_name),
-            ])
-            .json(&json!({
-                "name": name,
-                "type": "1",
-                "targetId": asset_id,
-            }));
+                ("universeId", experience_id.to_string().as_str()),
+                ("oldName", previous_name.as_str()),
+                ("name", name.as_str()),
+                ("type", "1"),
+                ("targetId", asset_id.to_string().as_str()),
+            ]);
 
         handle(req).await?;
 
@@ -68,7 +66,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<()> {
         let req = self
             .client
-            .post("https://api.roblox.com/universes/delete-alias")
+            .post("https://apis.roblox.com/content-aliases-api/v1/universes/delete-alias")
             .header(header::CONTENT_LENGTH, 0)
             .query(&[("universeId", &experience_id.to_string()), ("name", &name)]);
 
@@ -84,7 +82,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<ListAssetAliasesResponse> {
         let req = self
             .client
-            .get("https://api.roblox.com/universes/get-aliases")
+            .get("https://apis.roblox.com/content-aliases-api/v1/universes/get-aliases")
             .query(&[
                 ("universeId", &experience_id.to_string()),
                 ("page", &page.to_string()),

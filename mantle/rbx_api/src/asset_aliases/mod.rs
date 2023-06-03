@@ -6,7 +6,7 @@ use serde_json::json;
 use crate::{
     errors::RobloxApiResult,
     helpers::{handle, handle_as_json},
-    models::{AssetId, AssetTypeId},
+    models::AssetId,
     RobloxApi,
 };
 
@@ -47,11 +47,11 @@ impl RobloxApi {
             .client
             .post("https://apis.roblox.com/content-aliases-api/v1/universes/update-alias")
             .query(&[
-                ("universeId", &experience_id.to_string()),
-                ("oldName", &previous_name),
-                ("name", &name),
-                ("type", &AssetTypeId::Image.to_string()),
-                ("targetId", &asset_id.to_string()),
+                ("universeId", experience_id.to_string().as_str()),
+                ("oldName", previous_name.as_str()),
+                ("name", name.as_str()),
+                ("type", "1"),
+                ("targetId", asset_id.to_string().as_str()),
             ]);
 
         handle(req).await?;
@@ -82,7 +82,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<ListAssetAliasesResponse> {
         let req = self
             .client
-            .get("https://api.roblox.com/universes/get-aliases")
+            .get("https://apis.roblox.com/content-aliases-api/v1/universes/get-aliases")
             .query(&[
                 ("universeId", &experience_id.to_string()),
                 ("page", &page.to_string()),

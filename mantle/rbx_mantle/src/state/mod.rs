@@ -753,7 +753,7 @@ pub async fn import_graph(
             &format!("badge_{}", badge.id),
             RobloxInputs::Badge(BadgeInputs {
                 name: badge.name,
-                description: badge.description,
+                description: badge.description.unwrap_or_default(),
                 enabled: badge.enabled,
                 icon_file_path: "fake-path".to_owned(),
             }),

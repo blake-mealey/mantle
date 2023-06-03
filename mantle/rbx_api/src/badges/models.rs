@@ -21,7 +21,7 @@ pub struct ListBadgesResponse {
 pub struct ListBadgeResponse {
     pub id: AssetId,
     pub name: String,
-    pub description: String,
+    pub description: Option<String>,
     pub icon_image_id: AssetId,
     pub enabled: bool,
 }

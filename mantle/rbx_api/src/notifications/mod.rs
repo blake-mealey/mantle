@@ -98,8 +98,10 @@ impl RobloxApi {
                 .await?;
             all_notifications.extend(res.notification_string_configs);
 
-            if res.next_page_cursor.is_none() {
-                break;
+            match res.next_page_cursor {
+                None => break,
+                Some(next_page_cursor) if next_page_cursor.is_empty() => break,
+                _ => {}
             }
 
             page_cursor = res.next_page_cursor;

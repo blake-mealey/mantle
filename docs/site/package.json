@@ -9,6 +9,7 @@
     "@mdx-js/mdx": "^2.2.1",
     "@octokit/rest": "^19.0.5",
     "@radix-ui/react-popover": "^1.0.3",
+    "@vercel/analytics": "^1.0.1",
     "autoprefixer": "^10.4.13",
     "clsx": "^1.2.1",
     "github-slugger": "^2.0.0",

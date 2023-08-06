@@ -13,6 +13,15 @@ rbx_auth --help
 
 ## Library
 
+Disable default features to exclude the CLI dependencies with `cargo add rbx_auth --no-default-features`, or
+use the `default-features = false` configuration:
+
+```toml
+# Cargo.toml
+[dependencies]
+rbx_auth = { version = "<version>", default-features = false }
+```
+
 ```rs
 use rbx_auth::{RobloxAuth, WithRobloxAuth};
 

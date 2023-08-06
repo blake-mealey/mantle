@@ -1,17 +1,13 @@
 [package]
 name = "rbx_cookie"
 description = "Access the ROBLOSECURITY cookie from your environment"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 homepage = "https://github.com/blake-mealey/mantle/tree/main/rbx_cookie"
 repository = "https://github.com/blake-mealey/mantle"
 authors = ["Blake Mealey <blakemealey@gmail.com>"]
 license = "MIT"
-include = [
-    "src",
-    "Cargo.toml",
-    "README.md"
-]
+include = ["src", "Cargo.toml", "README.md"]
 
 [features]
 default = ["cli"]

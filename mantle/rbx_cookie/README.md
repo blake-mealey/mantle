@@ -13,6 +13,15 @@ rbx_cookie --help
 
 ## Library
 
+Disable default features to exclude the CLI dependencies with `cargo add rbx_cookie --no-default-features`, or
+use the `default-features = false` configuration:
+
+```toml
+# Cargo.toml
+[dependencies]
+rbx_cookie = { version = "<version>", default-features = false }
+```
+
 ```rs
 // Returns the cookie as a formatted header ready to add to a request
 let cookie = rbx_cookie::get();

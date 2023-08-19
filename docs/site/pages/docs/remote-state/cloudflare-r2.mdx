@@ -1,0 +1,69 @@
+# Cloudflare R2 Remote State
+
+Cloudflare R2 is an S3-compatible object storage service. You can configure Mantle's S3 provider to
+use Cloudflare R2.
+
+## Create an account
+
+Create a Cloudflare account from their [sign up page](https://dash.cloudflare.com/sign-up).
+
+## Create an R2 bucket
+
+From the Cloudflare console, select R2 from the sidebar and click "Create bucket." Give your bucket a name
+like `{your-name}-mantle-states`. By default, access is restricted so only you can access your data.
+
+Click "Create bucket" to finish creating your bucket.
+
+## Upload your existing state file
+
+If you are migrating an existing project from local state files to remote, you will need to upload
+your state file to your bucket.
+
+Before you do so though you need to pick your project name which will be used for the name of the
+state file in your bucket and in your Mantle configuration in the next step.
+
+Rename your local state file to `{project-name}.mantle-state.yml`, then upload it to your bucket. From the
+Cloudflare bucket console, drag and drop your state file or open the file picker to upload your file.
+
+## Configure your Mantle project
+
+Head back to your Mantle config file and add the `state` configuration:
+
+```yaml filename="mantle.yml"
+# ...your existing configuration
+state:
+  remote:
+    region:
+      custom:
+        name: <r2-region-name>
+        endpoint: <r2-s3-api>
+    bucket: <bucket-name>
+    key: <project-name>
+```
+
+- Replace `<r2-region-name>` with the region your bucket was created in. This will generally be the closest
+  region to yourself or the region you specified during creation. Check the [R2
+  docs](https://developers.cloudflare.com/r2/buckets/data-location/#available-hints) for the full list of
+  possible regions.
+- Replace `<r2-s3-api>` with the API endpoint for your bucket. You can find this in your bucket's settings tab
+  under the "Bucket Details" section.
+- Replace `<bucket-name>` with the name you selected when you created your bucket.
+- Replace `<project-name>` with the name of your project. This will be used to name the state file
+  in your bucket. For example, if you supply `pirate-wars` it will create a
+  `pirate-wars.mantle-state.yml` file in your bucket.
+
+## Supply your R2 credentials
+
+At this point if you were to run `mantle deploy` it would attempt to download your state file from
+R2 but it would fail because you have not provided any authorization for your bucket.
+
+To get your credentials, go to the R2 Overview page on Cloudflare, and navigate to "Manage R2 API Tokens".
+Create a new token with the "Object Read & Write" permissions and apply it to your bucket. Once created, you
+will see a couple of secrets. You'll need to use the "Access Key ID" and "Secret Access Key" for Mantle.
+
+To learn how to pass these credentials to Mantle, read the
+[Authentication](/docs/authentication#remote-state-management) guide.
+
+Once supplied, you can run `mantle deploy` or any other commands and they will operate on your
+remote state file! If you were migrating from local state to remote state, you should delete the
+`.mantle-state.yml` file from your Git repo as it will be unused and out of date.

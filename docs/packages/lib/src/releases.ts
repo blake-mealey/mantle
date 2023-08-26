@@ -2,6 +2,7 @@ import { JSONSchema7 } from 'json-schema';
 import { mkdir, readdir, readFile, rm, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import { exec } from 'child_process';
 import { Octokit } from '@octokit/rest';
 import { isDefined } from './is-defined';
 import chalk from 'chalk-template';
@@ -125,19 +126,16 @@ async function saveToCache(releases: Release[]) {
 // let releases: Release[] | undefined;
 
 export async function refreshReleasesCache() {
-  // releases = await loadFromGitHub();
   const releases = await loadFromGitHub();
   saveToCache(releases);
 }
 
 export async function getReleases() {
-  // if (!releases) {
-  //   releases = await loadFromGitHub();
-  // }
-  // releases.sort((a, b) => {
-  //   return gt(a.version, b.version) ? -1 : 1;
-  // });
-  // return releases;
+  let nextRelease: Release | undefined;
+  if (process.env.NODE_ENV === 'development') {
+    nextRelease = await getNextRelease();
+  }
+
   console.log('Loading releases from cache...');
   let releases = await loadFromCache();
   if (!releases) {
@@ -148,5 +146,35 @@ export async function getReleases() {
   releases.sort((a, b) => {
     return gt(a.version, b.version) ? -1 : 1;
   });
+
+  if (nextRelease) {
+    releases.unshift(nextRelease);
+  }
   return releases;
+}
+
+async function getNextRelease(): Promise<Release> {
+  const workspaceDir = await getWorkspaceDir();
+  const mantleDir = join(workspaceDir, '..', 'mantle');
+
+  console.log(chalk`{grey Generating} next {grey from} ${mantleDir}`);
+
+  const rawSchema = await new Promise<string>((resolve, reject) => {
+    exec('cargo run --bin gen_schema', { cwd: mantleDir }, (err, stdout) => {
+      if (err) {
+        reject(err);
+      }
+      resolve(stdout);
+    });
+  });
+
+  const configurationSchema = JSON.parse(rawSchema);
+
+  const transformSchema = getTranslateToNextraTransformer();
+  await transformSchema(configurationSchema);
+
+  return {
+    version: 'next',
+    configurationSchema,
+  };
 }

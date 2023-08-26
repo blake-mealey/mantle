@@ -631,6 +631,7 @@ pub enum PlayableDeviceTargetConfig {
     Phone,
     Tablet,
     Console,
+    #[serde(rename = "vr")]
     VR,
 }
 

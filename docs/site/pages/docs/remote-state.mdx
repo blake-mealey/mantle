@@ -1,4 +1,5 @@
-import { LinksList } from '@components/links-list';
+import { Card, Cards } from 'nextra/components';
+import { Database } from 'react-feather';
 
 # Remote State
 
@@ -17,15 +18,7 @@ resources in Roblox, and it is ideal for continuous deployment (CD) scenarios.
 
 <br />
 
-<LinksList
-  links={[
-    {
-      label: 'Amazon S3',
-      url: '/docs/remote-state/amazon-s3',
-    },
-    {
-      label: 'Cloudflare R2',
-      url: '/docs/remote-state/cloudflare-r2',
-    },
-  ]}
-/>
+<Cards>
+  <Card title="Amazon S3" href="/docs/remote-state/amazon-s3" />
+  <Card title="Cloudflare R2" href="/docs/remote-state/cloudflare-r2" />
+</Cards>

@@ -1,7 +1,7 @@
 import type { SchemaVersionItem } from 'lib';
 import { useSSG } from 'nextra/data';
 import { FileText } from 'react-feather';
-import { LinksList } from './links-list';
+import { Card, Cards } from 'nextra/components';
 
 export function SchemaVersionsList() {
   const { schemaVersionsList } = useSSG() as {
@@ -9,12 +9,15 @@ export function SchemaVersionsList() {
   };
 
   return (
-    <LinksList
-      links={schemaVersionsList.map(({ version, url }) => ({
-        label: version,
-        url,
-        Icon: FileText,
-      }))}
-    />
+    <Cards>
+      {schemaVersionsList.map(({ version, url }) => (
+        <Card
+          icon={<FileText />}
+          title={version}
+          href={url}
+          children={undefined}
+        />
+      ))}
+    </Cards>
   );
 }

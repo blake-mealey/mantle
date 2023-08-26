@@ -3,12 +3,12 @@ import { join } from 'path';
 
 let workspaceDir: string | undefined;
 
-export async function getWorkspaceDir(dirName: string) {
+export async function getWorkspaceDir(dirName?: string) {
   if (!workspaceDir) {
     workspaceDir = await findWorkspaceDir('');
   }
   if (workspaceDir === undefined) {
     throw new Error('Could not find workspace dir');
   }
-  return join(workspaceDir, dirName);
+  return dirName ? join(workspaceDir, dirName) : workspaceDir;
 }

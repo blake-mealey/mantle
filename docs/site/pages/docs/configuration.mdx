@@ -1,6 +1,6 @@
 import { compileMdx } from 'nextra/compile';
 import { getSchemasSnippetContent, getSchemaVersionsList } from 'lib';
-import { FileTree, Folder, File } from '@components/file-tree';
+import { FileTree } from 'nextra/components';
 import { DynamicMarkdown } from '@components/dynamic-markdown';
 import { SchemaVersionsList } from '@components/schema-versions-list';
 
@@ -42,15 +42,15 @@ config file's directory.
 For example, with the directory structure:
 
 <FileTree>
-  <Folder name="project">
-    <File name="mantle.yml" />
-    <File name="game.rbxl" />
-    <Folder name="marketing">
-      <File name="game-icon.png" />
-      <File name="thumbnail-1.png" />
-      <File name="thumbnail-2.png" />
-    </Folder>
-  </Folder>
+  <FileTree.Folder name="project" defaultOpen>
+    <FileTree.File name="mantle.yml" />
+    <FileTree.File name="game.rbxl" />
+    <FileTree.Folder name="marketing" defaultOpen>
+      <FileTree.File name="game-icon.png" />
+      <FileTree.File name="thumbnail-1.png" />
+      <FileTree.File name="thumbnail-2.png" />
+    </FileTree.Folder>
+  </FileTree.Folder>
 </FileTree>
 
 You would use the config:

@@ -26,7 +26,7 @@ mantle destroy projects/getting-started --environment dev
 
 > Note that if you are not logged in to Roblox Studio on your computer, you will need to set your
 > `ROBLOSECURITY` environment variable. See the
-> [Authentication](https://mantledeploy.vercel.app/docs/Authentication) guide for more details.
+> [Authentication](https://mantledeploy.vercel.app/docs/authentication) guide for more details.
 
 To get a good understanding of Mantle, you are encouraged to play around with the example projects
 and see how things change when you re-run `mantle deploy`. Check out the

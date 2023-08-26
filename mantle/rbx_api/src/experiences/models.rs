@@ -146,6 +146,7 @@ pub enum ExperiencePlayableDevice {
     Phone,
     Tablet,
     Console,
+    VR,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

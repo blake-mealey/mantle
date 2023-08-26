@@ -631,6 +631,8 @@ pub enum PlayableDeviceTargetConfig {
     Phone,
     Tablet,
     Console,
+    #[serde(rename = "vr")]
+    VR,
 }
 
 #[derive(JsonSchema, Serialize, Deserialize, Clone, Copy)]
@@ -965,6 +967,7 @@ impl From<&ExperienceTargetConfigurationConfig> for ExperienceConfigurationModel
                     PlayableDeviceTargetConfig::Phone => ExperiencePlayableDevice::Phone,
                     PlayableDeviceTargetConfig::Tablet => ExperiencePlayableDevice::Tablet,
                     PlayableDeviceTargetConfig::Console => ExperiencePlayableDevice::Console,
+                    PlayableDeviceTargetConfig::VR => ExperiencePlayableDevice::VR,
                 })
                 .collect();
         }

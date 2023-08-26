@@ -1,0 +1,17 @@
+environments:
+  - label: dev
+    variables:
+      playability: public
+      envName: Development
+  - label: prod
+    variables:
+      playability:
+---
+target:
+  experience:
+    configuration:
+      playability: $playability
+    places:
+      start:
+        configuration:
+          name: 'My Game${ environmentLabel != "prod" ? (" [" + environmentLabel.upper() + "]") : "" }'

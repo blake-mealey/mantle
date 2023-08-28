@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,7 @@ pub struct ResourceStateV4 {
 
 impl From<ResourceStateV4> for ResourceStateV5 {
     fn from(state: ResourceStateV4) -> Self {
-        let mut environments = HashMap::new();
+        let mut environments = BTreeMap::new();
 
         for (environment_name, resources) in state.environments {
             let mut environment: Vec<RobloxResource> = Vec::new();

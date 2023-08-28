@@ -7,7 +7,7 @@ pub mod v4;
 pub mod v5;
 
 use std::{
-    collections::HashMap,
+    collections::BTreeMap,
     ffi::OsStr,
     fs,
     path::{Path, PathBuf},
@@ -191,7 +191,7 @@ pub async fn get_state_from_source(
         }
         Some(ResourceState::Versioned(VersionedResourceState::V5(state))) => state,
         None => ResourceStateVLatest {
-            environments: HashMap::new(),
+            environments: BTreeMap::new(),
         },
     })
 }

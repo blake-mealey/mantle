@@ -1,16 +1,13 @@
 [package]
 name = "rbx_mantle"
 description = "Infra-as-code for Roblox"
-version = "0.11.9"
+version = "0.11.10"
 homepage = "https://mantledeploy.vercel.app"
 repository = "https://github.com/blake-mealey/mantle"
 authors = ["Blake Mealey <blakemealey@gmail.com>"]
 license = "MIT"
 edition = "2021"
-include = [
-    "src",
-    "Cargo.toml"
-]
+include = ["src", "Cargo.toml"]
 
 [dependencies]
 rbx_auth = { path = "../rbx_auth" }
@@ -31,4 +28,8 @@ chrono = "0.4"
 yansi = "0.5.0"
 url = { version = "2.2.2", features = ["serde"] }
 log = "0.4.14"
-schemars = { version = "=0.8.8-blake.2", git = "https://github.com/blake-mealey/schemars", branch = "raw-comments", features = ["derive", "url", "preserve_order"] }
+schemars = { version = "=0.8.8-blake.2", git = "https://github.com/blake-mealey/schemars", branch = "raw-comments", features = [
+    "derive",
+    "url",
+    "preserve_order",
+] }

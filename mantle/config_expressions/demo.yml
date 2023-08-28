@@ -1,16 +1,15 @@
 environments:
   - label: dev
     variables:
-      playability: public
-      envName: Development
+      playability: private
   - label: prod
     variables:
-      playability:
+      playability: public
 ---
 target:
   experience:
     configuration:
-      playability: $playability
+      playability: "${ playability }"
     places:
       start:
         configuration:

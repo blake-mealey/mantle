@@ -48,6 +48,9 @@ export default {
       <link rel="icon" href="/favicon.png" />
     </>
   ),
+  footer: {
+    component: null,
+  },
   useNextSeoProps() {
     const { route } = useRouter();
     if (route !== '/') {

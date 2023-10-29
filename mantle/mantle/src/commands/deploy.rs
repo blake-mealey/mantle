@@ -198,7 +198,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
         }
     };
 
-    if environment_config.tag_commit && matches!(results, Ok(_)) {
+    if environment_config.tag_commit && results.is_ok() {
         logger::start_action("Tagging commit:");
         match tag_commit(
             project_path.clone(),

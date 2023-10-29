@@ -11,14 +11,10 @@ fn main() {
             Arg::with_name("format")
                 .long("format")
                 .short("f")
-                .help("The format of the output. Either 'value' (default) or 'cookie'")
+                .help("The format of the output.")
                 .value_name("FORMAT")
                 .takes_value(true)
-                .validator(|value| match value.as_str() {
-                    "value" => Ok(()),
-                    "cookie" => Ok(()),
-                    _ => Err("Expected either 'value' or 'cookie'".to_owned()),
-                })
+                .possible_values(&["value", "cookie"])
                 .default_value("value"),
         )
         .arg(

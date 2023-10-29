@@ -43,17 +43,36 @@ fn from_environment() -> Option<String> {
 
 #[cfg(target_os = "windows")]
 fn from_roblox_studio() -> Option<String> {
+    // First try the userid postfixed cookie
     trace!("Attempting to load cookie from Windows Credentials.");
 
-    let cookie = wincred::get(&format!(
-        "https://www.roblox.com:RobloxStudioAuth{}",
-        COOKIE_NAME
-    ))
-    .ok()?;
+    let user_id = wincred::get(&format!("https://www.roblox.com:RobloxStudioAuthuserid")).ok();
+    let cookie = user_id.as_ref().and_then(|user_id| {
+        wincred::get(&format!(
+            "https://www.roblox.com:RobloxStudioAuth{}{}",
+            COOKIE_NAME, user_id
+        ))
+        .ok()
+    });
 
-    info!("Loaded cookie from Windows Credentials.");
+    if cookie.is_some() {
+        info!(
+            "Loaded cookie from Windows Credentials (user_id: {}).",
+            user_id.unwrap()
+        );
+        cookie
+    } else {
+        // Fallback to the old cookie
+        trace!("Attempting to load cookie from Windows Credentials (legacy).");
 
-    Some(cookie)
+        let cookie = wincred::get(&format!(
+            "https://www.roblox.com:RobloxStudioAuth{}",
+            COOKIE_NAME
+        ))
+        .ok()?;
+        info!("Loaded cookie from Windows Credentials (legacy).");
+        Some(cookie)
+    }
 }
 
 #[cfg(target_os = "macos")]

@@ -15,14 +15,10 @@ async fn main() {
             Arg::with_name("format")
                 .long("format")
                 .short("f")
-                .help("The format of the output. Either 'table' (default) or 'json'")
+                .help("The format of the output.")
                 .value_name("FORMAT")
                 .takes_value(true)
-                .validator(|value| match value.as_str() {
-                    "table" => Ok(()),
-                    "json" => Ok(()),
-                    _ => Err("Expected either 'table' or 'json'".to_owned()),
-                })
+                .possible_values(&["table", "json"])
                 .default_value("table"),
         )
         .arg(

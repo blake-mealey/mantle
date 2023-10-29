@@ -1,6 +1,6 @@
 [package]
 name = "mantle"
-version = "0.11.10"
+version = "0.11.11"
 edition = "2021"
 
 [dependencies]

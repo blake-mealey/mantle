@@ -1,7 +1,7 @@
 [package]
 name = "rbx_auth"
 description = "Constructs params for making authenticated requests to Roblox APIs"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 homepage = "https://github.com/blake-mealey/mantle/tree/main/rbx_auth"
 repository = "https://github.com/blake-mealey/mantle"
@@ -14,7 +14,7 @@ default = ["cli"]
 cli = ["dep:clap", "dep:env_logger"]
 
 [dependencies]
-rbx_cookie = { path = "../rbx_cookie", version = "0.1.3", default-features = false }
+rbx_cookie = { path = "../rbx_cookie", version = "0.1.4", default-features = false }
 
 thiserror = "1.0.31"
 

@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use rusoto_core::credential::{
-    AwsCredentials, CredentialsError, EnvironmentProvider, ProfileProvider, ProvideAwsCredentials,
+    AwsCredentials, ContainerProvider, CredentialsError, EnvironmentProvider,
+    InstanceMetadataProvider, ProfileProvider, ProvideAwsCredentials,
 };
 
 #[derive(Clone, Debug)]
@@ -8,6 +9,8 @@ pub struct AwsCredentialsProvider {
     prefixed_environment_provider: EnvironmentProvider,
     environment_provider: EnvironmentProvider,
     profile_provider: Option<ProfileProvider>,
+    container_provider: ContainerProvider,
+    instance_metadata_provider: InstanceMetadataProvider,
 }
 
 impl AwsCredentialsProvider {
@@ -16,6 +19,8 @@ impl AwsCredentialsProvider {
             prefixed_environment_provider: EnvironmentProvider::with_prefix("MANTLE_AWS"),
             environment_provider: EnvironmentProvider::default(),
             profile_provider: ProfileProvider::new().ok(),
+            container_provider: ContainerProvider::default(),
+            instance_metadata_provider: InstanceMetadataProvider::default(),
         }
     }
 }
@@ -34,8 +39,14 @@ async fn chain_provider_credentials(
             return Ok(creds);
         }
     }
+    if let Ok(creds) = provider.container_provider.credentials().await {
+        return Ok(creds);
+    }
+    if let Ok(creds) = provider.instance_metadata_provider.credentials().await {
+        return Ok(creds);
+    }
     Err(CredentialsError::new(
-        "Couldn't find AWS credentials in environment or credentials file.",
+        "Couldn't find AWS credentials in environment, credentials file, or instance/container IAM role.",
     ))
 }
 

@@ -1,11 +1,10 @@
-import { Callout, Tabs, Tab } from 'nextra-theme-docs';
+import { Callout, Tabs, Tab } from "nextra-theme-docs";
 
 # Authentication
 
 <Callout type="error">
-  Remember to never save your secrets in source control or any insecure
-  environment. Anybody who gets access to them could use them to steal your
-  accounts.
+  Remember to never save your secrets in source control or any insecure environment. Anybody who
+  gets access to them could use them to steal your accounts.
 </Callout>
 
 ## Resource management
@@ -111,6 +110,10 @@ getting your AWS credentials](https://docs.aws.amazon.com/general/latest/gr/aws-
 The simplest method is to set the `MANTLE_AWS_ACCESS_KEY_ID` and `MANTLE_AWS_SECRET_ACCESS_KEY` environment
 variables. Mantle also supports the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` variables but recommends
 you scope your variables to Mantle to avoid conflicts with other tools.
+
+If you're using Mantle within an AWS EC2 instance or AWS Elastic Container Service, you can set the
+`MANTLE_AWS_INHERIT_IAM_ROLE` environment variable to `true` to inherit the permission set granted to the host
+runner via either the EC2 instance's IAM role or the Elastic Container Service task execution IAM role.
 
 You can set your environment variables in various ways, like the following:
 

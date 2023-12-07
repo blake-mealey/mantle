@@ -3,25 +3,45 @@ use rusoto_core::credential::{
     AwsCredentials, ContainerProvider, CredentialsError, EnvironmentProvider,
     InstanceMetadataProvider, ProfileProvider, ProvideAwsCredentials,
 };
+use std::env;
+use std::time::Duration;
 
 #[derive(Clone, Debug)]
 pub struct AwsCredentialsProvider {
     prefixed_environment_provider: EnvironmentProvider,
     environment_provider: EnvironmentProvider,
     profile_provider: Option<ProfileProvider>,
-    container_provider: ContainerProvider,
-    instance_metadata_provider: InstanceMetadataProvider,
+    container_provider: Option<ContainerProvider>,
+    instance_metadata_provider: Option<InstanceMetadataProvider>,
 }
 
 impl AwsCredentialsProvider {
     pub fn new() -> AwsCredentialsProvider {
-        AwsCredentialsProvider {
+        let mut all_providers = AwsCredentialsProvider {
             prefixed_environment_provider: EnvironmentProvider::with_prefix("MANTLE_AWS"),
             environment_provider: EnvironmentProvider::default(),
             profile_provider: ProfileProvider::new().ok(),
-            container_provider: ContainerProvider::default(),
-            instance_metadata_provider: InstanceMetadataProvider::default(),
+            container_provider: None,
+            instance_metadata_provider: None,
+        };
+
+        if let Ok(value) = env::var("MANTLE_AWS_INHERIT_IAM_ROLE") {
+            if value == "true" {
+                all_providers.container_provider = Some(ContainerProvider::new());
+                all_providers
+                    .container_provider
+                    .expect("ContainerProvider should be initialized")
+                    .set_timeout(Duration::from_secs(15));
+
+                all_providers.instance_metadata_provider = Some(InstanceMetadataProvider::new());
+                all_providers
+                    .instance_metadata_provider
+                    .expect("InstanceMetadataProvider should be initialized")
+                    .set_timeout(Duration::from_secs(15));
+            }
         }
+
+        return all_providers;
     }
 }
 

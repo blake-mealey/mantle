@@ -39,10 +39,10 @@ export function Column({
   return (
     <div>
       {heading !== undefined ? (
-        // styles copied from nextra h4 with less bottom margin
-        <h4 className="nx-font-semibold nx-tracking-tight nx-text-slate-900 dark:nx-text-slate-100 nx-mt-8 nx-text-xl">
+        // styles copied from nextra h5
+        <h5 className="nx-font-semibold nx-tracking-tight nx-text-slate-900 dark:nx-text-slate-100 nx-mt-8 nx-text-lg">
           {heading}
-        </h4>
+        </h5>
       ) : null}
       {children}
     </div>

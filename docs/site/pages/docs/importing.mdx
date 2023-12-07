@@ -95,7 +95,12 @@ three ways:
 You'll need to update your state file according to the above description. Follow the steps below for each
 resource type.
 
-### Resources with correct IDs and inputs
+When updating the inputs for image-related resources, you'll need to provide the `fileHash` for the image. The
+simplest way to do this will be to get it from the inputs of the matching resource in a different environment
+that is already managed by Mantle. Alternatively, leaving it as `fake-hash` will simply cause Mantle to update
+the image, even if it hasn't changed.
+
+#### Resources with correct IDs and inputs
 
 The following resources should have the correct IDs and inputs already and can be left as-is:
 
@@ -104,7 +109,7 @@ The following resources should have the correct IDs and inputs already and can b
 * Experience Configuration (`experienceConfiguration_singleton`)
 * Experience Thumbnail Order (`experienceThumbnailOrder_singleton`)
 
-### Experience thumbnails
+#### Experience thumbnails
 
 | Imported ID format | Managed ID format |
 | ----- | ---- |
@@ -116,11 +121,10 @@ Example: given the below project structure and Mantle config, make the following
 <Column heading="Project structure">
    <FileTree>
       <FileTree.File name="mantle.yml" />
-      <FileTree.File name="game-icon.png" />
+      <FileTree.File name="direct-thumbnail.png" />
       <FileTree.Folder name="marketing" defaultOpen>
-         <FileTree.File name="game-icon.png" />
          <FileTree.File name="thumbnail-1.png" />
-         <FileTree.File name="thumbnail-2.png" />
+         <FileTree.File name="thumbnail-2.jpg" />
       </FileTree.Folder>
    </FileTree>
 </Column>
@@ -135,37 +139,46 @@ Example: given the below project structure and Mantle config, make the following
 </Column>
 </Columns>
 
-```yml filename=".mantle-state.yml"
+```diff filename=".mantle-state.yml"
 environments:
   prod:
-    - id: experienceThumbnail_game-thumbnail-3.png
+-    - id: experienceThumbnail_57595630
++    - id: experienceThumbnail_direct-thumbnail.png
       inputs:
         experienceThumbnail:
-          filePath: game-thumbnail-3.png
-          fileHash: 14fff07f4eb2cc47fd4014d1b6693ba1d18a5ae461a8fd78c3bbaae6eef0544d
+-          filePath: fake-path
++          filePath: direct-thumbnail.png
+-          fileHash: fake-hash
++          fileHash: 14fff07f4eb2cc47fd4014d1b6693ba1d18a5ae461a8fd78c3bbaae6eef0544d
       outputs:
         experienceThumbnail:
-          assetId: 57595628
+          assetId: 57595630
       dependencies:
         - experience_singleton
-    - id: experienceThumbnail_game-thumbnail-2.png
+-    - id: experienceThumbnail_57595629
++    - id: experienceThumbnail_marketing/thumbnail-1.png
       inputs:
         experienceThumbnail:
-          filePath: game-thumbnail-2.png
-          fileHash: 59440408d802ee81458373a2bb4bd1be0a8c4c74fc5995bc67726ec3e6c0cdd4
+-          filePath: fake-path
++          filePath: marketing/thumbnail-1.png
+-          fileHash: fake-hash
++          fileHash: 59440408d802ee81458373a2bb4bd1be0a8c4c74fc5995bc67726ec3e6c0cdd4
       outputs:
         experienceThumbnail:
           assetId: 57595629
       dependencies:
         - experience_singleton
-    - id: experienceThumbnail_game-thumbnail-1.png
+-    - id: experienceThumbnail_57595628
++    - id: experienceThumbnail_marketing/thumbnail-2.jpg
       inputs:
         experienceThumbnail:
-          filePath: game-thumbnail-1.png
-          fileHash: 3a4f4d3b506f2a2a394f74ac0725854ca160707e9882b42682b77a5a1175f3c8
+-          filePath: fake-path
++          filePath: marketing/thumbnail-2.jpg
+-          fileHash: fake-hash
++          fileHash: 3a4f4d3b506f2a2a394f74ac0725854ca160707e9882b42682b77a5a1175f3c8
       outputs:
         experienceThumbnail:
-          assetId: 57595630
+          assetId: 57595628
       dependencies:
         - experience_singleton
 ```

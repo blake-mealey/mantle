@@ -1,4 +1,4 @@
-use std::str;
+use std::{fs, str};
 
 use difference::Changeset;
 use yansi::Paint;
@@ -57,7 +57,12 @@ fn print_diff(diff: ResourceGraphDiff) {
     }
 }
 
-pub async fn run(project: Option<&str>, environment: Option<&str>) -> i32 {
+pub async fn run(
+    project: Option<&str>,
+    environment: Option<&str>,
+    output: Option<&str>,
+    format: Option<&str>,
+) -> i32 {
     logger::start_action("Loading project:");
     let (project_path, config) = match load_project_config(project) {
         Ok(v) => v,
@@ -98,8 +103,35 @@ pub async fn run(project: Option<&str>, environment: Option<&str>) -> i32 {
 
     match diff {
         Ok(diff) => {
+            let outputs_string = format.map(|format| match format {
+                "json" => serde_json::to_string_pretty(&diff)
+                    .map(|x| x + "\n")
+                    .map_err(|e| e.to_string()),
+                "yaml" => serde_yaml::to_string(&diff).map_err(|e| e.to_string()),
+                _ => Err(format!("Unknown format: {}", format)),
+            });
+
             print_diff(diff);
             logger::end_action("Succeeded");
+
+            if let Some(outputs_string) = outputs_string {
+                if let Ok(outputs_string) = outputs_string {
+                    if let Some(output) = output {
+                        if let Err(e) = fs::write(output, outputs_string).map_err(|e| {
+                            format!("Unable to write outputs file: {}\n\t{}", output, e)
+                        }) {
+                            logger::log(Paint::red(e));
+                            return 1;
+                        }
+                    } else {
+                        print!("{}", outputs_string);
+                    }
+                } else {
+                    logger::log(Paint::red("Failed to serialize outputs"));
+                    return 1;
+                }
+            }
+
             return 0;
         }
         Err(e) => {

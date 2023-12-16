@@ -646,6 +646,7 @@ where
     }
 }
 
+#[derive(Serialize)]
 pub struct ResourceGraphDiff {
     pub removals: BTreeMap<ResourceId, ResourceRemoval>,
     pub additions: BTreeMap<ResourceId, ResourceAddition>,
@@ -653,21 +654,25 @@ pub struct ResourceGraphDiff {
     pub dependency_changes: BTreeMap<ResourceId, ResourceDependencyChange>,
 }
 
+#[derive(Serialize)]
 pub struct ResourceRemoval {
     pub previous_inputs_hash: String,
     pub previous_outputs_hash: String,
 }
 
+#[derive(Serialize)]
 pub struct ResourceAddition {
     pub current_inputs_hash: String,
 }
 
+#[derive(Serialize)]
 pub struct ResourceChange {
     pub previous_inputs_hash: String,
     pub previous_outputs_hash: String,
     pub current_inputs_hash: String,
 }
 
+#[derive(Serialize)]
 pub struct ResourceDependencyChange {
     pub previous_inputs_hash: String,
     pub previous_outputs_hash: String,

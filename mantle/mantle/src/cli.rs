@@ -42,6 +42,21 @@ fn get_app() -> App<'static, 'static> {
                         .help("The label of the environment to deploy to. If not specified, attempts to match the current git branch to each environment's `branches` property.")
                         .value_name("ENVIRONMENT")
                         .takes_value(true))
+                .arg(
+                    Arg::with_name("output")
+                        .long("output")
+                        .short("o")
+                        .help("A file path to print the diff to, if a format is provided")
+                        .value_name("FILE")
+                        .takes_value(true))
+                .arg(
+                    Arg::with_name("format")
+                        .long("format")
+                        .short("f")
+                        .help("The format to print the diff in")
+                        .value_name("FORMAT")
+                        .takes_value(true)
+                        .possible_values(&["json","yaml"]))
         )
         .subcommand(
             SubCommand::with_name("destroy")
@@ -167,6 +182,8 @@ pub async fn run_with(args: Vec<String>) -> i32 {
             commands::diff::run(
                 diff_matches.value_of("PROJECT"),
                 diff_matches.value_of("environment"),
+                diff_matches.value_of("output"),
+                diff_matches.value_of("format"),
             )
             .await
         }

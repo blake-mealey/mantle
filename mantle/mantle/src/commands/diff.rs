@@ -132,11 +132,11 @@ pub async fn run(
                 }
             }
 
-            return 0;
+            0
         }
         Err(e) => {
             logger::end_action(Paint::red(e));
-            return 1;
+            1
         }
     }
 }

@@ -614,6 +614,7 @@ where
                     );
                 } else {
                     let dependencies = resource.get_dependencies();
+                    #[allow(clippy::iter_overeager_cloned)]
                     let changed_dependencies: Vec<_> = dependencies
                         .iter()
                         .cloned()

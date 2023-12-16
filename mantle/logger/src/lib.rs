@@ -40,7 +40,7 @@ where
     S: Display,
 {
     let line_prefix = get_line_prefix();
-    println!("{}", with_prefix(&message, line_prefix));
+    eprintln!("{}", with_prefix(&message, line_prefix));
 }
 
 pub fn start_action<S>(title: S)

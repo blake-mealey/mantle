@@ -42,7 +42,9 @@ pub async fn run(
         .collect::<BTreeMap<_, _>>();
 
     let outputs_string = match match format {
-        "json" => serde_json::to_string_pretty(&outputs_map).map_err(|e| e.to_string()),
+        "json" => serde_json::to_string_pretty(&outputs_map)
+            .map(|x| x + "\n")
+            .map_err(|e| e.to_string()),
         "yaml" => serde_yaml::to_string(&outputs_map).map_err(|e| e.to_string()),
         _ => Err(format!("Unknown format: {}", format)),
     } {
@@ -62,7 +64,7 @@ pub async fn run(
             return 1;
         }
     } else {
-        logger::log(outputs_string);
+        print!("{}", outputs_string);
     }
 
     0

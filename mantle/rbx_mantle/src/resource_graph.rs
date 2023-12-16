@@ -521,7 +521,7 @@ where
                 continue;
             }
 
-            let operation_result = self
+            let operation_result: OperationResult<TOutputs> = self
                 .evaluate_delete(previous_graph, manager, resource_id)
                 .await;
             self.handle_operation_result(
@@ -556,4 +556,121 @@ where
             Ok(results)
         }
     }
+
+    pub fn diff(
+        &mut self,
+        previous_graph: &ResourceGraph<TResource, TInputs, TOutputs>,
+    ) -> Result<ResourceGraphDiff, String> {
+        let mut diff = ResourceGraphDiff {
+            removals: BTreeMap::new(),
+            additions: BTreeMap::new(),
+            changes: BTreeMap::new(),
+            dependency_changes: BTreeMap::new(),
+        };
+
+        // Iterate over previous resources in reverse order so that leaf resources are removed first
+        let mut previous_resource_order = previous_graph.get_topological_order()?;
+        previous_resource_order.reverse();
+
+        for resource_id in previous_resource_order.iter() {
+            if self.resources.get(resource_id).is_some() {
+                continue;
+            }
+
+            diff.removals.insert(
+                resource_id.to_owned(),
+                ResourceRemoval {
+                    previous_inputs_hash: previous_graph
+                        .resources
+                        .get(resource_id)
+                        .unwrap()
+                        .get_inputs_hash(),
+                    previous_outputs_hash: previous_graph
+                        .resources
+                        .get(resource_id)
+                        .unwrap()
+                        .get_outputs_hash(),
+                },
+            );
+        }
+
+        let resource_order = self.get_topological_order()?;
+        for resource_id in resource_order.iter() {
+            let resource = self.resources.get(resource_id).unwrap();
+            let inputs_hash = resource.get_inputs_hash();
+
+            let previous_resource = previous_graph.resources.get(resource_id);
+
+            if let Some(previous_resource) = previous_resource {
+                let previous_hash = previous_resource.get_inputs_hash();
+                if previous_hash != inputs_hash {
+                    diff.changes.insert(
+                        resource_id.to_owned(),
+                        ResourceChange {
+                            previous_inputs_hash: previous_hash,
+                            previous_outputs_hash: previous_resource.get_outputs_hash(),
+                            current_inputs_hash: inputs_hash,
+                        },
+                    );
+                } else {
+                    let dependencies = resource.get_dependencies();
+                    let changed_dependencies: Vec<_> = dependencies
+                        .iter()
+                        .cloned()
+                        .filter(|x| diff.additions.contains_key(x) || diff.changes.contains_key(x))
+                        .collect();
+
+                    if !changed_dependencies.is_empty() {
+                        diff.dependency_changes.insert(
+                            resource_id.to_owned(),
+                            ResourceDependencyChange {
+                                previous_inputs_hash: previous_hash,
+                                previous_outputs_hash: previous_resource.get_outputs_hash(),
+                                current_inputs_hash: inputs_hash,
+                                changed_dependencies,
+                            },
+                        );
+                    }
+                }
+            } else {
+                diff.additions.insert(
+                    resource_id.to_owned(),
+                    ResourceAddition {
+                        current_inputs_hash: inputs_hash,
+                    },
+                );
+            }
+        }
+
+        Ok(diff)
+    }
+}
+
+pub struct ResourceGraphDiff {
+    pub removals: BTreeMap<ResourceId, ResourceRemoval>,
+    pub additions: BTreeMap<ResourceId, ResourceAddition>,
+    pub changes: BTreeMap<ResourceId, ResourceChange>,
+    pub dependency_changes: BTreeMap<ResourceId, ResourceDependencyChange>,
+}
+
+pub struct ResourceRemoval {
+    pub previous_inputs_hash: String,
+    pub previous_outputs_hash: String,
+}
+
+pub struct ResourceAddition {
+    pub current_inputs_hash: String,
+}
+
+pub struct ResourceChange {
+    pub previous_inputs_hash: String,
+    pub previous_outputs_hash: String,
+    pub current_inputs_hash: String,
+}
+
+pub struct ResourceDependencyChange {
+    pub previous_inputs_hash: String,
+    pub previous_outputs_hash: String,
+    pub current_inputs_hash: String,
+    pub changed_dependencies: Vec<ResourceId>,
 }

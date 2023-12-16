@@ -27,6 +27,22 @@ fn get_app() -> App<'static, 'static> {
                         .long("allow-purchases")
                         .help("Gives Mantle permission to make purchases with Robux."))
         )
+         .subcommand(
+            SubCommand::with_name("diff")
+                .about("Prints the diff between the current state file and project configuration.")
+                .arg(
+                    Arg::with_name("PROJECT")
+                        .index(1)
+                        .help("The Mantle project: either the path to a directory containing a 'mantle.yml' file or the path to a configuration file. Defaults to the current directory.")
+                        .takes_value(true))
+                .arg(
+                    Arg::with_name("environment")
+                        .long("environment")
+                        .short("e")
+                        .help("The label of the environment to deploy to. If not specified, attempts to match the current git branch to each environment's `branches` property.")
+                        .value_name("ENVIRONMENT")
+                        .takes_value(true))
+        )
         .subcommand(
             SubCommand::with_name("destroy")
                 .about("Destroys a Mantle environment.")
@@ -144,6 +160,13 @@ pub async fn run_with(args: Vec<String>) -> i32 {
                 deploy_matches.value_of("PROJECT"),
                 deploy_matches.value_of("environment"),
                 deploy_matches.is_present("allow_purchases"),
+            )
+            .await
+        }
+        ("diff", Some(diff_matches)) => {
+            commands::diff::run(
+                diff_matches.value_of("PROJECT"),
+                diff_matches.value_of("environment"),
             )
             .await
         }

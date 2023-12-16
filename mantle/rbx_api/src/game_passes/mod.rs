@@ -21,10 +21,13 @@ impl RobloxApi {
         experience_id: AssetId,
         page_cursor: Option<String>,
     ) -> RobloxApiResult<ListGamePassesResponse> {
-        let mut req = self.client.get(format!(
-            "https://games.roblox.com/v1/games/{}/game-passes",
-            experience_id
-        ));
+        let mut req = self
+            .client
+            .get(format!(
+                "https://games.roblox.com/v1/games/{}/game-passes",
+                experience_id
+            ))
+            .query(&[("limit", 100.to_string())]);
         if let Some(page_cursor) = page_cursor {
             req = req.query(&[("cursor", &page_cursor)]);
         }

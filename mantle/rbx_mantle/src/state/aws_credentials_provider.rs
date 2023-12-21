@@ -19,16 +19,6 @@ pub struct AwsCredentialsProvider {
     instance_metadata_provider: Option<InstanceMetadataProvider>,
 }
 
-#[derive(Default, Serialize, Deserialize)]
-struct AwsConfig {
-    region: Option<String>,
-    output: Option<String>,
-    sso_start_url: Option<String>,
-    sso_region: Option<String>,
-    sso_account_id: Option<String>,
-    sso_role_name: Option<String>,
-}
-
 impl AwsCredentialsProvider {
     pub fn new() -> AwsCredentialsProvider {
         // Set up profile provider using optionally supplied profile name //

@@ -17,6 +17,15 @@ pub struct AwsCredentialsProvider {
 
 impl AwsCredentialsProvider {
     pub fn new() -> AwsCredentialsProvider {
+        // Set up profile provider using optionally supplied profile name //
+        let mut profile_provider: Option<ProfileProvider> = None;
+        if let Ok(profile_name) = env::var("MANTLE_AWS_PROFILE") {
+            let mut provider = ProfileProvider::new().unwrap();
+            provider.set_profile(profile_name);
+            profile_provider = Some(provider);
+        }
+
+        // Inherit IAM role from instance metadata service or ECS agent role //
         let mut inherit_iam_role = false;
         if let Ok(value) = env::var("MANTLE_AWS_INHERIT_IAM_ROLE") {
             if value == "true" {
@@ -27,7 +36,7 @@ impl AwsCredentialsProvider {
         AwsCredentialsProvider {
             prefixed_environment_provider: EnvironmentProvider::with_prefix("MANTLE_AWS"),
             environment_provider: EnvironmentProvider::default(),
-            profile_provider: ProfileProvider::new().ok(),
+            profile_provider,
             container_provider: if inherit_iam_role {
                 let mut provider = ContainerProvider::new();
                 provider.set_timeout(Duration::from_secs(15));
@@ -56,9 +65,14 @@ async fn chain_provider_credentials(
         return Ok(creds);
     }
     if let Some(ref profile_provider) = provider.profile_provider {
+        // Check standard profile credentials first //
         if let Ok(creds) = profile_provider.credentials().await {
             return Ok(creds);
         }
+
+        // Check SSO profile credentials as fallback //
+        let profile_name = profile_provider.profile();
+        println!("profile name: {}", profile_name);
     }
     if let Some(ref container_provider) = provider.container_provider {
         if let Ok(creds) = container_provider.credentials().await {

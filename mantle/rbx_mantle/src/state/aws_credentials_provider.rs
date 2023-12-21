@@ -89,12 +89,9 @@ async fn chain_provider_credentials(
         let profile_name = profile_provider.profile();
         println!("profile name: {}", profile_name);
 
-        let target_section = aws_config
-            .iter()
-            .filter(|(section, _)| {
-                section.is_some() && section.unwrap() == format!("profile {}", profile_name)
-            })
-            .next();
+        let target_section = aws_config.iter().find(|(section, _)| {
+            section.is_some() && section.unwrap() == format!("profile {}", profile_name)
+        });
 
         if let Some((section, properties)) = target_section {
             let section_name = section.unwrap();

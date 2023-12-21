@@ -89,7 +89,6 @@ async fn chain_provider_credentials(
     }
     if let Some(ref profile_provider) = provider.profile_provider {
         // Check standard profile credentials first //
-        println!("Checking profile provider (credentials)");
         if let Ok(creds) = profile_provider.credentials().await {
             return Ok(creds);
         }
@@ -100,7 +99,6 @@ async fn chain_provider_credentials(
             .expect(format!("Failed to load AWS config ({:?})", get_config_path()).as_str());
         let profile_name = profile_provider.profile();
         println!("profile name: {}", profile_name);
-        println!("config path: {:?}", get_config_path());
 
         let target_section = aws_config
             .iter()

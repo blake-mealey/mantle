@@ -5,7 +5,6 @@ use rusoto_core::credential::{
     AwsCredentials, ContainerProvider, CredentialsError, EnvironmentProvider,
     InstanceMetadataProvider, ProfileProvider, ProvideAwsCredentials,
 };
-use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::PathBuf;
 use std::time::Duration;

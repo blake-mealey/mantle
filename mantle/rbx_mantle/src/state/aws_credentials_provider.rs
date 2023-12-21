@@ -1,9 +1,13 @@
 use async_trait::async_trait;
+use dirs_next::home_dir;
+use ini::Ini;
 use rusoto_core::credential::{
     AwsCredentials, ContainerProvider, CredentialsError, EnvironmentProvider,
     InstanceMetadataProvider, ProfileProvider, ProvideAwsCredentials,
 };
+use serde::{Deserialize, Serialize};
 use std::env;
+use std::path::PathBuf;
 use std::time::Duration;
 
 #[derive(Clone, Debug)]
@@ -15,14 +19,26 @@ pub struct AwsCredentialsProvider {
     instance_metadata_provider: Option<InstanceMetadataProvider>,
 }
 
+#[derive(Default, Serialize, Deserialize)]
+struct AwsConfig {
+    region: Option<String>,
+    output: Option<String>,
+    sso_start_url: Option<String>,
+    sso_region: Option<String>,
+    sso_account_id: Option<String>,
+    sso_role_name: Option<String>,
+}
+
 impl AwsCredentialsProvider {
     pub fn new() -> AwsCredentialsProvider {
         // Set up profile provider using optionally supplied profile name //
-        let mut profile_provider: Option<ProfileProvider> = None;
+        let profile_provider: Option<ProfileProvider>;
         if let Ok(profile_name) = env::var("MANTLE_AWS_PROFILE") {
             let mut provider = ProfileProvider::new().unwrap();
             provider.set_profile(profile_name);
             profile_provider = Some(provider);
+        } else {
+            profile_provider = ProfileProvider::new().ok();
         }
 
         // Inherit IAM role from instance metadata service or ECS agent role //
@@ -55,6 +71,13 @@ impl AwsCredentialsProvider {
     }
 }
 
+fn get_config_path() -> PathBuf {
+    home_dir()
+        .expect("Expected a HOME directory")
+        .join(".aws")
+        .join("config")
+}
+
 async fn chain_provider_credentials(
     provider: AwsCredentialsProvider,
 ) -> Result<AwsCredentials, CredentialsError> {
@@ -66,13 +89,33 @@ async fn chain_provider_credentials(
     }
     if let Some(ref profile_provider) = provider.profile_provider {
         // Check standard profile credentials first //
+        println!("Checking profile provider (credentials)");
         if let Ok(creds) = profile_provider.credentials().await {
             return Ok(creds);
         }
 
         // Check SSO profile credentials as fallback //
+        println!("Checking profile provider (sso)");
+        let aws_config = Ini::load_from_file(get_config_path())
+            .expect(format!("Failed to load AWS config ({:?})", get_config_path()).as_str());
         let profile_name = profile_provider.profile();
         println!("profile name: {}", profile_name);
+        println!("config path: {:?}", get_config_path());
+
+        let target_section = aws_config
+            .iter()
+            .filter(|(section, _)| {
+                section.is_some() && section.unwrap() == format!("profile {}", profile_name)
+            })
+            .next();
+
+        if let Some((section, properties)) = target_section {
+            let section_name = section.unwrap();
+            println!("Section name: {}", section_name);
+            for (key, value) in properties.iter() {
+                println!("{}: {:?}", key, value);
+            }
+        }
     }
     if let Some(ref container_provider) = provider.container_provider {
         if let Ok(creds) = container_provider.credentials().await {

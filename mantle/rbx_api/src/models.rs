@@ -1,4 +1,4 @@
-use std::{clone::Clone, fmt, str};
+use std::{clone::Clone, fmt, marker::PhantomData, str};
 
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -99,4 +99,49 @@ pub enum SocialSlotType {
 #[serde(rename_all = "camelCase")]
 pub struct UploadImageResponse {
     pub target_id: AssetId,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub struct Group;
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub struct Role;
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub struct Id<T> {
+    id: AssetId,
+    marker: PhantomData<T>,
+}
+
+impl<T> Id<T> {
+    pub fn new(primitive: AssetId) -> Self {
+        Id {
+            id: primitive,
+            marker: PhantomData,
+        }
+    }
+
+    pub fn into_inner(self) -> AssetId {
+        self.id
+    }
+    
+}
+impl<T> From<AssetId> for Id<T> {
+    fn from(id: AssetId) -> Self {
+        Self::new(id)
+    }
+}
+impl<T> From<Option<AssetId>> for Id<T> {
+    fn from(id: Option<AssetId>) -> Self {
+        Self::new(id.unwrap())
+    }
+}
+
+//required for `std::option::Option<u64>` to implement `Into<std::option::Option<Id<rbx_api::models::Group>>>`
+
+impl<T> fmt::Display for Id<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let inner = self.id;
+        fmt::Display::fmt(&inner, f)
+    }
 }

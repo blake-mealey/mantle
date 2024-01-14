@@ -8,7 +8,7 @@ use serde_json::json;
 use crate::{
     errors::{RobloxApiError, RobloxApiResult},
     helpers::{handle, handle_as_json, handle_as_json_with_status},
-    models::{AssetId, AssetTypeId, CreatorType},
+    models::{AssetId, AssetTypeId, CreatorType, Group, Id},
     RobloxApi,
 };
 
@@ -17,10 +17,10 @@ use self::models::{
 };
 
 impl RobloxApi {
-    pub async fn create_image_asset(
+    pub async fn create_image_asset<GroupId: Into<Id<Group>>>(
         &self,
         file_path: PathBuf,
-        group_id: Option<AssetId>,
+        group_id: Option<GroupId>,
     ) -> RobloxApiResult<CreateImageAssetResponse> {
         let data = fs::read(&file_path)?;
 
@@ -40,7 +40,7 @@ impl RobloxApi {
                 ("description", &"madewithmantle".to_owned()),
             ]);
         if let Some(group_id) = group_id {
-            req = req.query(&[("groupId", &group_id.to_string())]);
+            req = req.query(&[("groupId", &group_id.into().to_string())]);
         }
 
         handle_as_json_with_status(req).await
@@ -67,10 +67,10 @@ impl RobloxApi {
             .ok_or(RobloxApiError::MissingCreateQuota(asset_type))
     }
 
-    pub async fn create_audio_asset(
+    pub async fn create_audio_asset<GroupId: Into<Id<Group>>>(
         &self,
         file_path: PathBuf,
-        group_id: Option<AssetId>,
+        group_id: Option<GroupId>,
         payment_source: CreatorType,
     ) -> RobloxApiResult<CreateAudioAssetResponse> {
         let data = fs::read(&file_path)?;
@@ -79,14 +79,20 @@ impl RobloxApi {
             "Audio/{}",
             file_path.file_stem().and_then(OsStr::to_str).unwrap()
         );
-
+        let mut new_group_id = None;
+        match group_id {
+            Some(i) => {
+                new_group_id = Option::Some(i.into())
+            }
+            _ => {}
+        };
         let req = self
             .client
             .post("https://publish.roblox.com/v1/audio")
             .json(&json!({
                 "name": file_name,
                 "file": base64::encode(data),
-                "groupId": group_id,
+                "groupId": new_group_id,
                 "paymentSource": payment_source
             }));
 

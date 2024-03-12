@@ -1,7 +1,7 @@
 # rbx_api
 
-## 0.3.0
+## 0.3.1
 
 ### Minor Changes
 
-- add support for the grant asset permission endpoint
+- change the endpoint for updating gamepasses, resolving #211

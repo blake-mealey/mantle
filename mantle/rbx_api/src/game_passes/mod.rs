@@ -106,7 +106,6 @@ impl RobloxApi {
         icon_file: Option<PathBuf>,
     ) -> RobloxApiResult<GetGamePassResponse> {
         let mut form = Form::new()
-            .text("id", game_pass_id.to_string())
             .text("name", name)
             .text("description", description)
             .text("isForSale", price.is_some().to_string());
@@ -119,7 +118,10 @@ impl RobloxApi {
 
         let req = self
             .client
-            .post("https://www.roblox.com/game-pass/update")
+            .post(format!(
+                "https://apis.roblox.com/game-passes/v1/game-passes/{}/details",
+                game_pass_id
+            ))
             .multipart(form);
 
         handle(req).await?;

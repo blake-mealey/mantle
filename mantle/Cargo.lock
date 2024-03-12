@@ -1338,7 +1338,7 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 
 [[package]]
 name = "mantle"
-version = "0.11.13"
+version = "0.11.14"
 dependencies = [
  "clap",
  "difference",
@@ -2067,7 +2067,7 @@ dependencies = [
 
 [[package]]
 name = "rbx_api"
-version = "0.4.9"
+version = "0.4.10"
 dependencies = [
  "base64 0.13.1",
  "log",
@@ -2141,7 +2141,7 @@ dependencies = [
 
 [[package]]
 name = "rbx_mantle"
-version = "0.11.13"
+version = "0.11.14"
 dependencies = [
  "async-trait",
  "chrono",

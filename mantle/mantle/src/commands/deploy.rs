@@ -122,7 +122,7 @@ fn log_target_results(
 
 pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchases: bool) -> i32 {
     logger::start_action("Loading project:");
-    let (project_path, config) = match load_project_config(project) {
+    let config_file = match load_project_config(project) {
         Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(e));
@@ -137,7 +137,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
         payment_source,
         state_config,
         owner_config,
-    } = match load_project(project_path.clone(), config, environment).await {
+    } = match load_project(&config_file, environment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
             logger::end_action("No deployment necessary");
@@ -149,7 +149,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
         }
     };
     let mut next_graph =
-        match get_desired_graph(project_path.as_path(), &target_config, &owner_config) {
+        match get_desired_graph(&config_file.project_path, &target_config, &owner_config) {
             Ok(v) => v,
             Err(e) => {
                 logger::end_action(Paint::red(e));
@@ -159,14 +159,14 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
     logger::end_action("Succeeded");
 
     logger::start_action("Deploying resources:");
-    let mut resource_manager = match RobloxResourceManager::new(&project_path, payment_source).await
-    {
-        Ok(v) => v,
-        Err(e) => {
-            logger::end_action(Paint::red(e));
-            return 1;
-        }
-    };
+    let mut resource_manager =
+        match RobloxResourceManager::new(&config_file.project_path, payment_source).await {
+            Ok(v) => v,
+            Err(e) => {
+                logger::end_action(Paint::red(e));
+                return 1;
+            }
+        };
 
     let results = next_graph
         .evaluate(&current_graph, &mut resource_manager, allow_purchases)
@@ -201,7 +201,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
     if environment_config.tag_commit && results.is_ok() {
         logger::start_action("Tagging commit:");
         match tag_commit(
-            project_path.clone(),
+            config_file.project_path.clone(),
             &target_config,
             &next_graph,
             &current_graph,
@@ -219,7 +219,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
         environment_config.label.clone(),
         next_graph.get_resource_list(),
     );
-    match save_state(&project_path, &state_config, &state).await {
+    match save_state(&config_file.project_path, &state_config, &state).await {
         Ok(_) => {}
         Err(e) => {
             logger::end_action(Paint::red(e));

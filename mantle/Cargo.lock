@@ -42,6 +42,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.82"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f538837af36e6f6a9be0faa67f9a314f8119e4e4b5867c6ab40ed60360142519"
+
+[[package]]
 name = "approx"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2143,6 +2149,7 @@ dependencies = [
 name = "rbx_mantle"
 version = "0.11.14"
 dependencies = [
+ "anyhow",
  "async-trait",
  "chrono",
  "clap",
@@ -2156,8 +2163,10 @@ dependencies = [
  "rusoto_s3",
  "schemars",
  "serde",
+ "serde_json",
  "serde_yaml",
  "sha2",
+ "tinytemplate",
  "tokio",
  "url",
  "yansi",
@@ -3109,6 +3118,16 @@ dependencies = [
  "quote 1.0.23",
  "standback",
  "syn 1.0.107",
+]
+
+[[package]]
+name = "tinytemplate"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be4d6b5f19ff7664e8c98d03e2139cb510db9b0a60b55f8e8709b689d939b6bc"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

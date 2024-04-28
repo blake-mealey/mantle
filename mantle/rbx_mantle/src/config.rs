@@ -5,6 +5,7 @@ use std::{
     str,
 };
 
+use anyhow::bail;
 use rbx_api::{
     experiences::models::{
         ExperienceAnimationType, ExperienceAvatarType, ExperienceCollisionType,
@@ -16,8 +17,59 @@ use rbx_api::{
 use rusoto_core::Region;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use tinytemplate::TinyTemplate;
 use url::Url;
 use yansi::Paint;
+
+use crate::repo::{get_current_branch, match_branch};
+
+#[derive(JsonSchema, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ConfigHeader {
+    /// The list of environments which Mantle can deploy to.
+    ///
+    /// ```yml title="Example"
+    /// environments:
+    ///   - label: staging
+    ///     branches: [dev, dev/*]
+    ///     targetOverrides:
+    ///       configuration:
+    ///         icon: marketing/beta-game-icon.png
+    ///   - label: production
+    ///     branches: [main]
+    ///     targetAccess: public
+    /// ```
+    pub environments: Vec<EnvironmentConfig>,
+
+    /// default('local')
+    ///
+    /// Defines how Mantle should manage state files (locally or remotely).
+    ///
+    /// | Value              | Description                                                                                                                                                                                                           |
+    /// |--------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+    /// | `'local'`          | Mantle will save and load its state to and from a local `.mantle-state.yml` file.                                                                                                                                     |
+    /// | `localKey: <key>`  | Mantle will save and load its state to and from a local file using the provided key with the format `<key>.mantle-state.yml`.                                                                                         |
+    /// | `remote: <config>` | Mantle will save and load its state to and from a remote file stored in a cloud provider. Currently the only supported provider is Amazon S3. For more information, see the [Remote State](/docs/remote-state) guide. |
+    ///
+    /// ```yml title="Local State Example (Default)"
+    /// state: local
+    /// ```
+    ///
+    /// ```yml title="Custom Local State Example"
+    /// state:
+    ///   localKey: pirate-wars
+    /// ```
+    ///
+    /// ```yml title="Remote State Example"
+    /// state:
+    ///   remote:
+    ///     region: us-west-1
+    ///     bucket: my-mantle-states
+    ///     key: pirate-wars
+    /// ```
+    #[serde(default)]
+    pub state: StateConfig,
+}
 
 #[derive(JsonSchema, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -57,21 +109,6 @@ pub struct Config {
     #[serde(default)]
     pub payments: PaymentsConfig,
 
-    /// The list of environments which Mantle can deploy to.
-    ///
-    /// ```yml title="Example"
-    /// environments:
-    ///   - label: staging
-    ///     branches: [dev, dev/*]
-    ///     targetOverrides:
-    ///       configuration:
-    ///         icon: marketing/beta-game-icon.png
-    ///   - label: production
-    ///     branches: [main]
-    ///     targetAccess: public
-    /// ```
-    pub environments: Vec<EnvironmentConfig>,
-
     /// Defines the target resource which Mantle will deploy to. Currently
     /// Mantle only supports targeting Experiences, but in the future it will
     /// support other types like Plugins and Models.
@@ -81,35 +118,6 @@ pub struct Config {
     ///   experience: {}
     /// ```
     pub target: TargetConfig,
-
-    /// default('local')
-    ///
-    /// Defines how Mantle should manage state files (locally or remotely).
-    ///
-    /// | Value              | Description                                                                                                                                                                                                           |
-    /// |--------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-    /// | `'local'`          | Mantle will save and load its state to and from a local `.mantle-state.yml` file.                                                                                                                                     |
-    /// | `localKey: <key>`  | Mantle will save and load its state to and from a local file using the provided key with the format `<key>.mantle-state.yml`.                                                                                         |
-    /// | `remote: <config>` | Mantle will save and load its state to and from a remote file stored in a cloud provider. Currently the only supported provider is Amazon S3. For more information, see the [Remote State](/docs/remote-state) guide. |
-    ///
-    /// ```yml title="Local State Example (Default)"
-    /// state: local
-    /// ```
-    ///
-    /// ```yml title="Custom Local State Example"
-    /// state:
-    ///   localKey: pirate-wars
-    /// ```
-    ///
-    /// ```yml title="Remote State Example"
-    /// state:
-    ///   remote:
-    ///     region: us-west-1
-    ///     bucket: my-mantle-states
-    ///     key: pirate-wars
-    /// ```
-    #[serde(default)]
-    pub state: StateConfig,
 }
 
 #[derive(JsonSchema, Deserialize, Clone)]
@@ -240,6 +248,13 @@ impl fmt::Display for RemoteStateConfig {
 
 #[derive(JsonSchema, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EnvironmentVariableConfig {
+    pub name: String,
+    pub value: serde_json::Value,
+}
+
+#[derive(JsonSchema, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct EnvironmentConfig {
     /// The label of the environment that is used to identify the environment
     /// via the `--environment` flag. Must be unique across all environments.
@@ -263,55 +278,10 @@ pub struct EnvironmentConfig {
     #[serde(default)]
     pub tag_commit: bool,
 
-    /// skip_properties()
-    ///
-    /// Adds a prefix to the target's name configuration. The implementation is dependent on the
-    /// target's type. For Experience targets, all place names will be updated with the prefix.
-    ///
-    /// | Value                | Description                                                                                                                                                                                                                                                                                                                               |
-    /// |----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-    /// | `'environmentLabel'` | The target name prefix will use the format `[<ENVIRONMENT>] ` where `<ENVIRONMENT>` is the value of the environment's [`label`](#environments--label) property in all caps. For example, if the environment's label was `'dev'` and the target's name was "Made with Mantle", the resulting target name will be "[DEV] Made with Mantle". |
-    /// | `custom: <prefix>`   | The target name prefix will be the supplied value.                                                                                                                                                                                                                                                                                        |
-    ///
-    /// ```yml title="Environment Label Example"
-    /// environments:
-    ///   - label: dev
-    ///     targetNamePrefix: environmentLabel
-    ///   - label: prod
-    /// ```
-    ///
-    /// ```yml title="Custom Example"
-    /// environments:
-    ///   - label: dev
-    ///     targetNamePrefix:
-    ///       custom: 'Prefix: '
-    ///   - label: prod
-    /// ```
-    pub target_name_prefix: Option<TargetNamePrefixConfig>,
-
-    /// Overrides the target's access. The implementation is dependent on the
-    /// target's type. For Experience targets, the
-    /// [`playability`](#target-experience-configuration-playability) property
-    /// will be overridden.
-    ///
-    /// | Value       | Description                                                                               |
-    /// |-------------|-------------------------------------------------------------------------------------------|
-    /// | `'public'`  | The target will be accessible to all Roblox users.                                        |
-    /// | `'private'` | The target will only be accessible to the authorized user.                                |
-    /// | `'friends'` | The target will only be accessible to the authorized user and that user's Roblox friends. |
-    pub target_access: Option<TargetAccessConfig>,
-
-    // TODO: This could break future target types. It is implemented this way in order to support schemars
-    /// skip_properties()
-    ///
-    /// Environment-specific overrides for the target resource definition. This
-    /// will override all configuration, including changes made by the
-    /// [`targetNamePrefix`](#environments--targetnameprefix) and
-    /// [`targetAccess`](#environments--targetaccess) properties.
-    ///
-    /// Override the target configuration. Should match the type of the target
-    /// configuration.
-    pub target_overrides: Option<TargetOverridesConfig>,
+    /// Variables to set in the environment. These can be accessed in the config body with
+    /// ${{ env.<var_name> }}
+    #[serde(default)]
+    pub variables: Vec<EnvironmentVariableConfig>,
 }
 
 #[derive(JsonSchema, Deserialize, Clone)]
@@ -1203,32 +1173,128 @@ fn parse_project_path(project: Option<&str>) -> Result<(PathBuf, PathBuf), Strin
     Err(format!("Config file {} not found", config_file.display()))
 }
 
-fn load_config_file(config_file: &Path) -> Result<Config, String> {
-    let data = fs::read_to_string(config_file).map_err(|e| {
+#[derive(Serialize)]
+struct EnvConfigContext {
+    label: String,
+}
+
+#[derive(Serialize)]
+struct ConfigContexts {
+    env: EnvConfigContext,
+    vars: HashMap<String, serde_json::Value>,
+}
+
+pub struct ConfigFile {
+    pub config_path: PathBuf,
+    pub project_path: PathBuf,
+    pub header: ConfigHeader,
+    pub config_data: String,
+}
+
+impl ConfigFile {
+    pub fn environment_config(
+        &self,
+        environment_label: Option<&str>,
+    ) -> anyhow::Result<Option<&EnvironmentConfig>> {
+        match environment_label {
+            Some(label) => {
+                if let Some(result) = self.header.environments.iter().find(|d| d.label == label) {
+                    logger::log(format!(
+                        "Selected provided environment configuration {}",
+                        Paint::cyan(label)
+                    ));
+                    Ok(Some(result))
+                } else {
+                    bail!("No environment configuration found with name {}", label)
+                }
+            }
+            None => {
+                let current_branch = get_current_branch(&self.project_path)?;
+                if let Some(result) = self
+                    .header
+                    .environments
+                    .iter()
+                    .find(|environment| match_branch(&current_branch, &environment.branches))
+                {
+                    logger::log(format!(
+                    "Selected environment configuration {} because the current branch {} matched one of [{}]",
+                    Paint::cyan(result.label.clone()),
+                    Paint::cyan(current_branch),
+                    result.branches.iter().map(|b|Paint::cyan(b).to_string()).collect::<Vec<String>>().join(", ")
+                ));
+                    Ok(Some(result))
+                } else {
+                    // TODO: should this be an error?
+                    logger::log(format!(
+                        "No environment configuration found for the current branch {}",
+                        Paint::cyan(current_branch)
+                    ));
+                    return Ok(None);
+                }
+            }
+        }
+    }
+
+    pub fn config(&self, environment: &EnvironmentConfig) -> anyhow::Result<Config> {
+        let mut tt = TinyTemplate::new();
+        tt.add_template("config", &self.config_data)?;
+
+        let contexts = ConfigContexts {
+            env: EnvConfigContext {
+                label: environment.label.clone(),
+            },
+            vars: environment
+                .variables
+                .iter()
+                .map(|x| (x.name.clone(), x.value.clone()))
+                .collect(),
+        };
+
+        let rendered = tt.render("config", &contexts)?;
+
+        serde_yaml::from_str::<Config>(&rendered).map_err(|e| e.into())
+    }
+}
+
+pub fn load_project_config(project: Option<&str>) -> Result<ConfigFile, String> {
+    let (project_path, config_path) = parse_project_path(project)?;
+
+    let mut data: &str = &fs::read_to_string(&config_path).map_err(|e| {
         format!(
             "Unable to read config file: {}\n\t{}",
-            config_file.display(),
+            config_path.display(),
             e
         )
     })?;
 
-    serde_yaml::from_str::<Config>(&data).map_err(|e| {
-        format!(
-            "Unable to parse config file {}\n\t{}",
-            config_file.display(),
-            e
-        )
-    })
-}
+    // TODO: improve document parsing
+    if data.starts_with("---") {
+        data = &data[3..];
+    }
 
-pub fn load_project_config(project: Option<&str>) -> Result<(PathBuf, Config), String> {
-    let (project_path, config_path) = parse_project_path(project)?;
-    let config = load_config_file(&config_path)?;
+    let header_end = data.find("\n---");
+    if header_end.is_none() {
+        return Result::Err("Config file is missing a document separator".to_string());
+    }
+
+    let header =
+        serde_yaml::from_str::<ConfigHeader>(&data[0..header_end.unwrap()]).map_err(|e| {
+            format!(
+                "Unable to parse config file {}\n\t{}",
+                config_path.display(),
+                e
+            )
+        })?;
 
     logger::log(format!(
         "Loaded config file {}",
-        Paint::cyan(config_path.display())
+        Paint::cyan(&config_path.display())
     ));
 
-    Ok((project_path, config))
+    Ok(ConfigFile {
+        config_path,
+        project_path,
+        header,
+        config_data: data[header_end.unwrap() + 4..].to_string(),
+    })
 }

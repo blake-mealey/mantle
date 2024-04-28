@@ -15,25 +15,24 @@ pub async fn run(
     format: &str,
 ) -> i32 {
     logger::start_action("Load outputs:");
-    let (project_path, config) = match load_project_config(project) {
+    let config_file = match load_project_config(project) {
         Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(e));
             return 1;
         }
     };
-    let Project { current_graph, .. } =
-        match load_project(project_path.clone(), config, environment).await {
-            Ok(Some(v)) => v,
-            Ok(None) => {
-                logger::end_action("No outputs available");
-                return 0;
-            }
-            Err(e) => {
-                logger::end_action(Paint::red(e));
-                return 1;
-            }
-        };
+    let Project { current_graph, .. } = match load_project(&config_file, environment).await {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            logger::end_action("No outputs available");
+            return 0;
+        }
+        Err(e) => {
+            logger::end_action(Paint::red(e));
+            return 1;
+        }
+    };
 
     let resources = current_graph.get_resource_list();
     let outputs_map = resources

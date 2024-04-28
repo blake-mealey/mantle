@@ -28,9 +28,11 @@ use sha2::{Digest, Sha256};
 use tokio::io::AsyncReadExt;
 use yansi::Paint;
 
+use crate::config::ConfigHeader;
+
 use super::{
     config::{
-        AssetTargetConfig, Config, EnvironmentConfig, ExperienceTargetConfig, OwnerConfig,
+        AssetTargetConfig, EnvironmentConfig, ExperienceTargetConfig, OwnerConfig,
         PlayabilityTargetConfig, RemoteStateConfig, StateConfig, TargetConfig,
     },
     resource_graph::ResourceGraph,
@@ -198,17 +200,17 @@ pub async fn get_state_from_source(
 
 pub async fn get_state(
     project_path: &Path,
-    config: &Config,
+    config_header: &ConfigHeader,
 ) -> Result<ResourceStateVLatest, String> {
-    get_state_from_source(project_path, config.state.clone()).await
+    get_state_from_source(project_path, config_header.state.clone()).await
 }
 
 pub async fn get_previous_state(
     project_path: &Path,
-    config: &Config,
+    config_header: &ConfigHeader,
     environment_config: &EnvironmentConfig,
 ) -> Result<ResourceStateVLatest, String> {
-    let mut state = get_state(project_path, config).await?;
+    let mut state = get_state(project_path, config_header).await?;
 
     if state.environments.get(&environment_config.label).is_none() {
         logger::log(format!(

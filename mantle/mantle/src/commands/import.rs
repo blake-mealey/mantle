@@ -10,7 +10,7 @@ use rbx_mantle::{
 
 pub async fn run(project: Option<&str>, environment: Option<&str>, target_id: &str) -> i32 {
     logger::start_action("Loading project:");
-    let (project_path, config) = match load_project_config(project) {
+    let config_file = match load_project_config(project) {
         Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(e));
@@ -23,7 +23,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, target_id: &s
         environment_config,
         state_config,
         ..
-    } = match load_project(project_path.clone(), config, environment).await {
+    } = match load_project(&config_file, environment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
             logger::end_action("No import necessary");
@@ -90,7 +90,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, target_id: &s
         environment_config.label.clone(),
         imported_graph.get_resource_list(),
     );
-    match save_state(&project_path, &state_config, &state).await {
+    match save_state(&config_file.project_path, &state_config, &state).await {
         Ok(_) => {}
         Err(e) => {
             logger::end_action(Paint::red(e));

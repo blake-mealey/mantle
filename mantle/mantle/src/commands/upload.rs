@@ -7,7 +7,7 @@ use rbx_mantle::{
 
 pub async fn run(project: Option<&str>, key: Option<&str>) -> i32 {
     logger::start_action("Upload state file:");
-    let (project_path, config) = match load_project_config(project) {
+    let config_file = match load_project_config(project) {
         Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(e));
@@ -15,7 +15,7 @@ pub async fn run(project: Option<&str>, key: Option<&str>) -> i32 {
         }
     };
 
-    if !matches!(config.state, StateConfig::Remote(_)) {
+    if !matches!(config_file.header.state, StateConfig::Remote(_)) {
         logger::end_action(Paint::red("Project is not configured with remote state"));
         return 1;
     }
@@ -24,7 +24,7 @@ pub async fn run(project: Option<&str>, key: Option<&str>) -> i32 {
         Some(key) => StateConfig::LocalKey(key.to_owned()),
         None => StateConfig::Local,
     };
-    let state = match get_state_from_source(&project_path, state_config).await {
+    let state = match get_state_from_source(&config_file.project_path, state_config).await {
         Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(e));
@@ -32,7 +32,7 @@ pub async fn run(project: Option<&str>, key: Option<&str>) -> i32 {
         }
     };
 
-    match save_state(&project_path, &config.state, &state).await {
+    match save_state(&config_file.project_path, &config_file.header.state, &state).await {
         Ok(_) => {}
         Err(e) => {
             logger::end_action(Paint::red(e));

@@ -7,7 +7,7 @@ use rbx_mantle::{
 
 pub async fn run(project: Option<&str>, key: Option<&str>) -> i32 {
     logger::start_action("Download state file:");
-    let (project_path, config) = match load_project_config(project) {
+    let config_file = match load_project_config(project) {
         Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(e));
@@ -15,12 +15,14 @@ pub async fn run(project: Option<&str>, key: Option<&str>) -> i32 {
         }
     };
 
-    if !matches!(config.state, StateConfig::Remote(_)) {
+    // config_file.header.
+
+    if !matches!(config_file.header.state, StateConfig::Remote(_)) {
         logger::end_action(Paint::red("Project is not configured with remote state"));
         return 1;
     }
 
-    let state = match get_state(&project_path, &config).await {
+    let state = match get_state(&config_file.project_path, &config_file.header).await {
         Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(e));
@@ -32,7 +34,7 @@ pub async fn run(project: Option<&str>, key: Option<&str>) -> i32 {
         Some(key) => StateConfig::LocalKey(key.to_owned()),
         None => StateConfig::Local,
     };
-    match save_state(&project_path, &state_config, &state).await {
+    match save_state(&config_file.project_path, &state_config, &state).await {
         Ok(_) => {}
         Err(e) => {
             logger::end_action(Paint::red(e));

@@ -1,21 +1,29 @@
 environments:
   - label: staging
     branches: [dev, dev/*]
-    targetNamePrefix: environmentLabel
-    targetAccess: private
-
-target:
-  experience:
-    places:
-      start:
-        file: place.rbxl
-        configuration:
-          name: Lightweight Mantle Test
-          serverFill:
-            reservedSlots: 4
+    variables:
+      - name: playability
+        value: private
+  - label: production
+    branches: [main]
+    variables:
+      - name: playability
+        value: public
 
 state:
   remote:
     region: us-west-2
     bucket: mantle-states
     key: project-fixtures/light
+---
+target:
+  experience:
+    configuration:
+      playability: "{vars.playability}"
+    places:
+      start:
+        file: place.rbxl
+        configuration:
+          name: "[{env.label}] Lightweight Mantle Test"
+          serverFill:
+            reservedSlots: 4

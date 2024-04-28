@@ -64,7 +64,7 @@ pub async fn run(
     format: Option<&str>,
 ) -> i32 {
     logger::start_action("Loading project:");
-    let (project_path, config) = match load_project_config(project) {
+    let config_file = match load_project_config(project) {
         Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(e));
@@ -76,7 +76,7 @@ pub async fn run(
         target_config,
         owner_config,
         ..
-    } = match load_project(project_path.clone(), config, environment).await {
+    } = match load_project(&config_file, environment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
             logger::end_action("No diff available");
@@ -87,14 +87,17 @@ pub async fn run(
             return 1;
         }
     };
-    let mut next_graph =
-        match get_desired_graph(project_path.as_path(), &target_config, &owner_config) {
-            Ok(v) => v,
-            Err(e) => {
-                logger::end_action(Paint::red(e));
-                return 1;
-            }
-        };
+    let mut next_graph = match get_desired_graph(
+        config_file.project_path.as_path(),
+        &target_config,
+        &owner_config,
+    ) {
+        Ok(v) => v,
+        Err(e) => {
+            logger::end_action(Paint::red(e));
+            return 1;
+        }
+    };
     logger::end_action("Succeeded");
 
     logger::start_action("Diffing resource graphs:");

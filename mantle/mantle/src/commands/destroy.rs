@@ -12,7 +12,7 @@ use rbx_mantle::{
 
 pub async fn run(project: Option<&str>, environment: Option<&str>) -> i32 {
     logger::start_action("Loading project:");
-    let (project_path, config) = match load_project_config(project) {
+    let config_file = match load_project_config(project) {
         Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(e));
@@ -26,7 +26,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>) -> i32 {
         payment_source,
         state_config,
         ..
-    } = match load_project(project_path.clone(), config, environment).await {
+    } = match load_project(&config_file, environment).await {
         Ok(Some(v)) => v,
         Ok(None) => {
             logger::end_action("No deployment necessary");
@@ -40,14 +40,14 @@ pub async fn run(project: Option<&str>, environment: Option<&str>) -> i32 {
     logger::end_action("Succeeded");
 
     logger::start_action("Destroying resources:");
-    let mut resource_manager = match RobloxResourceManager::new(&project_path, payment_source).await
-    {
-        Ok(v) => v,
-        Err(e) => {
-            logger::end_action(Paint::red(e));
-            return 1;
-        }
-    };
+    let mut resource_manager =
+        match RobloxResourceManager::new(&config_file.project_path, payment_source).await {
+            Ok(v) => v,
+            Err(e) => {
+                logger::end_action(Paint::red(e));
+                return 1;
+            }
+        };
 
     let mut next_graph = ResourceGraph::new(&Vec::new());
     let results = next_graph
@@ -79,7 +79,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>) -> i32 {
             next_graph.get_resource_list(),
         );
     }
-    match save_state(&project_path, &state_config, &state).await {
+    match save_state(&config_file.project_path, &state_config, &state).await {
         Ok(_) => {}
         Err(e) => {
             logger::end_action(Paint::red(e));

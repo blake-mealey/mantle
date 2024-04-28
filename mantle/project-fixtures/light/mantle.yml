@@ -9,9 +9,6 @@ environments:
     variables:
       - name: playability
         value: public
-      - name: owner
-        value:
-          group: 123456
 
 state:
   remote:

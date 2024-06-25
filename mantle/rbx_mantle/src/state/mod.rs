@@ -219,7 +219,7 @@ pub async fn get_previous_state(
 ) -> Result<ResourceStateVLatest, String> {
     let mut state = get_state(project_path, config).await?;
 
-    if state.environments.get(&environment_config.label).is_none() {
+    if !state.environments.contains_key(&environment_config.label) {
         logger::log(format!(
             "No previous state for environment {}",
             Paint::cyan(environment_config.label.clone())

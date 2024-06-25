@@ -5,6 +5,7 @@ pub mod v2;
 pub mod v3;
 pub mod v4;
 pub mod v5;
+pub mod v6;
 
 use std::{
     collections::BTreeMap,
@@ -26,6 +27,7 @@ use rusoto_s3::{S3Client, S3};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::io::AsyncReadExt;
+use v6::ResourceStateV6;
 use yansi::Paint;
 
 use super::{
@@ -62,9 +64,11 @@ enum VersionedResourceState {
     V4(ResourceStateV4),
     #[serde(rename = "5")]
     V5(ResourceStateV5),
+    #[serde(rename = "6")]
+    V6(ResourceStateV6),
 }
 
-pub type ResourceStateVLatest = ResourceStateV5;
+pub type ResourceStateVLatest = ResourceStateV6;
 
 fn get_state_file_path(project_path: &Path, key: Option<&str>) -> PathBuf {
     project_path.join(format!("{}.mantle-state.yml", key.unwrap_or_default()))
@@ -174,22 +178,27 @@ pub async fn get_state_from_source(
 
     // Migrate previous state formats
     Ok(match state {
-        Some(ResourceState::Unversioned(state)) => ResourceStateV5::from(ResourceStateV4::from(
-            ResourceStateV3::from(ResourceStateV2::from(state)),
-        )),
-        Some(ResourceState::Versioned(VersionedResourceState::V1(state))) => ResourceStateV5::from(
+        Some(ResourceState::Unversioned(state)) => ResourceStateV6::from(ResourceStateV5::from(
             ResourceStateV4::from(ResourceStateV3::from(ResourceStateV2::from(state))),
-        ),
-        Some(ResourceState::Versioned(VersionedResourceState::V2(state))) => {
-            ResourceStateV5::from(ResourceStateV4::from(ResourceStateV3::from(state)))
+        )),
+        Some(ResourceState::Versioned(VersionedResourceState::V1(state))) => {
+            ResourceStateV6::from(ResourceStateV5::from(ResourceStateV4::from(
+                ResourceStateV3::from(ResourceStateV2::from(state)),
+            )))
         }
+        Some(ResourceState::Versioned(VersionedResourceState::V2(state))) => ResourceStateV6::from(
+            ResourceStateV5::from(ResourceStateV4::from(ResourceStateV3::from(state))),
+        ),
         Some(ResourceState::Versioned(VersionedResourceState::V3(state))) => {
-            ResourceStateV5::from(ResourceStateV4::from(state))
+            ResourceStateV6::from(ResourceStateV5::from(ResourceStateV4::from(state)))
         }
         Some(ResourceState::Versioned(VersionedResourceState::V4(state))) => {
-            ResourceStateV5::from(state)
+            ResourceStateV6::from(ResourceStateV5::from(state))
         }
-        Some(ResourceState::Versioned(VersionedResourceState::V5(state))) => state,
+        Some(ResourceState::Versioned(VersionedResourceState::V5(state))) => {
+            ResourceStateV6::from(state)
+        }
+        Some(ResourceState::Versioned(VersionedResourceState::V6(state))) => state,
         None => ResourceStateVLatest {
             environments: BTreeMap::new(),
         },
@@ -287,7 +296,7 @@ fn get_desired_experience_graph(
                         file_path: file.clone(),
                         file_hash: get_file_hash(project_path.join(file))?,
                     }),
-                    &[&place_resource],
+                    &[&place_resource, &experience],
                 ));
             }
 
@@ -664,7 +673,7 @@ pub async fn import_graph(
             RobloxOutputs::PlaceFile(PlaceFileOutputs {
                 version: place.current_saved_version,
             }),
-            &[&place_resource],
+            &[&place_resource, &experience],
         ));
 
         resources.push(RobloxResource::existing(
@@ -908,7 +917,7 @@ fn serialize_state(state: &ResourceStateVLatest) -> Result<Vec<u8>, String> {
                                 utc.format("%FT%TZ")
                             ).as_bytes().to_vec();
 
-    let state_data = serde_yaml::to_vec(&ResourceState::Versioned(VersionedResourceState::V5(
+    let state_data = serde_yaml::to_vec(&ResourceState::Versioned(VersionedResourceState::V6(
         state.to_owned(),
     )))
     .map_err(|e| format!("Unable to serialize state\n\t{}", e))?;

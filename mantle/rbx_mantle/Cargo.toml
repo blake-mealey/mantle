@@ -33,3 +33,4 @@ schemars = { version = "=0.8.8-blake.2", git = "https://github.com/blake-mealey/
     "url",
     "preserve_order",
 ] }
+rbxcloud = "0.13.0"

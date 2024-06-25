@@ -1,7 +1,11 @@
-use std::path::{Path, PathBuf};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Timelike, Utc};
+use log::info;
 use rbx_api::{
     asset_permissions::models::{
         GrantAssetPermissionRequestAction, GrantAssetPermissionRequestSubjectType,
@@ -25,6 +29,10 @@ use rbx_api::{
     RobloxApi,
 };
 use rbx_auth::RobloxAuth;
+use rbxcloud::rbx::{
+    types::{PlaceId, UniverseId},
+    v1::{PublishVersionType, RbxCloud},
+};
 use serde::{Deserialize, Serialize};
 use yansi::Paint;
 
@@ -167,7 +175,7 @@ pub struct NotificationOutputs {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaceFileOutputs {
-    pub version: u32,
+    pub version: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -320,6 +328,7 @@ impl Resource<RobloxInputs, RobloxOutputs> for RobloxResource {
 
 pub struct RobloxResourceManager {
     roblox_api: RobloxApi,
+    roblox_cloud: Option<RbxCloud>,
     project_path: PathBuf,
     payment_source: CreatorType,
 }
@@ -330,8 +339,19 @@ impl RobloxResourceManager {
         let roblox_api = RobloxApi::new(roblox_auth)?;
         roblox_api.validate_auth().await?;
 
+        let open_cloud_api_key = match env::var("MANTLE_OPEN_CLOUD_API_KEY") {
+            Ok(v) => {
+                info!("Loaded cookie from ROBLOSECURITY environment variable.");
+                Some(v)
+            }
+            Err(_) => None,
+        };
+
+        let roblox_cloud = open_cloud_api_key.map(|api_key| RbxCloud::new(&api_key));
+
         Ok(Self {
             roblox_api,
+            roblox_cloud,
             project_path: project_path.to_path_buf(),
             payment_source,
         })
@@ -478,18 +498,38 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
             }
             RobloxInputs::PlaceFile(inputs) => {
                 let place = single_output!(dependency_outputs, RobloxOutputs::Place);
+                let experience = single_output!(dependency_outputs, RobloxOutputs::Experience);
 
-                self.roblox_api
-                    .upload_place(self.get_path(inputs.file_path), place.asset_id)
-                    .await?;
-                let GetPlaceResponse {
-                    current_saved_version,
-                    ..
-                } = self.roblox_api.get_place(place.asset_id).await?;
+                if let Some(roblox_cloud) = &self.roblox_cloud {
+                    let response = roblox_cloud
+                        .experience(UniverseId(experience.asset_id), PlaceId(place.asset_id))
+                        .publish(
+                            &self
+                                .get_path(inputs.file_path)
+                                .into_os_string()
+                                .into_string()
+                                .unwrap(),
+                            PublishVersionType::Published,
+                        )
+                        .await
+                        .map_err(|e| e.to_string())?;
 
-                Ok(RobloxOutputs::PlaceFile(PlaceFileOutputs {
-                    version: current_saved_version,
-                }))
+                    Ok(RobloxOutputs::PlaceFile(PlaceFileOutputs {
+                        version: response.version_number,
+                    }))
+                } else {
+                    self.roblox_api
+                        .upload_place(self.get_path(inputs.file_path), place.asset_id)
+                        .await?;
+                    let GetPlaceResponse {
+                        current_saved_version,
+                        ..
+                    } = self.roblox_api.get_place(place.asset_id).await?;
+
+                    Ok(RobloxOutputs::PlaceFile(PlaceFileOutputs {
+                        version: current_saved_version,
+                    }))
+                }
             }
             RobloxInputs::PlaceConfiguration(inputs) => {
                 let place = single_output!(dependency_outputs, RobloxOutputs::Place);

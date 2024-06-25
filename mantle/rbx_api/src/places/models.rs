@@ -14,7 +14,7 @@ pub struct CreatePlaceResponse {
 #[serde(rename_all = "camelCase")]
 pub struct GetPlaceResponse {
     pub id: AssetId,
-    pub current_saved_version: u32,
+    pub current_saved_version: u64,
     pub name: String,
     pub description: String,
     pub max_player_count: u32,

@@ -20,9 +20,7 @@ impl RobloxApi {
     ) -> RobloxApiResult<()> {
         let req = self
             .client
-            .post(format!(
-                "https://apis.roblox.com/content-aliases-api/v1/universes/create-alias"
-            ))
+            .post("https://apis.roblox.com/content-aliases-api/v1/universes/create-alias")
             .header(header::CONTENT_LENGTH, 0)
             .query(&[
                 ("universeId", experience_id.to_string().as_str()),

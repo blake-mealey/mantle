@@ -153,14 +153,12 @@ impl RobloxApi {
     ) -> RobloxApiResult<CreatePlaceResponse> {
         let req = self
             .client
-            .post("https://www.roblox.com/ide/places/createV2")
-            .header(header::CONTENT_LENGTH, 0)
-            .query(&[
-                ("universeId", &experience_id.to_string()),
-                ("templatePlaceIdToUse", &95206881.to_string()),
-            ]);
+            .post(format!("https://apis.roblox.com/universes/v1/user/universes/{}/places", experience_id))
+            .json(&json!({
+                "templatePlaceId": 95206881
+            }));
 
-        handle_as_json_with_status(req).await
+        handle_as_json(req).await
     }
 
     pub async fn configure_place(

@@ -5,7 +5,7 @@ use crate::models::{AssetId, SocialSlotType};
 pub const DEFAULT_PLACE_NAME: &str = "Untitled Game";
 
 #[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "camelCase")]
 pub struct CreatePlaceResponse {
     pub place_id: AssetId,
 }

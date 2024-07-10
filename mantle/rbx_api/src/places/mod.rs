@@ -2,7 +2,7 @@ pub mod models;
 
 use std::{fs, path::PathBuf};
 
-use reqwest::{header, Body, StatusCode};
+use reqwest::{Body, StatusCode};
 use serde_json::json;
 
 use crate::{
@@ -154,7 +154,10 @@ impl RobloxApi {
     ) -> RobloxApiResult<CreatePlaceResponse> {
         let req = self
             .client
-            .post(format!("https://apis.roblox.com/universes/v1/user/universes/{}/places", experience_id))
+            .post(format!(
+                "https://apis.roblox.com/universes/v1/user/universes/{}/places",
+                experience_id
+            ))
             .json(&json!({
                 "templatePlaceId": 95206881
             }));

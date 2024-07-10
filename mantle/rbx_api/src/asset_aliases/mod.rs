@@ -1,7 +1,6 @@
 mod models;
 
 use reqwest::header;
-use serde_json::json;
 
 use crate::{
     errors::RobloxApiResult,
@@ -22,14 +21,15 @@ impl RobloxApi {
         let req = self
             .client
             .post(format!(
-                "https://develop.roblox.com/v1/universes/{}/aliases",
-                experience_id
+                "https://apis.roblox.com/content-aliases-api/v1/universes/create-alias"
             ))
-            .json(&json!({
-                "name": name,
-                "type": "1",
-                "targetId": asset_id,
-            }));
+            .header(header::CONTENT_LENGTH, 0)
+            .query(&[
+                ("universeId", experience_id.to_string().as_str()),
+                ("name", name.as_str()),
+                ("type", "1"),
+                ("targetId", asset_id.to_string().as_str()),
+            ]);
 
         handle(req).await?;
 

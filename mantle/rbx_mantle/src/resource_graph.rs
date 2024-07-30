@@ -517,7 +517,7 @@ where
         let mut previous_resource_order = previous_graph.get_topological_order()?;
         previous_resource_order.reverse();
         for resource_id in previous_resource_order.iter() {
-            if self.resources.get(resource_id).is_some() {
+            if self.resources.contains_key(resource_id) {
                 continue;
             }
 
@@ -573,7 +573,7 @@ where
         previous_resource_order.reverse();
 
         for resource_id in previous_resource_order.iter() {
-            if self.resources.get(resource_id).is_some() {
+            if self.resources.contains_key(resource_id) {
                 continue;
             }
 

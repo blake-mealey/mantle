@@ -19,6 +19,7 @@ This guide assumes:
 GitHub will need some secrets in order to deploy your Mantle project. The workflow below uses the following secret names:
 
 - `ROBLOSECURITY` - your Roblox cookie used to manage your Roblox resources
+- `MANTLE_OPEN_CLOUD_API_KEY` - your Roblox Open Cloud API key to manage your Roblox resources
 - `MANTLE_AWS_ACCESS_KEY_ID` - your AWS access key ID used to manage your remote state file
 - `MANTLE_AWS_SECRET_ACCESS_KEY` - your AWS secret access key used to manage your remote state file
 
@@ -59,6 +60,7 @@ jobs:
         run: mantle deploy
         env:
           ROBLOSECURITY: ${{ secrets.ROBLOSECURITY }}
+          MANTLE_OPEN_CLOUD_API_KEY: ${{ secrets.MANTLE_OPEN_CLOUD_API_KEY }}
           MANTLE_AWS_ACCESS_KEY_ID: ${{ secrets.MANTLE_AWS_ACCESS_KEY_ID }}
           MANTLE_AWS_SECRET_ACCESS_KEY: ${{ secrets.MANTLE_AWS_SECRET_ACCESS_KEY }}
 ```

@@ -31,11 +31,17 @@ use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use log::warn;
 
 pub struct Cookie {
+    #[allow(dead_code)]
     pub prefix: String,
+    #[allow(dead_code)]
     pub url: String,
+    #[allow(dead_code)]
     pub is_raw: bool,
+    #[allow(dead_code)]
     pub path: String,
+    #[allow(dead_code)]
     pub is_secure: bool,
+    #[allow(dead_code)]
     pub expiry: f64,
     pub name: String,
     pub value: String,

@@ -9,12 +9,13 @@ import { Callout, Tabs, Tab } from "nextra-theme-docs";
 
 ## Resource management
 
-To manage resources, Mantle requires a valid `.ROBLOSECURITY` cookie value to authenticate all its
-requests.
+For most resource management, Mantle requires a valid `.ROBLOSECURITY` cookie value to authenticate its
+requests. Some resources (like Place Files) require a Roblox Open Cloud API key.
 
-If there is a logged-in Roblox Studio installation, Mantle can automatically
-extract its `.ROBLOSECURITY` cookie and will authenticate requests as the user
-logged in to Roblox Studio.
+### ROBLOSECURITY
+
+If there is a logged-in Roblox Studio installation, Mantle can automatically extract its `.ROBLOSECURITY`
+cookie and will authenticate requests as the user logged in to Roblox Studio.
 
 Otherwise, you will have to provide the cookie via an environment variable called `ROBLOSECURITY`.
 
@@ -89,6 +90,45 @@ To get your `.ROBLOSECURITY` cookie manually, you have a few options:
         Look in the output for a key called `roblox\\U00b7com.\\U00b7ROBLOSECURITY`, then look for the text in the
         format `COOK::<value>`. Copy the `value` part (not including the `<`/`>`). This is your `.ROBLOSECURITY`
         cookie. You can then set your environment variable using one of the above methods.
+    </Tab>
+
+</Tabs>
+
+### Roblox Open Cloud API key
+
+Follow the [official Roblox guide](https://create.roblox.com/docs/cloud/open-cloud/api-keys) for creating a
+Cloud API key. You must grant the key access to the following services:
+
+* Place Publishing for all experiences you want to manage with Mantle
+
+To authenticate with the Cloud API, you must provide the `MANTLE_OPEN_CLOUD_API_KEY` environment variable. You can
+set your environment variable in various ways, like the following:
+
+<Tabs items={["dotenv file", "Windows (PowerShell)", "MacOS/Linux (Bash)"]}>
+    <Tab>
+        Create a `.env` file with the contents:
+
+        ```shell
+        MANTLE_OPEN_CLOUD_API_KEY="{your api key}"
+        ```
+
+        [Learn more →](#dotenv-files)
+    </Tab>
+    <Tab>
+        ```ps1
+        $env:MANTLE_OPEN_CLOUD_API_KEY = "{your api key}"
+        ```
+
+        Note that this will be temporary and you will have to reset it whenever you start a new terminal
+        instance.
+    </Tab>
+    <Tab>
+        ```bash
+        export MANTLE_OPEN_CLOUD_API_KEY = "{your api key}"
+        ```
+
+        Note that this will be temporary and you will have to reset it whenever you start a new terminal
+        instance.
     </Tab>
 
 </Tabs>
@@ -182,6 +222,7 @@ After cloning the repo, create a `.env` file in the root of the project, and add
 ```
 MANTLE_AWS_ACCESS_KEY_ID="{your access key id}"
 MANTLE_AWS_SECRET_ACCESS_KEY="{your secret access key}"
+MANTLE_OPEN_CLOUD_API_KEY="{api key}"
 ```
 
 You can get the secrets by...

@@ -29,7 +29,7 @@ jobs:
           filename: mantle-win64.zip
           path: mantle/target/release/mantle.exe
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: mantle-win64
           path: mantle-win64.zip
@@ -61,7 +61,7 @@ jobs:
           filename: mantle-macos.zip
           path: mantle/target/release/mantle
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: mantle-macos
           path: mantle-macos.zip
@@ -89,7 +89,7 @@ jobs:
           filename: mantle-linux.zip
           path: mantle/target/release/mantle
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: mantle-linux
           path: mantle-linux.zip
@@ -97,7 +97,7 @@ jobs:
         working-directory: mantle
         run: cargo run --release --bin gen_schema > schema.json
       - name: Upload schema artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: schema
           path: mantle/schema.json

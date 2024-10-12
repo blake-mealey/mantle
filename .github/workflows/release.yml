@@ -10,7 +10,10 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: 1.79.0
       - uses: actions/cache@v2
         with:
           path: |
@@ -36,7 +39,10 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: 1.79.0
       - uses: actions/cache@v2
         with:
           path: |
@@ -68,7 +74,10 @@ jobs:
   linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: 1.79.0
       - uses: actions/cache@v2
         with:
           path: |
@@ -106,7 +115,7 @@ jobs:
     needs: [windows, macos, linux]
     steps:
       - name: Download binaries
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
       - name: Create release

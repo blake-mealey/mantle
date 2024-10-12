@@ -49,7 +49,7 @@ impl RobloxAuth {
 
 async fn get_csrf_token(roblosecurity_cookie: &str) -> Result<HeaderValue, RobloxAuthError> {
     let response = Client::new()
-        .post("https://auth.roblox.com")
+        .post("https://auth.roblox.com//")
         .header(header::COOKIE, roblosecurity_cookie)
         .header(header::CONTENT_LENGTH, 0)
         .send()

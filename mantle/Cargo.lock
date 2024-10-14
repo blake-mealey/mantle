@@ -2439,7 +2439,7 @@ dependencies = [
 
 [[package]]
 name = "rbx_api"
-version = "0.4.10"
+version = "0.4.11-prerelease"
 dependencies = [
  "base64 0.13.1",
  "log",
@@ -2458,7 +2458,7 @@ dependencies = [
 
 [[package]]
 name = "rbx_auth"
-version = "0.2.2"
+version = "0.2.3-prerelease"
 dependencies = [
  "clap 2.34.0",
  "env_logger",

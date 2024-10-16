@@ -9,6 +9,7 @@ use crate::{
     errors::RobloxApiResult,
     helpers::{get_file_part, handle, handle_as_json},
     models::{AssetId, CreatorType, UploadImageResponse},
+    multipart_middleware::MultipartExtensionBuilder,
     RobloxApi,
 };
 
@@ -30,13 +31,14 @@ impl RobloxApi {
                 "https://badges.roblox.com/v1/universes/{}/badges",
                 experience_id
             ))
-            .multipart(
-                Form::new()
-                    .part("request.files", get_file_part(icon_file_path).await?)
-                    .text("request.name", name)
-                    .text("request.description", description)
-                    .text("request.paymentSourceType", payment_source.to_string())
-                    .text("request.expectedCost", expected_cost.to_string()),
+            .with_extension(
+                MultipartExtensionBuilder::new(self.client)
+                    .file("request.files", &icon_file_path)
+                    .text("request.name", &name)
+                    .text("request.description", &description)
+                    .text("request.paymentSourceType", &payment_source.to_string())
+                    .text("request.expectedCost", &expected_cost.to_string())
+                    .build(),
             );
 
         handle_as_json(req).await
@@ -123,7 +125,7 @@ impl RobloxApi {
                 "https://publish.roblox.com/v1/badges/{}/icon",
                 badge_id
             ))
-            .multipart(Form::new().part("request.files", get_file_part(icon_file).await?));
+            .multipart(Form::new().part("request.files", get_file_part(icon_file)?));
 
         handle_as_json(req).await
     }

@@ -9,6 +9,7 @@ pub mod game_passes;
 pub mod groups;
 mod helpers;
 pub mod models;
+mod multipart_middleware;
 pub mod notifications;
 pub mod places;
 pub mod social_links;
@@ -17,10 +18,12 @@ pub mod thumbnails;
 
 use errors::{RobloxApiError, RobloxApiResult};
 use helpers::handle;
+use multipart_middleware::MultipartMiddleware;
 use rbx_auth::{RobloxAuth, WithRobloxAuth};
+use reqwest_middleware::ClientWithMiddleware;
 
 pub struct RobloxApi {
-    client: reqwest::Client,
+    client: ClientWithMiddleware,
 }
 
 impl RobloxApi {
@@ -29,8 +32,9 @@ impl RobloxApi {
             client: reqwest::Client::builder()
                 .connection_verbose(true)
                 .user_agent("Roblox/WinInet")
-                .roblox_auth(roblox_auth)
-                .build()?,
+                .roblox_auth(roblox_auth)?
+                .with(MultipartMiddleware)
+                .build(),
         })
     }
 

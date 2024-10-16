@@ -1,11 +1,9 @@
-use std::{ffi::OsStr, path::PathBuf};
+use std::{ffi::OsStr, fs, path::PathBuf};
 
 use log::trace;
-use reqwest::{multipart::Part, Body};
+use reqwest::multipart::Part;
 use scraper::{Html, Selector};
 use serde::de;
-use tokio::fs::File;
-use tokio_util::codec::{BytesCodec, FramedRead};
 
 use crate::{errors::RobloxApiErrorResponse, RobloxApiError, RobloxApiResult};
 
@@ -49,7 +47,7 @@ pub async fn get_roblox_api_error_from_response(response: reqwest::Response) -> 
 }
 
 pub async fn handle(
-    request_builder: reqwest::RequestBuilder,
+    request_builder: reqwest_middleware::RequestBuilder,
 ) -> RobloxApiResult<reqwest::Response> {
     let result = request_builder.send().await;
     match result {
@@ -71,7 +69,9 @@ pub async fn handle(
     }
 }
 
-pub async fn handle_as_json<T>(request_builder: reqwest::RequestBuilder) -> RobloxApiResult<T>
+pub async fn handle_as_json<T>(
+    request_builder: reqwest_middleware::RequestBuilder,
+) -> RobloxApiResult<T>
 where
     T: de::DeserializeOwned,
 {
@@ -82,7 +82,7 @@ where
 }
 
 pub async fn handle_as_json_with_status<T>(
-    request_builder: reqwest::RequestBuilder,
+    request_builder: reqwest_middleware::RequestBuilder,
 ) -> RobloxApiResult<T>
 where
     T: de::DeserializeOwned,
@@ -101,9 +101,13 @@ where
     Ok(serde_json::from_slice::<T>(&data)?)
 }
 
-pub async fn get_file_part(file_path: PathBuf) -> RobloxApiResult<Part> {
-    let file = File::open(&file_path).await?;
-    let reader = Body::wrap_stream(FramedRead::new(file, BytesCodec::new()));
+// TODO: can we find a way to stream the request while using middleware?
+// This would probably require some additional middleware that re-streams
+// the data a second time (e.g. we could pass in a function that is called
+// on init and on retry to modify the request using a stream from disk)
+#[deprecated]
+pub fn get_file_part(file_path: PathBuf) -> RobloxApiResult<Part> {
+    let data = fs::read(&file_path)?;
 
     let file_name = file_path
         .file_name()
@@ -112,7 +116,7 @@ pub async fn get_file_part(file_path: PathBuf) -> RobloxApiResult<Part> {
         .to_owned();
     let mime = mime_guess::from_path(&file_path).first_or_octet_stream();
 
-    Ok(Part::stream(reader)
+    Ok(Part::bytes(data)
         .file_name(file_name)
         .mime_str(mime.as_ref())
         .unwrap())

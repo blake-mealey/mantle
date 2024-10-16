@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
-use reqwest::{
-    cookie::Jar,
-    header::{self, HeaderMap, HeaderValue},
-    Client, ClientBuilder,
-};
+use log::debug;
+use reqwest::{cookie::Jar, header::HeaderValue, ClientBuilder, StatusCode};
+use reqwest_chain::{ChainMiddleware, Chainer};
 use thiserror::Error;
 use url::Url;
 
@@ -28,7 +26,6 @@ impl From<RobloxAuthError> for String {
 #[derive(Debug)]
 pub struct RobloxAuth {
     pub jar: Jar,
-    pub headers: HeaderMap,
 }
 
 impl RobloxAuth {
@@ -40,35 +37,65 @@ impl RobloxAuth {
         let url = "https://roblox.com".parse::<Url>().unwrap();
         jar.add_cookie_str(&roblosecurity_cookie, &url);
 
-        let mut headers = reqwest::header::HeaderMap::new();
-        headers.insert("X-CSRF-Token", get_csrf_token(&roblosecurity_cookie).await?);
-
-        Ok(Self { jar, headers })
+        Ok(Self { jar })
     }
 }
 
-async fn get_csrf_token(roblosecurity_cookie: &str) -> Result<HeaderValue, RobloxAuthError> {
-    let response = Client::new()
-        .post("https://auth.roblox.com//")
-        .header(header::COOKIE, roblosecurity_cookie)
-        .header(header::CONTENT_LENGTH, 0)
-        .send()
-        .await?;
-
-    response
-        .headers()
-        .get("X-CSRF-Token")
-        .map(|v| v.to_owned())
-        .ok_or(RobloxAuthError::MissingCsrfToken)
-}
-
 pub trait WithRobloxAuth {
-    fn roblox_auth(self, roblox_auth: RobloxAuth) -> Self;
+    fn roblox_auth(
+        self,
+        roblox_auth: RobloxAuth,
+    ) -> Result<reqwest_middleware::ClientBuilder, reqwest::Error>;
 }
 
 impl WithRobloxAuth for ClientBuilder {
-    fn roblox_auth(self, roblox_auth: RobloxAuth) -> Self {
-        self.cookie_provider(Arc::new(roblox_auth.jar))
-            .default_headers(roblox_auth.headers)
+    fn roblox_auth(
+        self,
+        roblox_auth: RobloxAuth,
+    ) -> Result<reqwest_middleware::ClientBuilder, reqwest::Error> {
+        let reqwest_client = self.cookie_provider(Arc::new(roblox_auth.jar)).build()?;
+        Ok(reqwest_middleware::ClientBuilder::new(reqwest_client)
+            .with(ChainMiddleware::new(CsrfTokenMiddleware)))
+    }
+}
+
+struct CsrfTokenMiddleware;
+
+#[async_trait::async_trait]
+impl Chainer for CsrfTokenMiddleware {
+    // TODO: is this state per request chain? Maybe we should store this in the CsrfTokenMiddleware struct instead
+    type State = Option<HeaderValue>;
+
+    async fn chain(
+        &self,
+        result: Result<reqwest::Response, reqwest_middleware::Error>,
+        state: &mut Self::State,
+        request: &mut reqwest::Request,
+    ) -> Result<Option<reqwest::Response>, reqwest_middleware::Error> {
+        let response = result?;
+
+        let csrf_token = response.headers().get("X-CSRF-TOKEN").cloned();
+        if let Some(value) = csrf_token {
+            debug!(
+                "Store X-CSRF-Token: {}",
+                value.to_str().unwrap_or("INVALID")
+            );
+            *state = Some(value)
+        }
+
+        match response.status() {
+            StatusCode::FORBIDDEN => match state {
+                Some(value) => {
+                    debug!(
+                        "Retry with X-CSRF-Token: {}",
+                        value.to_str().unwrap_or("INVALID")
+                    );
+                    request.headers_mut().insert("X-CSRF-TOKEN", value.clone());
+                    Ok(None)
+                }
+                None => Ok(Some(response)),
+            },
+            _ => Ok(Some(response)),
+        }
     }
 }

@@ -48,8 +48,8 @@ async fn run(format: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
 
     let client = reqwest::Client::builder()
         .user_agent("Roblox/WinInet")
-        .roblox_auth(auth)
-        .build()?;
+        .roblox_auth(auth)?
+        .build();
 
     let res = client
         .get("https://users.roblox.com/v1/users/authenticated")

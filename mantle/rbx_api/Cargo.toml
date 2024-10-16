@@ -13,6 +13,7 @@ include = ["src", "Cargo.toml", "README.md"]
 rbx_auth = { path = "../rbx_auth", version = "0.2.3-prerelease", default-features = false }
 
 thiserror = "1.0.31"
+anyhow = "1.0.89"
 log = "0.4.14"
 
 serde = { version = "1.0", features = ["derive"] }
@@ -20,15 +21,19 @@ serde_json = { version = "1.0.59" }
 serde_repr = "0.1.7"
 
 scraper = "0.12.0"
-reqwest = { version = "0.11.6", features = [
+reqwest = { version = "0.12.0", features = [
     "cookies",
     "json",
     "multipart",
     "stream",
 ] }
+http = "1.1.0"
 url = { version = "2.2.2", features = ["serde"] }
 mime_guess = "2.0.3"
 base64 = "0.13.0"
 
 tokio = { version = "1", features = ["full"] }
-tokio-util = { version = "0.6.9", features = ["codec"] }
+tokio-util = { version = "0.7.9", features = ["codec"] }
+async-trait = "0.1.51"
+reqwest-middleware = { version = "0.3.3", features = ["json", "multipart"] }
+reqwest-chain = "0.2.0"

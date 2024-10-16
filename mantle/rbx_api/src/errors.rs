@@ -1,14 +1,31 @@
+use std::fmt::Display;
+
 use reqwest::StatusCode;
 use serde::Deserialize;
 use thiserror::Error;
 
 use crate::models::AssetTypeId;
 
+#[derive(Debug)]
+pub enum HttpClientError {
+    Reqwest(reqwest::Error),
+    ReqwestMiddleware(reqwest_middleware::Error),
+}
+
+impl Display for HttpClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Reqwest(err) => f.write_str(&err.to_string()),
+            Self::ReqwestMiddleware(err) => f.write_str(&err.to_string()),
+        }
+    }
+}
+
 // TODO: Improve some of these error messages.
 #[derive(Error, Debug)]
 pub enum RobloxApiError {
     #[error("HTTP client error: {0}")]
-    HttpClient(#[from] reqwest::Error),
+    HttpClient(HttpClientError),
 
     #[error("Authorization has been denied for this request. Check your ROBLOSECURITY cookie.")]
     Authorization,
@@ -54,6 +71,18 @@ pub enum RobloxApiError {
 
     #[error("Place file size may be too large.")]
     RbxlPlaceFileSizeMayBeTooLarge,
+}
+
+impl From<reqwest::Error> for RobloxApiError {
+    fn from(err: reqwest::Error) -> Self {
+        RobloxApiError::HttpClient(HttpClientError::Reqwest(err))
+    }
+}
+
+impl From<reqwest_middleware::Error> for RobloxApiError {
+    fn from(err: reqwest_middleware::Error) -> Self {
+        RobloxApiError::HttpClient(HttpClientError::ReqwestMiddleware(err))
+    }
 }
 
 // Temporary to make the new errors backwards compatible with the String errors throughout the project.

@@ -27,7 +27,7 @@ impl RobloxApi {
                 "https://publish.roblox.com/v1/games/{}/icon",
                 experience_id
             ))
-            .multipart(Form::new().part("request.files", get_file_part(icon_file).await?));
+            .multipart(Form::new().part("request.files", get_file_part(icon_file)?));
 
         handle_as_json(req).await
     }
@@ -43,7 +43,7 @@ impl RobloxApi {
                 "https://publish.roblox.com/v1/games/{}/thumbnail/image",
                 experience_id
             ))
-            .multipart(Form::new().part("request.files", get_file_part(thumbnail_file).await?));
+            .multipart(Form::new().part("request.files", get_file_part(thumbnail_file)?));
 
         handle_as_json(req).await
     }

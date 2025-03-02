@@ -23,7 +23,7 @@ use rbx_api::{
     game_passes::models::{CreateGamePassResponse, GetGamePassResponse},
     models::{AssetId, AssetTypeId, CreatorType, UploadImageResponse},
     notifications::models::CreateNotificationResponse,
-    places::models::{GetPlaceResponse, PlaceConfigurationModel},
+    places::models::PlaceConfigurationModel,
     social_links::models::{CreateSocialLinkResponse, SocialLinkType},
     spatial_voice::models::UpdateSpatialVoiceSettingsRequest,
     RobloxApi,
@@ -518,17 +518,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                         version: response.version_number,
                     }))
                 } else {
-                    self.roblox_api
-                        .upload_place(self.get_path(inputs.file_path), place.asset_id)
-                        .await?;
-                    let GetPlaceResponse {
-                        current_saved_version,
-                        ..
-                    } = self.roblox_api.get_place(place.asset_id).await?;
-
-                    Ok(RobloxOutputs::PlaceFile(PlaceFileOutputs {
-                        version: current_saved_version,
-                    }))
+                    Err("Place uploads require Open Cloud authentication. Find out more here: https://mantledeploy.vercel.app/docs/authentication#roblox-open-cloud-api-key".to_string())
                 }
             }
             RobloxInputs::PlaceConfiguration(inputs) => {

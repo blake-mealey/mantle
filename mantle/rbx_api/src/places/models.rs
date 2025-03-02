@@ -77,8 +77,3 @@ pub struct ListPlacesResponse {
 pub struct ListPlaceResponse {
     pub id: AssetId,
 }
-
-pub enum PlaceFileFormat {
-    Xml,
-    Binary,
-}

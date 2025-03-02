@@ -1,12 +1,9 @@
 pub mod models;
 
-use std::{fs, path::PathBuf};
-
-use reqwest::{Body, StatusCode};
 use serde_json::json;
 
 use crate::{
-    errors::{RobloxApiError, RobloxApiResult},
+    errors::RobloxApiResult,
     helpers::{handle, handle_as_json, handle_as_json_with_status},
     models::AssetId,
     RobloxApi,
@@ -14,73 +11,10 @@ use crate::{
 
 use self::models::{
     CreatePlaceResponse, GetPlaceResponse, ListPlaceResponse, ListPlacesResponse,
-    PlaceConfigurationModel, PlaceFileFormat, RemovePlaceResponse,
+    PlaceConfigurationModel, RemovePlaceResponse,
 };
 
 impl RobloxApi {
-    pub async fn upload_place(
-        &self,
-        place_file: PathBuf,
-        place_id: AssetId,
-    ) -> RobloxApiResult<()> {
-        let file_format = match place_file.extension().and_then(|e| e.to_str()) {
-            Some("rbxl") => PlaceFileFormat::Binary,
-            Some("rbxlx") => PlaceFileFormat::Xml,
-            _ => {
-                return Err(RobloxApiError::InvalidFileExtension(
-                    place_file.display().to_string(),
-                ))
-            }
-        };
-
-        let data = fs::read(&place_file)?;
-
-        let body: Body = match file_format {
-            PlaceFileFormat::Binary => data.into(),
-            PlaceFileFormat::Xml => String::from_utf8(data)?.into(),
-        };
-
-        let content_type = match file_format {
-            PlaceFileFormat::Binary => "application/octet-stream",
-            PlaceFileFormat::Xml => "application/xml",
-        };
-
-        let req = self
-            .client
-            .post("https://data.roblox.com/Data/Upload.ashx")
-            .query(&[("assetId", place_id.to_string())])
-            .header("Content-Type", content_type)
-            .body(body);
-
-        let result = handle(req).await;
-
-        match result {
-            Err(RobloxApiError::Roblox {
-                status_code,
-                reason,
-            }) => match (file_format, status_code) {
-                (PlaceFileFormat::Xml, StatusCode::PAYLOAD_TOO_LARGE) => {
-                    Err(RobloxApiError::RbxlxPlaceFileSizeTooLarge)
-                }
-                (PlaceFileFormat::Xml, StatusCode::NOT_FOUND) => {
-                    Err(RobloxApiError::RbxlxPlaceFileSizeMayBeTooLarge)
-                }
-                (PlaceFileFormat::Binary, StatusCode::PAYLOAD_TOO_LARGE) => {
-                    Err(RobloxApiError::RbxlPlaceFileSizeTooLarge)
-                }
-                (PlaceFileFormat::Binary, StatusCode::NOT_FOUND) => {
-                    Err(RobloxApiError::RbxlPlaceFileSizeMayBeTooLarge)
-                }
-                _ => Err(RobloxApiError::Roblox {
-                    status_code,
-                    reason,
-                }),
-            },
-            Err(e) => Err(e),
-            Ok(_) => Ok(()),
-        }
-    }
-
     pub async fn get_place(&self, place_id: AssetId) -> RobloxApiResult<GetPlaceResponse> {
         let req = self
             .client

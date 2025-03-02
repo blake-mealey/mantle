@@ -88,16 +88,25 @@ fn from_roblox_studio() -> Option<String> {
     let mut cookie_store = binarycookies::Cookies::new(false);
     cookie_store.parse_content(&binary).ok()?;
 
-    if let Some(cookie) = cookie_store
-        .cookies
-        .iter()
-        .find(|cookie| cookie.name == COOKIE_NAME)
-    {
-        info!("Loaded cookie from MacOS HTTPStorages.");
-        Some(cookie.value.clone())
-    } else {
-        None
+    if let Some(cookie) = cookie_store.find_by_name(COOKIE_NAME) {
+        info!("Loaded cookie from MacOS HTTPStorages (single-user).");
+        return Some(cookie.value.clone());
     }
+
+    if let Some(user_id) = cookie_store.find_by_name("/RobloxStudioAuth/userid") {
+        if let Some(cookie) = cookie_store.find_by_name(&format!(
+            "/RobloxStudioAuth/.ROBLOSECURITY{}",
+            user_id.value
+        )) {
+            info!(
+                "Loaded cookie from MacOS HTTPStorages (user_id: {}).",
+                user_id.value
+            );
+            return Some(cookie.value.clone());
+        }
+    }
+
+    None
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]

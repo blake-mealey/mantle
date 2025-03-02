@@ -30,6 +30,7 @@ use std::io::{Error, ErrorKind};
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use log::warn;
 
+#[derive(Debug)]
 pub struct Cookie {
     #[allow(dead_code)]
     pub prefix: String,
@@ -58,6 +59,10 @@ impl Cookies {
             http_only,
             cookies: Vec::new(),
         }
+    }
+
+    pub fn find_by_name(&self, name: &str) -> Option<&Cookie> {
+        self.cookies.iter().find(|cookie| cookie.name == name)
     }
 
     pub fn parse_content(&mut self, bs: &[u8]) -> io::Result<()> {
@@ -180,20 +185,12 @@ fn slice_to(bs: &[u8], off: usize, to: usize) -> io::Result<&[u8]> {
 }
 
 fn c_str(bs: &[u8]) -> io::Result<String> {
-    bs.split_last()
-        .ok_or_else(|| Error::new(ErrorKind::InvalidData, "null c string"))
-        .and_then(|(&last, elements)| {
-            if last == 0x00 {
-                Ok(elements)
-            } else {
-                Err(Error::new(
-                    ErrorKind::InvalidData,
-                    "c string non null terminator",
-                ))
-            }
-        })
-        .and_then(|elements| {
-            String::from_utf8(elements.to_vec())
-                .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string()))
-        })
+    match bs.iter().position(|c| *c == 0x00) {
+        None => Err(Error::new(
+            ErrorKind::InvalidData,
+            "invalid c string (no null char)",
+        )),
+        Some(null_index) => String::from_utf8(bs[..null_index].to_vec())
+            .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string())),
+    }
 }

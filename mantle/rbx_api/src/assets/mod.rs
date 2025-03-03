@@ -7,45 +7,14 @@ use serde_json::json;
 
 use crate::{
     errors::{RobloxApiError, RobloxApiResult},
-    helpers::{handle, handle_as_json, handle_as_json_with_status},
+    helpers::{handle, handle_as_json},
     models::{AssetId, AssetTypeId, CreatorType},
     RobloxApi,
 };
 
-use self::models::{
-    CreateAssetQuota, CreateAssetQuotasResponse, CreateAudioAssetResponse, CreateImageAssetResponse,
-};
+use self::models::{CreateAssetQuota, CreateAssetQuotasResponse, CreateAudioAssetResponse};
 
 impl RobloxApi {
-    pub async fn create_image_asset(
-        &self,
-        file_path: PathBuf,
-        group_id: Option<AssetId>,
-    ) -> RobloxApiResult<CreateImageAssetResponse> {
-        let data = fs::read(&file_path)?;
-
-        let file_name = format!(
-            "Images/{}",
-            file_path.file_stem().and_then(OsStr::to_str).unwrap()
-        );
-
-        let mut req = self
-            .client
-            .post("https://data.roblox.com/data/upload/json")
-            .header(reqwest::header::CONTENT_TYPE, "*/*")
-            .body(data)
-            .query(&[
-                ("assetTypeId", &AssetTypeId::Decal.to_string()),
-                ("name", &file_name),
-                ("description", &"madewithmantle".to_owned()),
-            ]);
-        if let Some(group_id) = group_id {
-            req = req.query(&[("groupId", &group_id.to_string())]);
-        }
-
-        handle_as_json_with_status(req).await
-    }
-
     pub async fn get_create_asset_quota(
         &self,
         asset_type: AssetTypeId,

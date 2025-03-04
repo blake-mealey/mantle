@@ -63,10 +63,6 @@ impl Default for PlaceConfigurationModel {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RemovePlaceResponse {}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ListPlacesResponse {
     pub next_page_cursor: Option<String>,
     pub data: Vec<ListPlaceResponse>,

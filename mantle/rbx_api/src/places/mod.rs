@@ -4,14 +4,14 @@ use serde_json::json;
 
 use crate::{
     errors::RobloxApiResult,
-    helpers::{handle, handle_as_json, handle_as_json_with_status},
+    helpers::{handle, handle_as_json},
     models::AssetId,
     RobloxApi,
 };
 
 use self::models::{
     CreatePlaceResponse, GetPlaceResponse, ListPlaceResponse, ListPlacesResponse,
-    PlaceConfigurationModel, RemovePlaceResponse,
+    PlaceConfigurationModel,
 };
 
 impl RobloxApi {
@@ -82,17 +82,14 @@ impl RobloxApi {
         let res = self
             .csrf_token_store
             .send_request(|| async {
-                Ok(self
-                    .client
-                    .post("https://www.roblox.com/universes/removeplace")
-                    .form(&[
-                        ("universeId", &experience_id.to_string()),
-                        ("placeId", &place_id.to_string()),
-                    ]))
+                Ok(self.client.post(format!(
+                    "https://apis.roblox.com/universes/v1/universes/{}/places/{}/remove-place",
+                    &experience_id, &place_id
+                )))
             })
             .await;
 
-        handle_as_json_with_status::<RemovePlaceResponse>(res).await?;
+        handle(res).await?;
 
         Ok(())
     }

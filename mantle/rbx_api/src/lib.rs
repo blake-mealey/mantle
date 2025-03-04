@@ -14,9 +14,9 @@ pub mod places;
 pub mod social_links;
 pub mod spatial_voice;
 pub mod thumbnails;
+pub mod user;
 
 use errors::{RobloxApiError, RobloxApiResult};
-use helpers::handle;
 use rbx_auth::{RobloxAuth, WithRobloxAuth};
 
 pub struct RobloxApi {
@@ -35,14 +35,7 @@ impl RobloxApi {
     }
 
     pub async fn validate_auth(&self) -> RobloxApiResult<()> {
-        let req = self
-            .client
-            .get("https://users.roblox.com/v1/users/authenticated");
-
-        handle(req)
-            .await
-            .map_err(|_| RobloxApiError::Authorization)?;
-
+        self.get_authenticated_user().await?;
         Ok(())
     }
 }

@@ -5,11 +5,12 @@ Make requests to Roblox's web APIs. Currently does not support any Open Cloud AP
 ## Usage
 
 ```rs
-use rbx_auth::RobloxAuth;
+use rbx_auth::{RobloxCookieStore, RobloxCsrfTokenStore};
 use rbx_api::RobloxApi;
 
-let auth = RobloxAuth::new().await?;
-let api = RobloxApi::new(auth)?;
+let cookie_store = Arc::new(RobloxCookieStore::new()?);
+let csrf_token_store = RobloxCsrfTokenStore::new();
+let api = RobloxApi::new(cookie_store, csrf_token_store)?;
 
-api.upload_place("MyPlace.rbxl".into(), 123456)?;
+let user = api.get_authenticated_user().await?;
 ```

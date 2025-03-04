@@ -1,6 +1,7 @@
 use std::{
     env,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use async_trait::async_trait;
@@ -27,7 +28,7 @@ use rbx_api::{
     user::models::GetAuthenticatedUserResponse,
     RobloxApi,
 };
-use rbx_auth::RobloxAuth;
+use rbx_auth::{RobloxCookieStore, RobloxCsrfTokenStore};
 use rbxcloud::rbx::{
     types::{PlaceId, UniverseId},
     v1::{
@@ -341,8 +342,9 @@ pub struct RobloxResourceManager {
 
 impl RobloxResourceManager {
     pub async fn new(project_path: &Path, payment_source: CreatorType) -> Result<Self, String> {
-        let roblox_auth = RobloxAuth::new().await?;
-        let roblox_api = RobloxApi::new(roblox_auth)?;
+        let cookie_store = Arc::new(RobloxCookieStore::new()?);
+        let csrf_token_store = RobloxCsrfTokenStore::new();
+        let roblox_api = RobloxApi::new(cookie_store, csrf_token_store)?;
 
         logger::start_action("Logging in:");
         let user = match roblox_api.get_authenticated_user().await {

@@ -16,11 +16,16 @@ use self::models::{
 
 impl RobloxApi {
     pub async fn get_place(&self, place_id: AssetId) -> RobloxApiResult<GetPlaceResponse> {
-        let req = self
-            .client
-            .get(format!("https://develop.roblox.com/v2/places/{}", place_id));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .get(format!("https://develop.roblox.com/v2/places/{}", place_id)))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn list_places(
@@ -28,18 +33,23 @@ impl RobloxApi {
         experience_id: AssetId,
         page_cursor: Option<String>,
     ) -> RobloxApiResult<ListPlacesResponse> {
-        let mut req = self.client.get(format!(
-            "https://develop.roblox.com/v1/universes/{}/places",
-            experience_id
-        ));
-        if let Some(page_cursor) = page_cursor {
-            req = req.query(&[("cursor", &page_cursor)]);
-        }
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                let mut req = self.client.get(format!(
+                    "https://develop.roblox.com/v1/universes/{}/places",
+                    experience_id
+                ));
+                if let Some(page_cursor) = &page_cursor {
+                    req = req.query(&[("cursor", page_cursor)]);
+                }
+                Ok(req)
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
-    // TODO: implement generic form
     pub async fn get_all_places(
         &self,
         experience_id: AssetId,
@@ -69,15 +79,20 @@ impl RobloxApi {
         experience_id: AssetId,
         place_id: AssetId,
     ) -> RobloxApiResult<()> {
-        let req = self
-            .client
-            .post("https://www.roblox.com/universes/removeplace")
-            .form(&[
-                ("universeId", &experience_id.to_string()),
-                ("placeId", &place_id.to_string()),
-            ]);
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post("https://www.roblox.com/universes/removeplace")
+                    .form(&[
+                        ("universeId", &experience_id.to_string()),
+                        ("placeId", &place_id.to_string()),
+                    ]))
+            })
+            .await;
 
-        handle_as_json_with_status::<RemovePlaceResponse>(req).await?;
+        handle_as_json_with_status::<RemovePlaceResponse>(res).await?;
 
         Ok(())
     }
@@ -86,17 +101,22 @@ impl RobloxApi {
         &self,
         experience_id: AssetId,
     ) -> RobloxApiResult<CreatePlaceResponse> {
-        let req = self
-            .client
-            .post(format!(
-                "https://apis.roblox.com/universes/v1/user/universes/{}/places",
-                experience_id
-            ))
-            .json(&json!({
-                "templatePlaceId": 95206881
-            }));
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .post(format!(
+                        "https://apis.roblox.com/universes/v1/user/universes/{}/places",
+                        experience_id
+                    ))
+                    .json(&json!({
+                        "templatePlaceId": 95206881
+                    })))
+            })
+            .await;
 
-        handle_as_json(req).await
+        handle_as_json(res).await
     }
 
     pub async fn configure_place(
@@ -104,12 +124,17 @@ impl RobloxApi {
         place_id: AssetId,
         place_configuration: &PlaceConfigurationModel,
     ) -> RobloxApiResult<()> {
-        let req = self
-            .client
-            .patch(format!("https://develop.roblox.com/v2/places/{}", place_id))
-            .json(place_configuration);
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .patch(format!("https://develop.roblox.com/v2/places/{}", place_id))
+                    .json(place_configuration))
+            })
+            .await;
 
-        handle(req).await?;
+        handle(res).await?;
 
         Ok(())
     }

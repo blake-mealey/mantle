@@ -12,9 +12,7 @@ use rbx_api::{
         GrantAssetPermissionRequestAction, GrantAssetPermissionRequestSubjectType,
         GrantAssetPermissionsRequestRequest,
     },
-    assets::models::{
-        CreateAssetQuota, CreateAudioAssetResponse, CreateImageAssetResponse, QuotaDuration,
-    },
+    assets::models::{CreateAssetQuota, CreateAudioAssetResponse, QuotaDuration},
     badges::models::CreateBadgeResponse,
     developer_products::models::{
         CreateDeveloperProductIconResponse, CreateDeveloperProductResponse,
@@ -27,12 +25,19 @@ use rbx_api::{
     places::models::PlaceConfigurationModel,
     social_links::models::{CreateSocialLinkResponse, SocialLinkType},
     spatial_voice::models::UpdateSpatialVoiceSettingsRequest,
+    user::models::GetAuthenticatedUserResponse,
     RobloxApi,
 };
 use rbx_auth::{RobloxCookieStore, RobloxCsrfTokenStore};
 use rbxcloud::rbx::{
     types::{PlaceId, UniverseId},
-    v1::{PublishVersionType, RbxCloud},
+    v1::{
+        assets::{
+            AssetCreation, AssetCreationContext, AssetCreator, AssetGroupCreator, AssetType,
+            AssetUserCreator,
+        },
+        CreateAsset, GetAsset, PublishVersionType, RbxCloud,
+    },
 };
 use serde::{Deserialize, Serialize};
 use yansi::Paint;
@@ -332,6 +337,7 @@ pub struct RobloxResourceManager {
     roblox_cloud: Option<RbxCloud>,
     project_path: PathBuf,
     payment_source: CreatorType,
+    user: GetAuthenticatedUserResponse,
 }
 
 impl RobloxResourceManager {
@@ -339,7 +345,25 @@ impl RobloxResourceManager {
         let cookie_store = Arc::new(RobloxCookieStore::new()?);
         let csrf_token_store = RobloxCsrfTokenStore::new();
         let roblox_api = RobloxApi::new(cookie_store, csrf_token_store)?;
-        roblox_api.validate_auth().await?;
+        let roblox_api = RobloxApi::new(roblox_auth)?;
+
+        logger::start_action("Logging in:");
+        let user = match roblox_api.get_authenticated_user().await {
+            Ok(user) => {
+                logger::log(format!("User ID: {}", user.id));
+                logger::log(format!("User name: {}", user.name));
+                logger::log(format!("User display name: {}", user.display_name));
+                logger::end_action_without_message();
+                user
+            }
+            Err(err) => {
+                return {
+                    logger::log(Paint::red("Failed to login"));
+                    logger::end_action_without_message();
+                    Err(err.into())
+                }
+            }
+        };
 
         let open_cloud_api_key = match env::var("MANTLE_OPEN_CLOUD_API_KEY") {
             Ok(v) => {
@@ -356,11 +380,12 @@ impl RobloxResourceManager {
             roblox_cloud,
             project_path: project_path.to_path_buf(),
             payment_source,
+            user,
         })
     }
 
-    fn get_path(&self, file: String) -> PathBuf {
-        self.project_path.join(file)
+    fn get_path<S: Into<String>>(&self, file: S) -> PathBuf {
+        self.project_path.join(file.into())
     }
 }
 
@@ -642,19 +667,77 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 }))
             }
             RobloxInputs::ImageAsset(inputs) => {
-                let CreateImageAssetResponse {
-                    asset_id,
-                    backing_asset_id,
-                    ..
-                } = self
-                    .roblox_api
-                    .create_image_asset(self.get_path(inputs.file_path), inputs.group_id)
-                    .await?;
+                if let Some(roblox_cloud) = &self.roblox_cloud {
+                    let file = self.get_path(&inputs.file_path);
 
-                Ok(RobloxOutputs::ImageAsset(ImageAssetOutputs {
-                    asset_id: backing_asset_id,
-                    decal_asset_id: Some(asset_id),
-                }))
+                    let asset_type = file
+                        .extension()
+                        .map(|ext| ext.to_str().unwrap())
+                        .and_then(|ext| AssetType::try_from_extension(ext).ok())
+                        .ok_or("Unable to determine image asset type")?;
+
+                    let creator = match inputs.group_id {
+                        Some(group_id) => AssetCreator::Group(AssetGroupCreator {
+                            group_id: group_id.to_string(),
+                        }),
+                        None => AssetCreator::User(AssetUserCreator {
+                            user_id: self.user.id.to_string(),
+                        }),
+                    };
+
+                    let operation = roblox_cloud
+                        .assets()
+                        .create(&CreateAsset {
+                            asset: AssetCreation {
+                                asset_type,
+                                display_name: inputs.file_path.clone(),
+                                description: inputs.file_path,
+                                creation_context: AssetCreationContext {
+                                    creator,
+                                    expected_price: None,
+                                },
+                            },
+                            filepath: file.into_os_string().into_string().unwrap(),
+                        })
+                        .await
+                        .map_err(|e| e.to_string())?;
+
+                    let operation_id = operation
+                        .path
+                        .as_ref()
+                        .and_then(|path| path.split_once('/'))
+                        .map(|(_, id)| id.to_string())
+                        .ok_or("Unable to parse operation ID from create asset response")?;
+
+                    // TODO: cast from generic operation.response to avoid potential
+                    let mut operation_response = None;
+
+                    while operation_response.is_none() {
+                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                        operation_response = roblox_cloud
+                            .assets()
+                            .get(&GetAsset {
+                                operation_id: operation_id.clone(),
+                            })
+                            .await
+                            .map_err(|e| e.to_string())?
+                            .response;
+                    }
+
+                    let asset_id = operation_response
+                        .unwrap()
+                        .asset_id
+                        .parse()
+                        .map_err(|_| "Invalid asset ID")?;
+
+                    Ok(RobloxOutputs::ImageAsset(ImageAssetOutputs {
+                        asset_id,
+                        // TODO: This breaks archiving assets.
+                        decal_asset_id: None,
+                    }))
+                } else {
+                    Err("Image asset uploads require Open Cloud authentication. Find out more here: https://mantledeploy.vercel.app/docs/authentication#roblox-open-cloud-api-key".to_string())
+                }
             }
             RobloxInputs::AudioAsset(inputs) => {
                 let CreateAssetQuota {
@@ -1074,6 +1157,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                 if let Some(decal_asset_id) = outputs.decal_asset_id {
                     self.roblox_api.archive_asset(decal_asset_id).await?;
                 }
+                // TODO: if no decal ID is available use Open Cloud API to archive. rbx_cloud currently doesn't support this API
             }
             RobloxOutputs::AudioAsset(outputs) => {
                 self.roblox_api.archive_asset(outputs.asset_id).await?;

@@ -2,60 +2,19 @@ pub mod models;
 
 use std::{ffi::OsStr, fs, path::PathBuf};
 
-use reqwest::{header, Body};
+use reqwest::header;
 use serde_json::json;
-use tokio::fs::File;
-use tokio_util::codec::{BytesCodec, FramedRead};
 
 use crate::{
     errors::{RobloxApiError, RobloxApiResult},
-    helpers::{handle, handle_as_json, handle_as_json_with_status},
+    helpers::{handle, handle_as_json},
     models::{AssetId, AssetTypeId, CreatorType},
     RobloxApi,
 };
 
-use self::models::{
-    CreateAssetQuota, CreateAssetQuotasResponse, CreateAudioAssetResponse, CreateImageAssetResponse,
-};
+use self::models::{CreateAssetQuota, CreateAssetQuotasResponse, CreateAudioAssetResponse};
 
 impl RobloxApi {
-    pub async fn create_image_asset(
-        &self,
-        file_path: PathBuf,
-        group_id: Option<AssetId>,
-    ) -> RobloxApiResult<CreateImageAssetResponse> {
-        let res = self
-            .csrf_token_store
-            .send_request(|| async {
-                let file_name = format!(
-                    "Images/{}",
-                    file_path.file_stem().and_then(OsStr::to_str).unwrap()
-                );
-
-                let file = File::open(&file_path).await?;
-                let reader = Body::wrap_stream(FramedRead::new(file, BytesCodec::new()));
-
-                let mut req = self
-                    .client
-                    .post("https://data.roblox.com/data/upload/json")
-                    .header(reqwest::header::CONTENT_TYPE, "*/*")
-                    .body(reader)
-                    .query(&[
-                        ("assetTypeId", &AssetTypeId::Decal.to_string()),
-                        ("name", &file_name),
-                        ("description", &"madewithmantle".to_owned()),
-                    ]);
-                if let Some(group_id) = &group_id {
-                    req = req.query(&[("groupId", group_id.to_string())]);
-                }
-
-                Ok(req)
-            })
-            .await;
-
-        handle_as_json_with_status(res).await
-    }
-
     pub async fn get_create_asset_quota(
         &self,
         asset_type: AssetTypeId,

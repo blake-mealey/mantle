@@ -14,11 +14,11 @@ pub mod places;
 pub mod social_links;
 pub mod spatial_voice;
 pub mod thumbnails;
+pub mod user;
 
 use std::sync::Arc;
 
 use errors::{RobloxApiError, RobloxApiResult};
-use helpers::handle;
 use rbx_auth::{RobloxCookieStore, RobloxCsrfTokenStore};
 
 pub struct RobloxApi {
@@ -42,19 +42,7 @@ impl RobloxApi {
     }
 
     pub async fn validate_auth(&self) -> RobloxApiResult<()> {
-        let res = self
-            .csrf_token_store
-            .send_request(|| async {
-                Ok(self
-                    .client
-                    .get("https://users.roblox.com/v1/users/authenticated"))
-            })
-            .await;
-
-        handle(res)
-            .await
-            .map_err(|_| RobloxApiError::Authorization)?;
-
+        self.get_authenticated_user().await?;
         Ok(())
     }
 }

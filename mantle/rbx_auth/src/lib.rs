@@ -65,10 +65,8 @@ impl RobloxCsrfTokenStore {
         Self(RwLock::new(None))
     }
 
-    /**
-     * Updates the auth instance's CSRF token from a response's headers map if it is different from the
-     * current value. Returns a boolean indicating whether a new value was found from the headers map.
-     */
+    /// Updates the auth instance's CSRF token from a response's headers map if it is different from the
+    /// current value. Returns a boolean indicating whether a new value was found from the headers map.
     pub fn set_csrf_token_from_headers(&self, headers: &HeaderMap) -> bool {
         let headers_csrf_token = headers.get(CSRF_TOKEN_HEADER_NAME);
         let new_value = match (self.0.read().as_ref(), headers_csrf_token) {
@@ -89,6 +87,9 @@ impl RobloxCsrfTokenStore {
         }
     }
 
+    /// Given a factory function to construct a request, send a request using the CSRF token store. If the
+    /// request fails with status 403 and the response contains a new `X-CSRF-Token` header, the request will
+    /// be reconstructed and retried.
     pub async fn send_request<F, Fut>(
         &self,
         req_factory: F,

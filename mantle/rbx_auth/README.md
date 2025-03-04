@@ -1,7 +1,7 @@
 # `rbx_auth`
 
-Constructs a headers map and cookie jar that can be passed to a `reqwest` client to make authenticated
-requests to Roblox APIs. Best used with the `rbx_api` crate. Available as both a library and CLI.
+Helpers for working with legacy Roblox authentication (`.ROBLOSECURITY` cookies and `X-Csrf-Token` headers).
+Best used with the `rbx_api` crate. Available as both a library and CLI.
 
 ## CLI
 
@@ -23,12 +23,19 @@ rbx_auth = { version = "<version>", default-features = false }
 ```
 
 ```rs
-use rbx_auth::{RobloxAuth, WithRobloxAuth};
+use rbx_auth::{RobloxCookieStore, RobloxCsrfTokenStore};
 
-let auth = RobloxAuth::new().await?;
+let cookie_store = Arc::new(RobloxCookieStore::new()?);
+let csrf_token_store = RobloxCsrfTokenStore::new();
 
 let client = reqwest::Client::builder()
     .user_agent("Roblox/WinInet")
-    .roblox_auth(auth)
+    .cookie_provider(cookie_store)
     .build()?;
+
+let res = csrf_token_store
+    .send_request(|| async {
+        Ok(client.get("https://users.roblox.com/v1/users/authenticated"))
+    })
+    .await?;
 ```

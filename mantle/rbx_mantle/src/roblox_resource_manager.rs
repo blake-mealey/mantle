@@ -702,7 +702,7 @@ impl ResourceManager<RobloxInputs, RobloxOutputs> for RobloxResourceManager {
                     let operation_id = operation
                         .path
                         .as_ref()
-                        .and_then(|path| path.split_once("/"))
+                        .and_then(|path| path.split_once('/'))
                         .map(|(_, id)| id.to_string())
                         .ok_or("Unable to parse operation ID from create asset response")?;
 

@@ -99,7 +99,8 @@ To get your `.ROBLOSECURITY` cookie manually, you have a few options:
 Follow the [official Roblox guide](https://create.roblox.com/docs/cloud/open-cloud/api-keys) for creating a
 Cloud API key. You must grant the key access to the following services:
 
-* Place Publishing for all experiences you want to manage with Mantle
+* `universe-places:write` for all experiences you want to manage with Mantle
+* `asset:read` and `asset:write` in order to manage assets with Mantle
 
 To authenticate with the Cloud API, you must provide the `MANTLE_OPEN_CLOUD_API_KEY` environment variable. You can
 set your environment variable in various ways, like the following:

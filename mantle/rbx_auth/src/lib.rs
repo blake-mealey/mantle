@@ -90,6 +90,7 @@ impl RobloxCsrfTokenStore {
     /// Given a factory function to construct a request, send a request using the CSRF token store. If the
     /// request fails with status 403 and the response contains a new `X-CSRF-Token` header, the request will
     /// be reconstructed and retried.
+    #[allow(clippy::await_holding_lock)]
     pub async fn send_request<F, Fut>(
         &self,
         req_factory: F,
@@ -121,5 +122,11 @@ impl RobloxCsrfTokenStore {
             },
             _ => Ok(res),
         }
+    }
+}
+
+impl Default for RobloxCsrfTokenStore {
+    fn default() -> Self {
+        Self::new()
     }
 }

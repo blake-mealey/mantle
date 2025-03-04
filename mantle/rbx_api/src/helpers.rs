@@ -84,26 +84,6 @@ where
     serde_json::from_str::<T>(&full).map_err(|e| e.into())
 }
 
-pub async fn handle_as_json_with_status<T>(
-    result: Result<reqwest::Response, CsrfTokenRequestError>,
-) -> RobloxApiResult<T>
-where
-    T: de::DeserializeOwned,
-{
-    let response = handle(result).await?;
-    let status_code = response.status();
-    let data = response.bytes().await?;
-    if let Ok(error) = serde_json::from_slice::<RobloxApiErrorResponse>(&data) {
-        if !error.success.unwrap_or(false) {
-            return Err(RobloxApiError::Roblox {
-                status_code,
-                reason: error.reason().unwrap_or_else(|| "Unknown error".to_owned()),
-            });
-        }
-    }
-    Ok(serde_json::from_slice::<T>(&data)?)
-}
-
 pub async fn get_file_part(file_path: &Path) -> RobloxApiResult<Part> {
     debug!("stream read {:?}", &file_path);
     let file = File::open(file_path).await?;

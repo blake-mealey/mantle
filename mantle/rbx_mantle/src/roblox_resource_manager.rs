@@ -345,7 +345,6 @@ impl RobloxResourceManager {
         let cookie_store = Arc::new(RobloxCookieStore::new()?);
         let csrf_token_store = RobloxCsrfTokenStore::new();
         let roblox_api = RobloxApi::new(cookie_store, csrf_token_store)?;
-        let roblox_api = RobloxApi::new(roblox_auth)?;
 
         logger::start_action("Logging in:");
         let user = match roblox_api.get_authenticated_user().await {

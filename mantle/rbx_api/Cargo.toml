@@ -32,3 +32,4 @@ base64 = "0.13.0"
 
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.6.9", features = ["codec"] }
+anyhow = "1.0.97"

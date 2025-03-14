@@ -64,7 +64,7 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, target_id: &s
         }
     };
     let csrf_token_store = RobloxCsrfTokenStore::new();
-    let roblox_api = match RobloxApi::new(cookie_store, csrf_token_store) {
+    let roblox_api = match RobloxApi::new(cookie_store, csrf_token_store, None) {
         Ok(v) => v,
         Err(e) => {
             logger::end_action(Paint::red(e));

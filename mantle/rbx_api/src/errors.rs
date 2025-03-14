@@ -58,6 +58,9 @@ pub enum RobloxApiError {
 
     #[error("Place file size may be too large.")]
     RbxlPlaceFileSizeMayBeTooLarge,
+
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
 }
 
 // Temporary to make the new errors backwards compatible with the String errors throughout the project.

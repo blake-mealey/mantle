@@ -32,7 +32,7 @@ async fn handle_operation<T: de::DeserializeOwned>(
         }
         Err(error) => Err(error),
     }
-    .map_err(|e| RobloxApiError::Other(e))
+    .map_err(RobloxApiError::Other)
 }
 
 impl RobloxApi {
@@ -79,7 +79,7 @@ impl RobloxApi {
         let mut sleep_duration = Duration::from_millis(500);
         let mut operation_result: OperationResult<Asset> = handle_operation(res).await?;
         while !operation_result.done && attempts_remaining > 0 {
-            sleep(sleep_duration.clone()).await;
+            sleep(sleep_duration).await;
             let res: Result<_, anyhow::Error> =
                 if let Some(client) = self.open_cloud_client.as_ref() {
                     client

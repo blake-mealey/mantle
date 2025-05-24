@@ -151,7 +151,7 @@ getting your AWS credentials](https://docs.aws.amazon.com/general/latest/gr/aws-
 The simplest method is to set the `MANTLE_AWS_ACCESS_KEY_ID` and `MANTLE_AWS_SECRET_ACCESS_KEY` environment
 variables. Mantle also supports the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` variables but recommends
 you scope your variables to Mantle to avoid conflicts with other tools. Cloudflare R2 is compatible with
-this same authentication scheme so you can input your secret access key and key ID into the same environment variables.
+this same authentication scheme, so you can input your secret access key and key ID into the same environment variables.
 
 If you're using Mantle within an AWS EC2 instance or AWS Elastic Container Service, you can set the
 `MANTLE_AWS_INHERIT_IAM_ROLE` environment variable to `true` to inherit the permission set granted to the host

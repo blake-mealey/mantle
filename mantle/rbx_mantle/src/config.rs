@@ -1188,19 +1188,29 @@ fn parse_project_path(project: Option<&str>) -> Result<(PathBuf, PathBuf), Strin
     let project = project.unwrap_or(".");
     let project_path = Path::new(project).to_owned();
 
-    let (project_dir, config_file) = if project_path.is_dir() {
-        (project_path.clone(), project_path.join("mantle.yml"))
+    if project_path.is_dir() {
+        let yml_path = project_path.join("mantle.yml");
+        let yaml_path = project_path.join("mantle.yaml");
+
+        if yml_path.exists() {
+            Ok((project_path, yml_path))
+        } else if yaml_path.exists() {
+            Ok((project_path, yaml_path))
+        } else {
+            Err(format!(
+                "No config file found. Looked for mantle.yml and mantle.yaml in {}",
+                project_path.display()
+            ))
+        }
     } else if project_path.is_file() {
-        (project_path.parent().unwrap().into(), project_path)
+        if project_path.exists() {
+            Ok((project_path.parent().unwrap().into(), project_path))
+        } else {
+            Err(format!("Config file {} not found", project_path.display()))
+        }
     } else {
-        return Err(format!("Unable to load project path: {}", project));
-    };
-
-    if config_file.exists() {
-        return Ok((project_dir, config_file));
+        Err(format!("Unable to load project path: {}", project))
     }
-
-    Err(format!("Config file {} not found", config_file.display()))
 }
 
 fn load_config_file(config_file: &Path) -> Result<Config, String> {

@@ -4,6 +4,9 @@ mod wincred;
 #[cfg(target_os = "macos")]
 mod binarycookies;
 
+#[cfg(all(target_os = "linux", not(target_os = "android")))]
+pub mod wsl_windows;
+
 use std::env;
 
 use cookie::Cookie;
@@ -111,6 +114,18 @@ fn from_roblox_studio() -> Option<String> {
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn from_roblox_studio() -> Option<String> {
+    #[cfg(all(target_os = "linux", not(target_os = "android")))]
+    {
+        if wsl_windows::is_wsl() {
+            trace!("WSL detected, attempting to load cookie from Windows Credentials.");
+
+            if let Some(cookie) = wsl_windows::get_roblosecurity_cookie() {
+                info!("Loaded cookie from Windows Credentials via WSL.");
+                return Some(cookie);
+            }
+        }
+    }
+
     None
 }
 
@@ -164,10 +179,31 @@ fn from_roblox_studio_legacy() -> Option<String> {
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn from_roblox_studio_legacy() -> Option<String> {
+    #[cfg(all(target_os = "linux", not(target_os = "android")))]
+    {
+        if wsl_windows::is_wsl() {
+            trace!("WSL detected, attempting to load cookie from Windows Registry via WSL.");
+
+            let value = wsl_windows::read_registry(
+                "SOFTWARE\\Roblox\\RobloxStudioBrowser\\roblox.com",
+                COOKIE_NAME,
+            )?;
+
+            if let Some(cookie) = parse_roblox_studio_cookie(&value) {
+                info!("Loaded cookie from Windows Registry via WSL.");
+                return Some(cookie);
+            }
+        }
+    }
+
     None
 }
 
-#[cfg(any(target_os = "windows", target_os = "macos"))]
+#[cfg(any(
+    target_os = "windows",
+    target_os = "macos",
+    all(target_os = "linux", not(target_os = "android"))
+))]
 fn parse_roblox_studio_cookie(value: &str) -> Option<String> {
     for item in value.split(',') {
         let parts = item.split("::").collect::<Vec<_>>();

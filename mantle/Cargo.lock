@@ -2494,6 +2494,7 @@ dependencies = [
 name = "rbx_cookie"
 version = "0.1.5"
 dependencies = [
+ "base64 0.22.1",
  "byteorder 0.5.3",
  "clap 2.34.0",
  "cookie 0.15.2",

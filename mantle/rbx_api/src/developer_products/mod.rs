@@ -1,42 +1,67 @@
 pub mod models;
 
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
-use reqwest::{header, multipart::Form};
-use serde_json::json;
+use reqwest::multipart::Form;
 
 use crate::{
-    errors::RobloxApiResult,
+    errors::{RobloxApiError, RobloxApiResult},
     helpers::{get_file_part, handle, handle_as_json},
     models::AssetId,
     RobloxApi,
 };
 
 use self::models::{
-    CreateDeveloperProductIconResponse, CreateDeveloperProductResponse,
-    GetDeveloperProductResponse, ListDeveloperProductResponseItem, ListDeveloperProductsResponse,
+    CreateDeveloperProductIconResponse, DeveloperProductResponse, ListDeveloperProductsResponse,
 };
+
+const ICON_POLL_ATTEMPTS: u32 = 5;
+const ICON_POLL_INTERVAL: Duration = Duration::from_secs(1);
 
 impl RobloxApi {
     pub async fn create_developer_product_icon(
         &self,
+        experience_id: AssetId,
         developer_product_id: AssetId,
         icon_file: PathBuf,
     ) -> RobloxApiResult<CreateDeveloperProductIconResponse> {
+        let previous_icon_id = self
+            .get_developer_product(experience_id, developer_product_id)
+            .await?
+            .icon_image_asset_id;
+
         let res = self
             .csrf_token_store
             .send_request(|| async {
                 Ok(self
                     .client
-                    .post(format!(
-                        "https://apis.roblox.com/developer-products/v1/developer-products/{}/image",
-                        developer_product_id
+                    .patch(format!(
+                        "https://apis.roblox.com/developer-products/v2/universes/{}/developer-products/{}",
+                        experience_id, developer_product_id
                     ))
                     .multipart(Form::new().part("imageFile", get_file_part(&icon_file).await?)))
             })
             .await;
+        handle(res).await?;
 
-        handle_as_json(res).await
+        let mut icon_id = None;
+        for attempt in 0..ICON_POLL_ATTEMPTS {
+            if attempt > 0 {
+                tokio::time::sleep(ICON_POLL_INTERVAL).await;
+            }
+            icon_id = self
+                .get_developer_product(experience_id, developer_product_id)
+                .await?
+                .icon_image_asset_id;
+            if icon_id.is_some() && icon_id != previous_icon_id {
+                break;
+            }
+        }
+
+        match icon_id {
+            Some(image_asset_id) => Ok(CreateDeveloperProductIconResponse { image_asset_id }),
+            None => Err(RobloxApiError::MissingCreateDeveloperProductIconResponse),
+        }
     }
 
     pub async fn create_developer_product(
@@ -45,22 +70,23 @@ impl RobloxApi {
         name: String,
         price: u32,
         description: String,
-    ) -> RobloxApiResult<CreateDeveloperProductResponse> {
+    ) -> RobloxApiResult<DeveloperProductResponse> {
         let res = self
             .csrf_token_store
             .send_request(|| async {
                 Ok(self
                     .client
                     .post(format!(
-                "https://apis.roblox.com/developer-products/v1/universes/{}/developerproducts",
-                experience_id
-            ))
-                    .header(header::CONTENT_LENGTH, 0)
-                    .query(&[
-                        ("name", &name),
-                        ("priceInRobux", &price.to_string()),
-                        ("description", &description),
-                    ]))
+                        "https://apis.roblox.com/developer-products/v2/universes/{}/developer-products",
+                        experience_id
+                    ))
+                    .multipart(
+                        Form::new()
+                            .text("name", name.clone())
+                            .text("description", description.clone())
+                            .text("isForSale", "true")
+                            .text("price", price.to_string()),
+                    ))
             })
             .await;
 
@@ -70,18 +96,21 @@ impl RobloxApi {
     pub async fn list_developer_products(
         &self,
         experience_id: AssetId,
-        page: u32,
+        page_token: Option<&str>,
     ) -> RobloxApiResult<ListDeveloperProductsResponse> {
         let res = self
             .csrf_token_store
             .send_request(|| async {
-                Ok(self
-                    .client
-                    .get("https://apis.roblox.com/developer-products/v1/developer-products/list")
-                    .query(&[
-                        ("universeId", &experience_id.to_string()),
-                        ("page", &page.to_string()),
-                    ]))
+                let mut request = self.client.get(format!(
+                    "https://apis.roblox.com/developer-products/v2/universes/{}/developer-products/creator",
+                    experience_id
+                ));
+
+                if let Some(page_token) = page_token {
+                    request = request.query(&[("pageToken", page_token)]);
+                }
+
+                Ok(request)
             })
             .await;
 
@@ -91,19 +120,20 @@ impl RobloxApi {
     pub async fn get_all_developer_products(
         &self,
         experience_id: AssetId,
-    ) -> RobloxApiResult<Vec<ListDeveloperProductResponseItem>> {
+    ) -> RobloxApiResult<Vec<DeveloperProductResponse>> {
         let mut all_products = Vec::new();
+        let mut page_token = None;
 
-        let mut page: u32 = 1;
         loop {
-            let res = self.list_developer_products(experience_id, page).await?;
+            let res = self
+                .list_developer_products(experience_id, page_token.as_deref())
+                .await?;
             all_products.extend(res.developer_products);
+            page_token = res.next_page_token.filter(|token| !token.is_empty());
 
-            if res.final_page {
+            if page_token.is_none() {
                 break;
             }
-
-            page += 1;
         }
 
         Ok(all_products)
@@ -111,14 +141,15 @@ impl RobloxApi {
 
     pub async fn get_developer_product(
         &self,
-        developer_product_id: AssetId,
-    ) -> RobloxApiResult<GetDeveloperProductResponse> {
+        experience_id: AssetId,
+        product_id: AssetId,
+    ) -> RobloxApiResult<DeveloperProductResponse> {
         let res = self
             .csrf_token_store
             .send_request(|| async {
                 Ok(self.client.get(format!(
-                    "https://apis.roblox.com/developer-products/v1/developer-products/{}",
-                    developer_product_id
+                    "https://apis.roblox.com/developer-products/v2/universes/{}/developer-products/{}/creator",
+                    experience_id, product_id
                 )))
             })
             .await;
@@ -134,22 +165,26 @@ impl RobloxApi {
         price: u32,
         description: String,
     ) -> RobloxApiResult<()> {
-        let res = self.csrf_token_store.send_request(||async {
-Ok(self
-            .client
-            .post(format!(
-                "https://apis.roblox.com/developer-products/v1/universes/{}/developerproducts/{}/update",
-                experience_id, product_id
-            ))
-            .json(&json!({
-                "Name": name,
-                "PriceInRobux": price,
-                "Description": description,
-            })))
-        }).await;
+        let res = self
+            .csrf_token_store
+            .send_request(|| async {
+                Ok(self
+                    .client
+                    .patch(format!(
+                        "https://apis.roblox.com/developer-products/v2/universes/{}/developer-products/{}",
+                        experience_id, product_id
+                    ))
+                    .multipart(
+                        Form::new()
+                            .text("name", name.clone())
+                            .text("description", description.clone())
+                            .text("isForSale", "true")
+                            .text("price", price.to_string()),
+                    ))
+            })
+            .await;
 
         handle(res).await?;
-
         Ok(())
     }
 }

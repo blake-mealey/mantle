@@ -47,6 +47,11 @@ pub enum RobloxApiError {
     #[error("No create quotas found for asset type {0}")]
     MissingCreateQuota(AssetTypeId),
 
+    #[error(
+        "The developer product icon was uploaded, but the product did not report an icon asset ID."
+    )]
+    MissingCreateDeveloperProductIconResponse,
+
     #[error("Place file size is too large. Consider switching to the rbxl format.")]
     RbxlxPlaceFileSizeTooLarge,
 

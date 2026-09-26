@@ -712,12 +712,15 @@ pub async fn import_graph(
             &format!("product_{}", product.product_id),
             RobloxInputs::Product(ProductInputs {
                 name: product.name,
-                description: product.description.unwrap_or_default(),
-                price: product.price_in_robux,
+                description: product.description,
+                price: product
+                    .price_information
+                    .default_price_in_robux
+                    .unwrap_or_default(),
             }),
             RobloxOutputs::Product(ProductOutputs {
                 asset_id: product.product_id,
-                product_id: product.developer_product_id,
+                product_id: product.product_id,
             }),
             &[&experience],
         );
@@ -938,5 +941,56 @@ pub async fn save_state(
         StateConfig::Local => save_state_to_file(project_path, &data, None),
         StateConfig::LocalKey(key) => save_state_to_file(project_path, &data, Some(key)),
         StateConfig::Remote(config) => save_state_to_remote(config, &data).await,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::resource_graph::Resource;
+
+    use super::{
+        parse_state, serialize_state, ResourceState, RobloxOutputs, VersionedResourceState,
+    };
+
+    const LEGACY_PRODUCT_STATE: &str = r#"
+version: "6"
+environments:
+  staging:
+    - id: product_existing
+      inputs:
+        product:
+          name: Existing Product
+          description: Existing description
+          price: 100
+      outputs:
+        product:
+          assetId: 3433602692
+          productId: 71033484
+      dependencies:
+        - experience_singleton
+"#;
+
+    #[test]
+    fn preserves_legacy_developer_product_ids() {
+        let ResourceState::Versioned(VersionedResourceState::V6(state)) =
+            parse_state("legacy-product-state", LEGACY_PRODUCT_STATE).unwrap()
+        else {
+            panic!("expected a version 6 state");
+        };
+
+        let product = state.environments["staging"]
+            .iter()
+            .find(|resource| resource.get_id() == "product_existing")
+            .unwrap();
+        let Some(RobloxOutputs::Product(outputs)) = product.get_outputs() else {
+            panic!("expected developer product outputs");
+        };
+
+        assert_eq!(outputs.asset_id, 3433602692);
+        assert_eq!(outputs.product_id, 71033484);
+
+        let serialized = String::from_utf8(serialize_state(&state).unwrap()).unwrap();
+        assert!(serialized.contains("assetId: 3433602692"));
+        assert!(serialized.contains("productId: 71033484"));
     }
 }

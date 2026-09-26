@@ -6,6 +6,9 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions:
+  contents: write
+
 jobs:
   windows:
     runs-on: windows-latest
@@ -119,8 +122,7 @@ jobs:
         with:
           path: artifacts
       - name: Create release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          # TODO: remove and add body_path once we have an automated release notes generator
-          draft: true
+          generate_release_notes: true
           files: artifacts/*/*

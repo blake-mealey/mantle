@@ -168,6 +168,12 @@ pub async fn run(project: Option<&str>, environment: Option<&str>, allow_purchas
         }
     };
 
+    if let Some(RobloxOutputs::Experience(experience)) =
+        current_graph.get_outputs("experience_singleton")
+    {
+        resource_manager.set_experience_id(experience.asset_id);
+    }
+
     let results = next_graph
         .evaluate(&current_graph, &mut resource_manager, allow_purchases)
         .await;
